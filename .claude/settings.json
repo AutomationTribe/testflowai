@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"/Users/dimirage/Documents/Intello/Produts/testflow ai\" && mkdir -p testflow-ai/docs/product testflow-ai/docs/technical/api testflow-ai/docs/design/user-flows testflow-ai/docs/design/wireframes testflow-ai/docs/design/components testflow-ai/docs/decisions testflow-ai/backend testflow-ai/frontend testflow-ai/mobile testflow-ai/tests && ls -la testflow-ai)"
+    ],
+    "additionalDirectories": [
+      "/Users/dimirage/Documents/Intello/Produts/testflow ai/testflow-ai/docs"
+    ]
+  }
+}
