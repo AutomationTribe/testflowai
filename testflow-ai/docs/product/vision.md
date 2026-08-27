@@ -25,6 +25,7 @@ To give software teams a single, web-based system to plan, manage, and execute t
 - Configurable QA workflow per team (e.g., approvals before execution)
 - Centralized reporting and dashboards for progress and quality visibility
 - Multi-tenant platform supporting unlimited teams/projects at scale
+- Delivered as a paid, subscription-based product, with a free trial period and monthly or yearly paid plans
 
 ## 7. Major Product Capabilities
 - Requirements management (native authoring and import/sync)
