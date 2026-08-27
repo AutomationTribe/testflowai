@@ -1,7 +1,7 @@
 # TestFlow AI — Functional Requirements (FR)
 
 **Source documents:** vision.md, prd.md, product-decisions.md (all approved)
-**Status:** Approved — reflects all product decisions through PD-047.
+**Status:** Approved — reflects all product decisions through PD-048.
 **Scope:** This document specifies functional (behavioural) requirements only. It does not specify technology, database design, API design, architecture, or UI design.
 
 ---
@@ -52,7 +52,7 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 | FR-TC-002 | Edit Test Case | TC | MVP |
 | FR-TC-003 | Test Case Versioning | TC | MVP |
 | FR-TC-004 | Test Run Snapshot of Test Case Content | TC | MVP |
-| FR-TC-005 | Test Case Status Model, Approval, and Self-Approval **[Updated]** | TC | MVP |
+| FR-TC-005 | Test Case Status Model and Self-Service Approval **[Updated]** | TC | MVP |
 | FR-TC-006 | Optional Requirement Linkage | TC | MVP |
 | FR-TC-007 | Review and Comment on Test Cases | TC | MVP |
 | FR-TC-008 | Test Case Template Application | TC | MVP |
@@ -471,10 +471,10 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 ### FR-REQ-002 — Editing a Linked Requirement Triggers Re-Review **[Updated]**
 **Requirement:** The system shall, when a requirement that has one or more linked and already-Approved test cases is edited, set the status of each such linked, Approved test case to "Needs Review."
 **Purpose:** Ensures a change to a requirement's content cannot silently leave stale, already-approved test cases in place without a fresh review (PD-033).
-**Actors:** QA Tester, QA Manager, Admin (editing the requirement); QA Manager or test case creator (performing the resulting re-review, per FR-TC-005).
+**Actors:** QA Tester, QA Manager, Admin (editing the requirement); any user with edit access (performing the resulting self-service re-approval, per FR-TC-005).
 **Preconditions:** The requirement being edited has at least one linked test case currently in "Approved" status.
-**Main Behaviour:** On save of the requirement edit, every linked test case in "Approved" status transitions to "Needs Review." Linked test cases not currently Approved (e.g., Draft, Pending Approval) are unaffected.
-**Business Rules:** PD-033. Re-approval follows the same path as FR-TC-005 — QA Manager approval where the project's workflow has approval enabled, or self-approval by the test case creator where it does not.
+**Main Behaviour:** On save of the requirement edit, every linked test case in "Approved" status transitions to "Needs Review." Linked test cases not currently Approved (e.g., Draft) are unaffected.
+**Business Rules:** PD-033. Re-approval follows the same self-service path as FR-TC-005 — any user with edit access re-approves directly, with no reviewer gate.
 **Acceptance Criteria:** Given a requirement with an Approved, linked test case, When the requirement is edited and saved, Then that test case's status changes to "Needs Review."
 **Error/Edge Conditions:** Editing a requirement with no linked test cases, or only linked test cases not in Approved status, triggers no status change.
 **Priority:** MVP
@@ -528,7 +528,7 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 **Actors:** QA Tester, QA Manager, Admin.
 **Preconditions:** Actor has project access.
 **Main Behaviour:** Test case content is updated; a new version is recorded (FR-TC-003).
-**Business Rules:** Editing an Approved test case reverts it to Pending Approval, or to Needs Review if the edit follows a requirement change (FR-TC-005, FR-REQ-002).
+**Business Rules:** Editing an Approved test case reverts it to Needs Review (FR-TC-005), whether the edit is direct or follows a linked requirement change (FR-REQ-002).
 **Acceptance Criteria:** Given an Approved test case, When it is edited, Then its status reverts per FR-TC-005.
 **Error/Edge Conditions:** N/A.
 **Priority:** MVP
@@ -558,23 +558,22 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 **Priority:** MVP
 **Dependencies:** FR-TR-001, FR-TC-003
 
-### FR-TC-005 — Test Case Status Model, Approval, and Self-Approval **[Updated]**
-**Requirement:** The system shall maintain a test case status of Draft, Pending Approval, Approved, or Needs Review. Where a project's QA workflow has approval enabled, a test case moves from Pending Approval to Approved only via QA Manager approval, and from Pending Approval to Needs Review via QA Manager rejection. Where a project's QA workflow does not have approval enabled, the test case's creator may set its own status directly to Approved.
-**Purpose:** Reflects the configurable QA approval workflow (PD-006), the rejection outcome (PD-035), and the no-approval-step self-approval path (PD-036).
-**Actors:** QA Tester (creator, submitter, self-approver where applicable), QA Manager (approver/rejector where approval is enabled).
-**Preconditions:** Project's QA workflow configuration (approval enabled or not) is known.
+### FR-TC-005 — Test Case Status Model and Self-Service Approval **[Updated]**
+**Requirement:** The system shall maintain a test case status of Draft, Approved, or Needs Review. Any user with edit access to the test case (QA Tester, QA Manager, or Admin) may set its status directly to Approved at any time. There is no QA Manager approval gate and no separate submission/review/reject cycle.
+**Purpose:** Reflects the simplified, self-service approval model (PD-048, supersedes PD-006/PD-007/PD-035/PD-036) — a clear "this is ready" signal without a mandatory reviewer gate.
+**Actors:** QA Tester, QA Manager, Admin (any may approve; typically the test case's own author, but not restricted to them).
+**Preconditions:** None — no project-level workflow configuration governs this behaviour.
 **Main Behaviour:**
-- Approval-enabled project: Draft → Pending Approval (on submission) → Approved (QA Manager approves) or Needs Review (QA Manager rejects).
-- No-approval-step project: Draft → Approved (creator self-approves directly; no Pending Approval stage is required).
-- A Needs Review test case is edited/addressed by its creator and resubmitted to Pending Approval.
-- An Approved test case that is edited reverts to Pending Approval (approval-enabled projects) — see FR-TC-002.
-- An Approved test case affected by a linked requirement edit reverts to Needs Review — see FR-REQ-002.
-**Business Rules:** PD-006, PD-007, PD-035, PD-036.
+- New test case: created in Draft.
+- Draft → Approved: any user with edit access sets this directly.
+- Approved → Needs Review: triggered automatically when the test case is edited (FR-TC-002) or when its linked requirement is edited (FR-REQ-002/PD-033).
+- Needs Review → Approved: the user reviews the current content and re-approves it themselves, the same as the original Draft → Approved transition.
+**Business Rules:** PD-048.
 **Acceptance Criteria:**
-- Given a project with approval enabled, When a QA Manager rejects a Pending Approval test case, Then its status becomes Needs Review.
-- Given a project without approval enabled, When the test case's creator sets it to Approved, Then the status change succeeds without QA Manager action.
-- Given a project without approval enabled, When any user other than the test case's creator attempts to set it to Approved, Then the system's behaviour follows standard project-access permissions (self-approval is scoped to the creator).
-**Error/Edge Conditions:** A test case already Approved, in a project that later has approval enabled or disabled, is not retroactively changed by the workflow-setting change alone (see Open Questions for the case where a Needs Review test case's project subsequently disables approval).
+- Given a Draft test case, When any user with edit access sets it to Approved, Then the status change succeeds with no reviewer/gate involved.
+- Given an Approved test case, When it is edited, Then its status becomes Needs Review.
+- Given a test case in Needs Review, When a user sets it to Approved, Then the status change succeeds the same way as any other self-service approval.
+**Error/Edge Conditions:** None beyond standard project-access permission checks — there is no "wrong actor for the workflow mode" case, since there is only one mode.
 **Priority:** MVP
 **Dependencies:** FR-TC-002, FR-REQ-002
 
@@ -592,12 +591,12 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 
 ### FR-TC-007 — Review and Comment on Test Cases
 **Requirement:** The system shall allow QA Manager to review and comment on a test case.
-**Purpose:** Supports the approval workflow with feedback.
+**Purpose:** Supports optional feedback on a test case (not a gate — approval is self-service per PD-048).
 **Actors:** QA Manager.
 **Preconditions:** Test case exists in the project.
 **Main Behaviour:** QA Manager adds comments visible to the test case's creator.
-**Business Rules:** None beyond PD-006.
-**Acceptance Criteria:** Given a Pending Approval test case, When a QA Manager adds a comment, Then it is visible to the test case's creator.
+**Business Rules:** None beyond PD-048.
+**Acceptance Criteria:** Given a test case, When a QA Manager adds a comment, Then it is visible to the test case's creator.
 **Error/Edge Conditions:** N/A.
 **Priority:** MVP
 **Dependencies:** FR-TC-005
@@ -826,14 +825,14 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 
 # DEF — Defect Management
 
-### FR-DEF-001 — Log Defect
-**Requirement:** The system shall allow QA Tester, QA Manager, or Admin to log a defect from a failed execution result.
+### FR-DEF-001 — Log Defect **[Updated]**
+**Requirement:** The system shall allow QA Tester, QA Manager, or Admin to log a defect from a failed execution result. A defect's status shall be one of: Open, Pending, Closed, or Removed.
 **Purpose:** Captures issues found during testing.
 **Actors:** QA Tester, QA Manager, Admin.
 **Preconditions:** A Fail result exists.
-**Main Behaviour:** Actor logs a defect linked to the failed result.
-**Business Rules:** None.
-**Acceptance Criteria:** Given a Fail result, When a defect is logged, Then it is linked to that result and its test case.
+**Main Behaviour:** Actor logs a defect linked to the failed result, starting in Open status.
+**Business Rules:** Defect status vocabulary: Open, Pending, Closed, Removed.
+**Acceptance Criteria:** Given a Fail result, When a defect is logged, Then it is linked to that result and its test case, starting in Open status.
 **Error/Edge Conditions:** N/A.
 **Priority:** MVP
 **Dependencies:** FR-EXEC-001
@@ -1028,7 +1027,7 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 **Actors:** N/A (system behaviour).
 **Preconditions:** A key action occurs.
 **Main Behaviour:** Each key action creates an audit entry.
-**Business Rules:** None beyond "key actions" scope, which includes at minimum: role changes (FR-USR-003), member removal (FR-USR-005), project archive (FR-PRJ-003), requirement archive cascade (FR-REQ-004), test case approval/rejection (FR-TC-005), and defect status changes (FR-DEF-003).
+**Business Rules:** None beyond "key actions" scope, which includes at minimum: role changes (FR-USR-003), member removal (FR-USR-005), project archive (FR-PRJ-003), requirement archive cascade (FR-REQ-004), test case approval/status changes (FR-TC-005), and defect status changes (FR-DEF-003).
 **Acceptance Criteria:** Given a key action, When it occurs, Then an audit entry is created.
 **Error/Edge Conditions:** N/A.
 **Priority:** MVP
@@ -1418,7 +1417,6 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 - What is the full scope of "organisation settings" beyond membership and subscription (FR-ORG-003)?
 - Can QA Tester view the organisation member list (FR-USR-006), or is that restricted to Admin/QA Manager only?
 - What exact status label does a requirement-archive-cascade-cancelled test run receive, to distinguish it from a normally closed run (FR-TR-003, FR-REQ-004)?
-- If a test case is in "Needs Review" status and the project's QA workflow subsequently has its approval step disabled, does the test case remain stuck in Needs Review, or does it become self-approvable by its creator per FR-TC-005's no-approval-step path? (Raised by applying decisions 10–12 together.)
 - Is the lapse-grace-period notification (FR-SUB-010) a single notice, or does it repeat/remind across the 14 days?
 - Is the staggered renewal behavior for mid-term yearly seat purchases (FR-SUB-011) acceptable as a permanent model, or should a future consolidation/alignment mechanism be considered?
 - Is there any upper limit on how many seats can be purchased in a single transaction (FR-SUB-008)?
@@ -1429,5 +1427,6 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 
 - **Resolved by this update:** The prior ambiguity between "pre-deployment report" and "post-deployment report" as possibly-separate deliverables (previously flagged against FR-RPT-001/002) is resolved — FR-RPT-002 now specifies a single report type with a Post-Deployment section (PD-038).
 - **Resolved by this update:** The prior undefined interaction between BA/PO report approval (FR-RPT-003) and any release/workflow gating is resolved — approval/rejection is explicitly record-keeping only, with no downstream trigger (PD-039).
-- **New watch item:** FR-TC-005 (self-approval, Needs Review) and FR-REQ-002 (requirement-edit-triggered re-review) together mean a test case's approval history can now cycle through Approved → Needs Review → Pending Approval → Approved multiple times over its life. No conflict identified, but reporting/traceability views that assume a one-way approval flow should account for this cycle.
+- **Resolved by this update:** The approval workflow was simplified (PD-048): the QA Manager approval gate is removed; test cases now follow a 3-state Draft → Approved → Needs Review model with fully self-service approval. This resolves the previously-flagged open question about a Needs Review test case in a project that disables its approval workflow, since there is no longer a per-project approval-workflow setting to disable.
+- **New watch item:** FR-TC-005 (self-service approval, Needs Review) and FR-REQ-002 (requirement-edit-triggered re-review) together mean a test case's status can cycle through Approved → Needs Review → Approved multiple times over its life. No conflict identified, but reporting/traceability views should account for this cycle rather than assuming a one-way approval flow.
 - **New watch item:** FR-LNK-002 (no identity verification) combined with FR-RPT-004 (BA/PO comments private to QA Tester) means a comment attributed to "BA/PO" is only as trustworthy as the link's possession — anyone with the link could leave a comment. This is consistent with the already-accepted link trade-off (PD-043) and is not treated as a new conflict, but is noted for awareness.

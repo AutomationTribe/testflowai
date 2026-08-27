@@ -14,7 +14,7 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - Provide a complete test management workflow from requirement to execution to report.
 - Reduce manual test case authoring effort using AI.
 - Preserve full traceability between requirements, test cases, runs, and defects.
-- Allow QA managers to configure team-specific workflow, templates, and approvals.
+- Allow QA managers to configure team-specific workflow and templates. Test case approval is self-service (PD-048) — no separate approval-configuration goal applies.
 - Support multi-tenant use at unlimited scale, with organisations able to manage multiple projects.
 - Keep external stakeholder participation lightweight through scoped, temporary access.
 
@@ -47,8 +47,8 @@ QA teams manually author large volumes of test cases, and typically manage requi
 | Role | Responsibilities |
 |---|---|
 | **Admin** | Per-organisation role. Manages organisation settings, invites/manages users, oversees all projects in the organisation. Is the only role that can change another member's role (PD-031); cannot be removed or reassigned away from Admin if they are the organisation's last remaining Admin (PD-030). Can perform any action available to QA Manager or QA Tester. |
-| **QA Manager** | Invites organisation members and sets their role at invitation; can create/update/archive projects; sees all projects in the organisation; defines QA workflow (e.g., approval gates); creates test case and test report templates (organisation-scoped); reviews, comments on, and approves test cases; reviews reports (single report type, including its Post-Deployment section — PD-038); views project dashboards; views billing and seat history (PD-047); generates temporary access links for BA/PO, Developer, and Stakeholder; can perform any action available to a QA Tester. Cannot change another member's role (PD-031). |
-| **QA Tester** | Can create, update, and archive projects; sees only projects they created or were added to; enters requirements (e.g., from a Jira ticket or wherever the requirement originates); triggers AI test case generation and/or writes test cases manually; organizes suites; executes tests; records results; attaches evidence; logs defects; can add other organisation members to a project they have access to; can remove users from a project they have access to; generates temporary access links for BA/PO, Developer, and Stakeholder. |
+| **QA Manager** | Invites organisation members and sets their role at invitation; can create/update/archive projects; sees all projects in the organisation; defines QA workflow settings; creates test case and test report templates (organisation-scoped); reviews and comments on test cases (feedback only — approval itself is self-service, PD-048); reviews reports (single report type, including its Post-Deployment section — PD-038); views project dashboards; views billing and seat history (PD-047); generates temporary access links for BA/PO, Developer, and Stakeholder; can perform any action available to a QA Tester. Cannot change another member's role (PD-031). |
+| **QA Tester** | Can create, update, and archive projects; sees only projects they created or were added to; enters requirements (e.g., from a Jira ticket or wherever the requirement originates); triggers AI test case generation and/or writes test cases manually; approves their own test cases (self-service, PD-048); organizes suites; executes tests; records results; attaches evidence; logs defects; can add other organisation members to a project they have access to; can remove users from a project they have access to; generates temporary access links for BA/PO, Developer, and Stakeholder. |
 
 ### Link-Based Roles (no account; access via temporary, expiring link shared by QA Tester/QA Manager/Admin)
 
@@ -101,7 +101,7 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - Native defect logging
 - Requirement-to-test-case traceability, distinguishing traced vs. untraced test cases
 - On-demand reporting (single report type, including a Post-Deployment section for production testing) and dashboards (PD-038)
-- Configurable QA workflow per project (approval gates), with Draft → Pending Approval → Approved → Needs Review states; self-approval by the test case creator when a project has no approval step configured (PD-035, PD-036)
+- Self-service test case approval, with Draft → Approved → Needs Review states; any user with edit access can approve directly, at any time — no QA Manager gate (PD-048)
 - Optional AI provider key configuration per project, plus a platform-provided AI option
 - Temporary, scoped access links for BA/PO, Developer, and Stakeholder, with configurable expiry (default 24h), no identity verification, named or generic recipients, and multi-use until expiry/revocation (PD-018, PD-042–PD-046)
 - BA/PO can leave comments on a report via their link, visible only to the QA Tester and excluded from the report itself (PD-040)
@@ -133,10 +133,10 @@ QA teams manually author large volumes of test cases, and typically manage requi
 **QA Manager**
 1. Invites organisation members (Admin, QA Manager, or QA Tester), setting their role at invitation
 2. Creates or oversees projects (sees all projects in the organisation)
-3. Sets the project's QA workflow (e.g., approval gates)
+3. Sets the project's QA workflow settings
 4. Creates test case and test report templates, available across the organisation's projects
 5. Adds/removes organisation members' access to specific projects
-6. Reviews, comments on, and approves test cases
+6. Reviews and comments on test cases (feedback only — approval is self-service, PD-048)
 7. Generates temporary access links for BA/PO (report approval), Developer (defect resolution), and Stakeholder (dashboard/report viewing)
 8. Reviews pre- and post-deployment reports
 9. Views a project progress dashboard
@@ -148,7 +148,7 @@ QA teams manually author large volumes of test cases, and typically manage requi
 3. Triggers AI generation of a full set of test cases from a requirement, or writes test cases manually
 4. Reviews, edits, and saves generated test cases
 5. Assigns test cases to a suite
-6. Submits test cases for approval if required by project workflow
+6. Approves their own test cases when ready (self-service, PD-048)
 7. Adds other organisation members to the project, or removes their access
 8. Generates temporary access links for BA/PO, Developer, and Stakeholder as needed
 9. Executes assigned test cases in a test run
@@ -186,11 +186,10 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - **Project creation, update, and archiving are available to Admin, QA Manager, and QA Tester (PD-014).**
 - **QA Manager and Admin see all projects in their organisation; QA Tester sees only projects they created or were added to (PD-014).**
 - **Adding a user to a project is an access grant, not a role assignment; the added user's organisation role governs their capabilities on that project.**
-- QA workflow (e.g., approval gates before execution) is configurable per project.
-- **Test cases follow the state model Draft → Pending Approval → Approved, with a "Needs Review" state reached either when a QA Manager rejects a Pending Approval test case, or when a linked requirement is edited after the test case was already Approved (PD-035, PD-033).**
-- If an approved test case is edited, it reverts to Pending Approval status (when approval is enabled).
-- **In a project whose QA workflow does not have approval enabled, the test case's creator can self-approve — setting the test case's status directly to Approved (PD-036).**
-- **Editing a requirement that has already-approved linked test cases triggers those test cases into "Needs Review," requiring re-approval (PD-033).**
+- QA workflow settings are configurable per project (excluding approval, which is not configurable — see below).
+- **Test cases follow a simplified state model: Draft → Approved → Needs Review. There is no QA Manager approval gate — any user with edit access can set a test case directly to Approved, at any time (PD-048, supersedes PD-006/PD-007/PD-035/PD-036).**
+- **If an Approved test case is edited, it reverts to "Needs Review"; the user reviews and re-approves it themselves when ready.**
+- **Editing a requirement that has already-approved linked test cases triggers those test cases into "Needs Review," which the user then re-approves themselves (PD-033, PD-048).**
 - AI provider key configuration is optional per project; a platform-provided AI option is also available.
 - Templates are organisation-scoped.
 - **Requirements are authored by QA Tester, QA Manager, or Admin — not by BA/PO (PD-015).**
@@ -236,7 +235,7 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - Import/sync of requirements from external tools is postponed to Post-MVP (PD-011).
 - Full traceability required where links exist: requirement → test case(s) → run(s) → result(s) → defect(s).
 - Requirement linkage on a test case is optional (PD-005).
-- Editing a requirement that has already-approved linked test cases triggers those test cases into "Needs Review" status, requiring re-approval — by QA Manager, or by the test case's creator if the project has no approval step configured (PD-033).
+- Editing a requirement that has already-approved linked test cases triggers those test cases into "Needs Review" status; the user re-approves them directly, self-service (PD-033, PD-048).
 - Archiving a requirement cascades to archive its linked test cases and reports. If a linked test case is currently part of an active, unclosed test run, that test run is also cancelled and archived as part of the same cascade (PD-016, extended by PD-034).
 
 ## 15. Subscription & Billing Capabilities
@@ -280,7 +279,7 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - 14-day grace period on paid subscription lapse is in MVP scope.
 - Billing/seat history visibility restricted to Admin and QA Manager is in MVP scope (PD-047).
 - Role-change restriction to Admin only, and minimum-one-Admin enforcement, are in MVP scope (PD-030, PD-031).
-- The "Needs Review" test case state, self-approval without an approval step, and requirement-edit-triggered re-review are in MVP scope (PD-033, PD-035, PD-036).
+- The simplified "Draft → Approved → Needs Review" test case state model, self-service approval (no QA Manager gate), and requirement-edit-triggered re-review are in MVP scope (PD-033, PD-048).
 - Single report type with a Post-Deployment section, BA/PO record-only approval/rejection, and BA/PO private comments to QA Tester are in MVP scope (PD-038, PD-039, PD-040).
 - Audit history visibility restricted to QA Manager and Admin is in MVP scope (PD-041).
 - Configurable link expiry (24h default), no identity verification, named/generic links, multi-use, and free link sharing are in MVP scope (PD-042–PD-046).
@@ -290,7 +289,6 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - What happens to an organisation's data/access at the end of the trial if the user never subscribes and never returns (long-term dormant/unpaid organisations) — is there a data retention or deletion policy?
 - Can a trial-capped seat limit (3 seats) be reached exactly, or is there any warning before the cap blocks a new invitation, similar to paid-plan seat blocking?
 - Is there any upper limit on how many seats can be purchased in a single transaction (proactive or blocked-invitation-triggered)?
-- What happens to a test case stuck in "Needs Review" if the project's approval workflow is subsequently disabled — does it become self-approvable by its creator, or does it remain gated?
 - What exact status label distinguishes a test run cancelled/archived via requirement-archive cascade (PD-034) from a normally closed run?
 - Is the lapse-grace-period notification (PD-029) a single notice, or does it repeat/remind across the 14 days?
 - Is the staggered renewal behavior for mid-term yearly seat purchases (PD-027) acceptable as a permanent model, or should a future consolidation/alignment mechanism be considered?

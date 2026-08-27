@@ -92,7 +92,6 @@ CREATE TABLE projects (
     organisation_id             uuid NOT NULL,
     name                        text NOT NULL,
     created_by_user_id          uuid NOT NULL,
-    approval_workflow_enabled   boolean NOT NULL DEFAULT false, -- drives test_cases.approval_status transitions (PD-006, PD-036)
     status                      text NOT NULL DEFAULT 'active', -- 'active' | 'archived'
     created_at                  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT fk_projects_organisation FOREIGN KEY (organisation_id)
@@ -216,7 +215,7 @@ CREATE TABLE test_cases (
     title                       text NOT NULL,
     steps                       jsonb NOT NULL, -- structured step content
     expected_results            jsonb NOT NULL,
-    approval_status             text NOT NULL DEFAULT 'draft', -- 'draft' | 'pending_approval' | 'approved' | 'needs_review'
+    approval_status             text NOT NULL DEFAULT 'draft', -- 'draft' | 'approved' | 'needs_review' — self-service, no QA Manager gate (PD-048)
     record_status               text NOT NULL DEFAULT 'active', -- 'active' | 'archived' (separate from approval_status)
     is_ai_generated             boolean NOT NULL DEFAULT false,
     ai_generation_request_id    uuid, -- optional; set only if is_ai_generated
@@ -233,7 +232,7 @@ CREATE TABLE test_cases (
         REFERENCES users (id) ON DELETE RESTRICT,
     CONSTRAINT fk_test_cases_ai_generation_request FOREIGN KEY (ai_generation_request_id)
         REFERENCES ai_generation_requests (id) ON DELETE RESTRICT,
-    CONSTRAINT ck_test_cases_approval_status CHECK (approval_status IN ('draft', 'pending_approval', 'approved', 'needs_review')),
+    CONSTRAINT ck_test_cases_approval_status CHECK (approval_status IN ('draft', 'approved', 'needs_review')),
     CONSTRAINT ck_test_cases_record_status CHECK (record_status IN ('active', 'archived')),
     CONSTRAINT ck_test_cases_ai_flag_consistency CHECK (
         (is_ai_generated = false AND ai_generation_request_id IS NULL) OR (is_ai_generated = true)
@@ -256,7 +255,7 @@ CREATE TABLE test_case_versions (
         REFERENCES test_cases (id) ON DELETE RESTRICT,
     CONSTRAINT uq_test_case_versions_test_case_version UNIQUE (test_case_id, version_number)
 );
-COMMENT ON TABLE test_case_versions IS 'DBD-003: created only for "significant" edits (threshold not yet defined — open item). Rows are immutable once inserted (application must never UPDATE steps/expected_results here).';
+COMMENT ON TABLE test_case_versions IS 'DBD-003: created only for "significant" edits, defined as an edit that changes the entire test case (full content replacement). Rows are immutable once inserted (application must never UPDATE steps/expected_results here).';
 
 CREATE TABLE test_case_comments (
     id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -346,7 +345,7 @@ CREATE TABLE test_runs (
         REFERENCES users (id) ON DELETE RESTRICT,
     CONSTRAINT ck_test_runs_status CHECK (status IN ('open', 'closed', 'cancelled_archived'))
 );
-COMMENT ON COLUMN test_runs.status IS 'DBD-006 flagged tension: 3 values, not a literal 2-value active/archived pattern. Used as designed pending your confirmation (see database-decisions.md DBD-006).';
+COMMENT ON COLUMN test_runs.status IS 'DBD-006: confirmed 3-value exception to the general 2-value active/archived pattern used elsewhere.';
 
 CREATE TABLE test_run_test_cases (
     id                      uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -408,7 +407,7 @@ CREATE TABLE defects (
     execution_result_id         uuid NOT NULL,
     title                       text NOT NULL,
     description                 text NOT NULL,
-    status                      text NOT NULL DEFAULT 'open', -- placeholder vocabulary — exact set not yet approved (see Open Items)
+    status                      text NOT NULL DEFAULT 'open', -- 'open' | 'pending' | 'closed' | 'removed' (DBD-008)
     logged_by_user_id           uuid NOT NULL,
     assigned_via_access_link_id uuid, -- set on assignment (FR-DEF-002)
     created_at                  timestamptz NOT NULL DEFAULT now(),
@@ -417,7 +416,8 @@ CREATE TABLE defects (
     CONSTRAINT fk_defects_logged_by FOREIGN KEY (logged_by_user_id)
         REFERENCES users (id) ON DELETE RESTRICT,
     CONSTRAINT fk_defects_assigned_via FOREIGN KEY (assigned_via_access_link_id)
-        REFERENCES access_links (id) ON DELETE RESTRICT
+        REFERENCES access_links (id) ON DELETE RESTRICT,
+    CONSTRAINT ck_defects_status CHECK (status IN ('open', 'pending', 'closed', 'removed'))
 );
 
 CREATE TABLE defect_history_entries (
@@ -622,7 +622,7 @@ CREATE INDEX idx_reports_project_id ON reports (project_id);
 -- reporting-only, not a hot path).
 CREATE INDEX idx_test_cases_requirement_id ON test_cases (requirement_id);
 
--- Status filtering — approval workflow queues ("show me all Pending Approval test cases"),
+-- Status filtering — approval queues ("show me all Needs Review test cases"),
 -- run-status dashboards, defect boards.
 CREATE INDEX idx_test_cases_approval_status ON test_cases (project_id, approval_status);
 CREATE INDEX idx_test_runs_status ON test_runs (project_id, status);

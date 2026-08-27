@@ -22,7 +22,7 @@ To give software teams a single, web-based system to plan, manage, and execute t
 ## 6. High-Level Value Proposition
 - Faster test case creation through AI generation from requirements
 - Full traceability from requirement to test case to execution result to defect
-- Configurable QA workflow per team (e.g., approvals before execution)
+- Self-service test case approval, with configurable QA workflow per team for other process settings
 - Centralized reporting and dashboards for progress and quality visibility
 - Multi-tenant platform supporting unlimited teams/projects at scale
 - Delivered as a paid, subscription-based product, with a free trial period and monthly or yearly paid plans
@@ -36,13 +36,13 @@ To give software teams a single, web-based system to plan, manage, and execute t
 - Requirement-to-test-case traceability
 - Reporting and dashboards
 - Team/project setup with role-based access
-- Configurable QA workflow (e.g., approval gates)
+- Self-service test case approval (Draft → Approved → Needs Review)
 - Audit history of key actions
 
 ## 8. Product Principles
 - AI accelerates test creation but never replaces human review — all AI-generated test cases must be reviewed/edited before being saved as final.
 - Traceability is a first-class concern, not an afterthought — requirements, test cases, runs, and defects must remain linked.
-- Teams control their own QA process — QA managers can configure workflow, templates, and approval gates for their team.
+- Teams control their own QA process — QA managers can configure workflow and templates for their team. Test case approval is self-service (any editor can approve their own work); there is no mandatory QA Manager approval gate (PD-048).
 - The platform is multi-tenant and built to scale to an unlimited number of teams/projects.
 - AI usage is optional — teams can operate without configuring AI provider keys if they choose not to use AI features.
 
@@ -50,7 +50,7 @@ To give software teams a single, web-based system to plan, manage, and execute t
 - QA teams can complete the full workflow — requirement → AI-assisted test case → suite → execution → defect → report — within TestFlow AI without needing external tools for these functions.
 - Test case authoring time is measurably reduced through AI generation.
 - Every executed test result can be traced back to its originating requirement.
-- QA managers can configure a team-specific workflow (e.g., approvals) without needing product/engineering support.
+- QA managers can configure team-specific workflow settings without needing product/engineering support.
 
 ## 10. Current Scope Boundaries
 - MVP supports manual test execution only; automated test execution is a future capability.

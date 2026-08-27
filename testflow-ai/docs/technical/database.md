@@ -118,7 +118,6 @@ The model contains **29 entities**, organized into eight modules: Tenancy & Iden
 | Organisation ID | Owning organisation | Required | — | Never changes (tenant isolation) |
 | Name | Display name | Required | — | |
 | Created By (User ID) | The project's creator | Required | — | Must be Admin, QA Manager, or QA Tester (FR-PRJ-001) |
-| Approval Workflow Enabled | Whether QA-Manager approval is required for test cases | Required (boolean) | — | Drives the Test Case status machine (PD-006, PD-036) |
 | Status | Active or Archived | Required | — | Per DBD-006 pattern |
 | Created At | Creation date | Required | — | |
 
@@ -275,9 +274,9 @@ The model contains **29 entities**, organized into eight modules: Tenancy & Iden
 | Title | Short label | Required | — | |
 | Steps | Structured step content | Required (structured data) | — | |
 | Expected Results | Structured expected-outcome content | Required (structured data) | — | |
-| Status | Draft, Pending Approval, Approved, or Needs Review | Required | — | State machine per PD-006, PD-035, PD-036 (see §4) |
+| Status | Draft, Approved, or Needs Review | Required | — | Self-service state machine per PD-048 (see §4) |
 | Is AI-Generated | Whether this originated from AI generation | Required (boolean) | — | Set once at creation, persists through edits (FR-TC-010) |
-| Created By (User ID) | Author/creator | Required | — | The "creator" referenced by self-approval rules (PD-036) |
+| Created By (User ID) | Author/creator | Required | — | Attribution only — approval is self-service for any user with edit access, not restricted to the creator (PD-048) |
 | Current Version Number | Which version's content is currently live | Required (number) | — | Increments only on "significant" edits (DBD-003) |
 | Created At | Creation date | Required | — | |
 | Status | Active or Archived | Required | — | Per DBD-006; cascades from Requirement archive |
@@ -292,7 +291,7 @@ The model contains **29 entities**, organized into eight modules: Tenancy & Iden
 - One Test Case appears in many Test Runs, via Test Run Test Case snapshot rows (one-to-many from Test Case to those join rows — see §4).
 - One Test Case may have been produced by one AI Generation Request (many-to-one, optional — many test cases can result from one generation request).
 
-**Lifecycle:** Created manually or via AI generation (post-review, FR-AI-002). Status transitions per the approved state machine (§4). Editing an Approved test case reverts it to Pending Approval (PD-007) or Needs Review if the edit follows a requirement change (PD-033); "significant" edits also create a new Test Case Version (DBD-003). Archived via direct project archiving or cascade from Requirement archive (PD-016).
+**Lifecycle:** Created manually or via AI generation (post-review, FR-AI-002). Status transitions per the self-service state machine (§4): any user with edit access sets Draft/Needs Review directly to Approved; editing an Approved test case reverts it to Needs Review (PD-048), whether the edit is direct or follows a linked requirement change (PD-033). "Significant" edits also create a new Test Case Version (DBD-003 — a significant edit is defined as one that changes the entire test case). Archived via direct project archiving or cascade from Requirement archive (PD-016).
 
 ---
 
@@ -434,7 +433,7 @@ The model contains **29 entities**, organized into eight modules: Tenancy & Iden
 | Test Run ID | Uniquely identifies the run | Required | Unique | Primary identifier |
 | Project ID | Owning project | Required | — | |
 | Name | Display label | Required | — | |
-| Status | Open, Closed, or Cancelled-Archived | Required | — | See DBD-006 tension — this entity needs 3 states, not a binary (flagged) |
+| Status | Open, Closed, or Cancelled-Archived | Required | — | Confirmed 3-value exception to the general active/archived pattern (DBD-006) |
 | Created By (User ID) | Who created the run | Required | — | |
 | Created At | Creation date | Required | — | |
 | Closed At | When the run was closed (manually or via cascade) | Optional | — | Set once, then immutable (PD-037) |
@@ -758,7 +757,7 @@ TestFlow AI's historical-accuracy guarantees rest on four distinct mechanisms, e
 
 1. **Test execution history (the strongest guarantee):** Test Run Test Case snapshot rows freeze test case content at run-creation time, entirely independent of the Test Case Version mechanism. Execution Results reference the snapshot, not the live Test Case. Once a Test Run is Closed or Cancelled-Archived, its Execution Results and Evidence become permanently locked (PD-037) — no role, including Admin, can alter them. This satisfies FR-TC-004, FR-TR-002, NFR-DI-001, and NFR-DI-003 fully, and is unaffected by DBD-003's selective versioning, because the snapshot is taken regardless of whether it coincides with a "significant" edit.
 
-2. **Test case approval history (a lighter guarantee, per DBD-003):** Only "significant" edits produce a Test Case Version. This means the *general* edit history of a test case is incomplete by design — a minor edit that reverts Approved → Pending Approval (per PD-007, which applies to any edit) leaves no record of exactly what changed, only that the current live content is what's now pending re-approval. This is an accepted, approved trade-off, not an oversight — but it does mean a QA Manager reviewing "why is this back in Pending Approval" cannot always see a diff, only the current state.
+2. **Test case approval history (a lighter guarantee, per DBD-003):** Only "significant" edits (full test case content replacement) produce a Test Case Version; partial edits mutate the current version in place. This means the *general* edit history of a test case is incomplete by design — a minor edit that reverts Approved → Needs Review (PD-048, applies to any edit) leaves no record of exactly what changed, only that the current live content is what now needs re-review. This is an accepted, approved trade-off, not an oversight — but it does mean a reviewer asking "why is this back in Needs Review" cannot always see a diff, only the current state.
 
 3. **Requirement history (no guarantee, per DBD-004):** Requirements do not version at all. The re-review cascade (PD-033) fires off a Last Edited At timestamp comparison, not a content diff. A QA Manager cannot see what a requirement said when a test case was originally approved against it — this is an explicit, approved limitation.
 
@@ -954,8 +953,8 @@ erDiagram
 
 ### Requirements flagged as difficult or unclear to fully support with this model
 
-- **FR-TR-003 / FR-REQ-004 (Test Run cancellation status label):** The model uses a 3-value `Status` on Test Run (Open/Closed/Cancelled-Archived), but this is a direct extension beyond DBD-006's literal "single consistent pattern," flagged explicitly in `database-decisions.md` (DBD-006) for your review — not silently resolved.
-- **FR-TC-005 / FR-REQ-002 interaction (Needs Review + disabled approval workflow):** The model's Test Case.Status enum supports the states, but the *legal transition* from Needs Review when a project's Approval Workflow Enabled flag is later turned off is not fully specified by any approved decision — this was already flagged as an open product question in `functional-requirements.md` and remains unresolved at the data layer too (the schema can store any status value; it cannot determine which transitions are valid without that product answer).
+- **Resolved:** The Test Run 3-value `Status` (Open/Closed/Cancelled-Archived) is confirmed as an approved exception to DBD-006's general two-value pattern.
+- **Resolved:** The previously-flagged FR-TC-005/FR-REQ-002 interaction (Needs Review + a per-project approval-workflow toggle) no longer applies — the approval workflow was simplified to a self-service model with no per-project toggle at all (PD-048).
 - **FR-ORG-003 (Organisation Settings Management):** No entity beyond Organisation itself is proposed, because no specific "settings" beyond membership/subscription have been approved. If organisation settings turn out to need their own structured data, this is a gap to revisit once that scope is defined — not filled here to avoid inventing behaviour.
 - **NFR-PRIV-002 (data retention after cancellation):** No entity models a retention/deletion timer or scheduled purge — because no retention policy has been approved yet (explicitly still open). The model as designed defaults to "never delete," which may not be the eventual policy.
 
@@ -979,19 +978,19 @@ Reviewing the model as a senior database architect would, before finalizing:
 - **Custom-field limitations:** Addressed in §5 — none supported, matching approved scope exactly.
 - **Future maintainability:** The "generic reference" fields on Audit Log Entry and Notification (referencing "whatever entity the action concerns") are a known modeling trade-off — flexible, but not as strictly enforceable at the logical-design level as a proper foreign key would be. This is called out rather than silently resolved, since choosing a specific polymorphic-reference technique is more of an implementation decision than a logical one.
 
-**No correction required changing an approved product decision** — the one tension that came closest (Test Run's 3-state status vs. DBD-006's "single pattern") is flagged for your review in `database-decisions.md` rather than resolved unilaterally, per your instruction.
+**No correction required changing an approved product decision** — the one tension that came closest (Test Run's 3-state status vs. DBD-006's "single pattern") has since been confirmed as an approved exception (see `database-decisions.md`, DBD-006).
 
 ---
 
 ## 11. Open Items Requiring Your Input
 
-1. **What counts as a "significant" edit** for Test Case Version creation (DBD-003) — this blocks precise implementation of that decision.
-2. **Test Run's status values** — literal two-value active/archived (per a strict reading of DBD-006) vs. the three-value Open/Closed/Cancelled-Archived this document uses. See DBD-006 in `database-decisions.md`.
+1. ~~What counts as a "significant" edit for Test Case Version creation~~ — **Resolved (DBD-003):** a significant edit changes the entire test case (full content replacement).
+2. ~~Test Run's status values~~ — **Resolved (DBD-006):** the three-value Open/Closed/Cancelled-Archived model is confirmed.
 3. **Organisation name uniqueness policy** at sign-up (carried over from `functional-requirements.md`).
 4. **Whether Test Case Templates/Report Templates need version history** (§5) — not currently modeled, since no requirement calls for it.
 5. **Whether rejected (reviewed-and-discarded) AI candidates should be retained** for reporting on AI acceptance/rejection rates (§7) — currently not modeled, as no requirement calls for it.
 6. **Data retention/deletion policy after cancellation** (NFR-PRIV-002) — the model currently assumes "never delete," which may not be the intended final policy.
-7. **Exact Defect status vocabulary** — modeled generically (Open/In Progress/Resolved) as a placeholder since no approved requirement enumerates the exact set.
+7. ~~Exact Defect status vocabulary~~ — **Resolved (DBD-008):** Open, Pending, Closed, Removed.
 8. **Duplicate email handling at sign-up/invitation** — not specified by any approved requirement.
 
 ---
@@ -1031,7 +1030,7 @@ Every logical entity from §2 maps to exactly one physical table — **29 tables
 | Timestamps | `timestamptz` | Always timezone-aware; avoids ambiguity for a product with no approved single-timezone assumption. |
 | Money amounts | `numeric(10,2)` | Exact decimal arithmetic — required for billing amounts (PD-022/023 dollar-and-cents math); floating-point types are unsuitable for money. |
 | Booleans | `boolean` | Native type, e.g. `trial_used`, `is_ai_generated`, `revoked`, `read`. |
-| Statuses/enums | `text` + `CHECK` constraint | Chosen over native PostgreSQL `ENUM` types deliberately: several status vocabularies are still open (Defect status, and the flagged Test Run status tension per DBD-006) — alter a `CHECK` constraint's allowed values is a simpler, lower-risk operation than `ALTER TYPE ... ADD VALUE` on a native enum, which has its own transactional restrictions. This can be revisited once all status vocabularies are finalized. |
+| Statuses/enums | `text` + `CHECK` constraint | Chosen over native PostgreSQL `ENUM` types deliberately: altering a `CHECK` constraint's allowed values is a simpler, lower-risk operation than `ALTER TYPE ... ADD VALUE` on a native enum, which has its own transactional restrictions — useful given how much the test case approval model changed over the course of design. All status vocabularies are now finalized (Defect: DBD-008; Test Run: DBD-006; Test Case approval: PD-048), so this can be revisited as a pure implementation-detail choice if desired, not because anything remains undefined. |
 | Structured/custom-field-like data | `jsonb` | Used only for the specific fields the logical design already called "structured data": Test Case `steps`/`expected_results`, Template `default_structure`, Report `content_snapshot`. **Not** used as a catch-all — every other attribute has an explicit, typed column. See Custom Fields section below for why `jsonb` is not stretched further than this. |
 | Long text | `text` | Requirement descriptions, defect descriptions, comments — no separate "large text" type needed in PostgreSQL. |
 | Attachment metadata | `text` (filename, MIME type, storage reference), `bigint` (file size in bytes) | The file itself is never stored in the database (per the approved File and Attachment Architecture) — only metadata and a pointer. |
@@ -1045,7 +1044,7 @@ Indexes are added for concrete, approved query patterns — not on every column.
 | `idx_<table>_organisation_id` (on `users`, `projects`, `requirements`, `test_cases`, `test_suites`, `test_runs`, `reports`) | "Show everything belonging to my organisation" / tenant-scoped queries generally | Direct organisation-level filtering without a join through `project_id`, and the foundation for future Row-Level Security policies (NFR-SEC-003). |
 | `idx_<table>_project_id` (on `requirements`, `test_cases`, `test_suites`, `test_runs`, `reports`) | Project-scoped list views and dashboards | The most common filtering pattern in the product (everything is viewed "within a project"). |
 | `idx_test_cases_requirement_id` | Requirement-to-test-case traceability (FR-TRACE-001/002) | Supports "show test cases linked to this requirement" directly; the reverse "show untraced test cases" query (`requirement_id IS NULL`) is expected to be an infrequent reporting query, not a hot path, so no special partial index is added for it. |
-| `idx_test_cases_approval_status` (composite `project_id, approval_status`) | "Show all Pending Approval test cases in this project" (QA Manager's review queue) | Composite, not single-column, because the query always filters by project first. |
+| `idx_test_cases_approval_status` (composite `project_id, approval_status`) | "Show all Needs Review test cases in this project" | Composite, not single-column, because the query always filters by project first. |
 | `idx_test_runs_status` (composite `project_id, status`) | Run-status dashboards, "show open runs in this project" | Same reasoning as above. |
 | `idx_execution_results_status` | Test run progress aggregation (FR-TR-004) | Supports counting Pass/Fail/Blocked/Skipped quickly. |
 | `idx_defects_status`, `idx_defects_execution_result_id` | Defect boards; "show the defect(s) raised from this failure" | Standard lookup patterns. |

@@ -37,19 +37,15 @@ This log records product decisions explicitly approved during product definition
 **Product Impact:** Test Cases, Requirements, Traceability, Reporting.
 **Status:** Approved
 
-## PD-006 — Test Case Approval Workflow
-**Decision:** Test case approval is configurable per project by the QA Manager. States: Draft → Pending Approval → Approved.
-**Reason:** Matches the approved configurable QA workflow.
-**Alternatives Considered:** Approval always mandatory; review/commenting always active with execution-blocking as a separate setting.
-**Product Impact:** Test Cases, QA Workflow Configuration, Approvals, Notifications.
-**Status:** Approved
+## PD-006 — Test Case Approval Workflow — **SUPERSEDED BY PD-048**
+**Original Decision:** Test case approval was configurable per project by the QA Manager. States: Draft → Pending Approval → Approved.
+**Superseded Because:** The QA-Manager approval gate has been removed entirely in favor of self-service approval (see PD-048). This entry is retained for historical traceability only and no longer reflects current product behaviour.
+**Status:** Superseded (see PD-048)
 
-## PD-007 — Versioning and Approval Interaction
-**Decision:** If an approved test case is edited, it reverts to "Pending Approval" status, when approval is enabled.
-**Reason:** Preserves approval integrity.
-**Alternatives Considered:** Edits don't affect approval status; only "substantive" edits trigger re-approval.
-**Product Impact:** Test Cases, Versioning, Approvals.
-**Status:** Approved
+## PD-007 — Versioning and Approval Interaction — **SUPERSEDED BY PD-048**
+**Original Decision:** If an approved test case is edited, it reverts to "Pending Approval" status, when approval is enabled.
+**Superseded Because:** "Pending Approval" no longer exists as a status (see PD-048). An edited Approved test case now reverts to "Needs Review" instead, self-approved by the user when ready. This entry is retained for historical traceability only.
+**Status:** Superseded (see PD-048)
 
 ## PD-008 — AI Access Model
 **Decision:** TestFlow AI supports both an optional per-project AI provider key and a platform-provided AI option. Usage limits/cost model TBD.
@@ -365,7 +361,7 @@ This log records product decisions explicitly approved during product definition
 
 ## PD-033 — Editing a Linked Requirement Triggers Re-Review
 
-**Decision:** If a requirement is edited after test cases linked to it have already been approved, those approved linked test cases are triggered for re-review — their status reverts to "Needs Review" (see PD-035), requiring re-approval (by QA Manager, or by the test case creator per PD-036 if the project has no approval step).
+**Decision:** If a requirement is edited after test cases linked to it have already been approved, those approved linked test cases are triggered for re-review — their status reverts to "Needs Review," requiring re-approval by any user with edit access (self-service — see PD-048, which superseded the original QA-Manager/no-workflow re-approval mechanism referenced here at the time this decision was made).
 
 **Reason:** A changed requirement can invalidate the basis on which a test case was previously approved; automatic re-review prevents stale approvals from persisting silently.
 
@@ -391,31 +387,23 @@ This log records product decisions explicitly approved during product definition
 
 ---
 
-## PD-035 — QA Manager Rejection Moves Test Case to "Needs Review"
+## PD-035 — QA Manager Rejection Moves Test Case to "Needs Review" — **SUPERSEDED BY PD-048**
 
-**Decision:** When a QA Manager rejects a test case that is in "Pending Approval" status, its status changes to a new state called "Needs Review" (not back to Draft). The test case author addresses feedback and resubmits, moving it back to Pending Approval.
+**Original Decision:** When a QA Manager rejects a test case that is in "Pending Approval" status, its status changes to a new state called "Needs Review" (not back to Draft). The test case author addresses feedback and resubmits, moving it back to Pending Approval.
 
-**Reason:** Distinguishes a rejected-and-needing-fixes test case from a fresh, unstarted Draft, preserving the context that it has already been through review once.
+**Superseded Because:** There is no longer a QA Manager rejection action, since the approval gate itself has been removed (see PD-048). The "Needs Review" status is retained, but is now reached only via editing an Approved test case or via the requirement-edit re-review trigger (PD-033) — never via a formal reviewer rejection.
 
-**Alternatives Considered:** Not explicitly discussed.
-
-**Product Impact:** Test Cases, Approvals.
-
-**Status:** Approved
+**Status:** Superseded (see PD-048)
 
 ---
 
-## PD-036 — Self-Approval When No Approval Step Is Configured
+## PD-036 — Self-Approval When No Approval Step Is Configured — **SUPERSEDED BY PD-048**
 
-**Decision:** If a project's QA workflow does not have approval enabled, the test case's creator can directly set its status to "Approved" themselves, since there is no QA Manager approval gate in that project's configured workflow.
+**Original Decision:** If a project's QA workflow does not have approval enabled, the test case's creator can directly set its status to "Approved" themselves, since there is no QA Manager approval gate in that project's configured workflow.
 
-**Reason:** Avoids test cases being stuck without a path to "Approved" status in projects that have deliberately opted out of the approval gate.
+**Superseded Because:** Self-approval is no longer conditional on a per-project workflow setting — it is now the only approval mechanism, for every project, unconditionally (see PD-048).
 
-**Alternatives Considered:** Not explicitly discussed.
-
-**Product Impact:** Test Cases, Approvals, QA Workflow Configuration.
-
-**Status:** Approved
+**Status:** Superseded (see PD-048)
 
 ---
 
@@ -570,5 +558,19 @@ This log records product decisions explicitly approved during product definition
 **Alternatives Considered:** Not explicitly discussed.
 
 **Product Impact:** Subscription & Billing, Permissions.
+
+**Status:** Approved
+
+---
+
+## PD-048 — Test Case Approval Simplified: No QA Manager Gate, Self-Service Approval Only (Supersedes PD-006, PD-007, PD-035, PD-036)
+
+**Decision:** The QA Manager approval gate for test cases is removed entirely. Any user with edit access to a test case (QA Tester, QA Manager, or Admin) can set its status directly to "Approved" at any time, regardless of any per-project workflow setting — there is no separate submission/review/reject cycle. The test case status model is simplified to three states: **Draft → Approved → Needs Review**. Editing an Approved test case (directly, or via the requirement-edit re-review trigger, PD-033) reverts it to Needs Review; the user reviews and re-approves it themselves when ready. "Pending Approval" no longer exists as a status, and there is no QA Manager rejection action. QA Manager commenting on a test case (PD-006's original commenting capability) is retained as optional feedback, not a gate.
+
+**Reason:** Simplifies the product's approval model — a formal QA-Manager-gated review cycle was found to add process overhead without a corresponding approved need for it as a mandatory control; self-service approval covers the same underlying goal (a clear signal that a test case is ready) with much less workflow complexity.
+
+**Alternatives Considered:** Keep the QA-Manager-gated workflow as configurable per project (original PD-006 model, now replaced). Keep a four-state model with Pending Approval retained but no reviewer role (considered and rejected as an unnecessary intermediate state once there is no reviewer to pend for).
+
+**Product Impact:** Test Cases, Approvals, QA Workflow Configuration (the per-project `approval_workflow_enabled` setting is removed), User Roles (QA Manager's role description no longer includes approving test cases), Requirements (PD-033's re-review trigger is unaffected — it still reverts an Approved test case to Needs Review). **This decision supersedes PD-006, PD-007, PD-035, and PD-036.**
 
 **Status:** Approved

@@ -41,8 +41,8 @@ This log records **database design decisions** explicitly approved by the produc
 **Alternatives Considered:** Version every edit unconditionally (originally recommended, to avoid ambiguity and guarantee an exact content snapshot always exists for any approval decision). Rejected in favor of the lighter-weight approach.
 
 **Consequences:**
-- What counts as a "significant" edit is **not yet defined** — this is an open product/design question (see `database.md` Open Items) and must be resolved before this rule can be implemented precisely.
-- A minor, unversioned edit can still revert an Approved test case to Pending Approval per PD-007 (that rule applies to *any* edit, not just significant ones). This means the content a test case is re-approved against is whatever is currently live at approval time, not necessarily a preserved historical snapshot of "what changed."
+- **Resolved:** a "significant" edit is defined as one that changes the entire test case (a full content replacement — steps and expected results wholesale), as opposed to a partial edit (e.g., a single step, a wording tweak), which mutates the current version in place with no history.
+- A minor, unversioned edit still reverts an Approved test case to Needs Review (FR-TC-005, per PD-048 — this rule applies to *any* edit, not just significant ones). This means the content a test case is re-approved against is whatever is currently live at approval time, not necessarily a preserved historical snapshot of "what changed."
 - This is independent of test run snapshots (FR-TC-004): a test run always captures a frozen copy of test case content at the moment the run is created, regardless of whether that moment coincides with a "significant" version. Historical execution results remain accurate even though general test case version history is sparse.
 
 **Status:** Approved
@@ -85,9 +85,9 @@ This log records **database design decisions** explicitly approved by the produc
 
 **Alternatives Considered:** Entity-specific status enums tailored to each entity's actual state machine (e.g., Test Run having more than two states). This was the initially recommended approach specifically because Test Run's lifecycle is not a simple active/archived binary.
 
-**Consequences — flagged for review:** Applying this decision literally to **Test Run** creates a tension: Test Run requires at least three distinct states (Open, Closed, Cancelled-and-Archived-via-cascade — see FR-TR-003, PD-034, PD-037), which do not fit a two-value active/archived pattern without losing meaningful information (a "Closed" run and a "Cancelled-and-Archived" run are both non-editable, but are reached differently and mean different things to a QA Manager reviewing history). This document proceeds using the approved single-pattern *field* (a `status` attribute, present consistently on every archivable entity) while allowing the **set of valid values** for that field to differ per entity where the entity's real lifecycle demands it (Test Run being the clearest case). This resolves the immediate modeling need without overriding the approved decision, but the tension itself is flagged in `database.md` for your review — if you intended a stricter reading (literally two values everywhere, no exceptions), Test Run's cascade-cancellation state would need to be modeled as a separate boolean/flag instead of a status value, and this should be confirmed explicitly.
+**Consequences:** Applying this decision literally to **Test Run** created a tension: Test Run requires at least three distinct states (Open, Closed, Cancelled-and-Archived-via-cascade — see FR-TR-003, PD-034, PD-037), which do not fit a two-value active/archived pattern without losing meaningful information. **Resolved:** the three-value model (`open`/`closed`/`cancelled_archived`) is confirmed as correct and final for Test Run, as an approved exception to the otherwise two-value pattern used elsewhere.
 
-**Status:** Approved (with the Test Run tension flagged above for review, not resolved unilaterally)
+**Status:** Approved (including the confirmed three-value exception for Test Run)
 
 ---
 
@@ -102,5 +102,19 @@ This log records **database design decisions** explicitly approved by the produc
 - Hybrid (UUID for tenant-facing/security-sensitive entities, bigserial for high-volume internal tables like Audit Log Entry/Notification) — rejected in favor of a single, consistent strategy across all tables, avoiding the added complexity of two identifier types.
 
 **Consequences:** Slightly larger storage footprint and index size per row compared to integers (not a meaningful concern at MVP scale). All 29 tables use the same identifier pattern, simplifying schema generation and reasoning about foreign keys throughout.
+
+**Status:** Approved
+
+---
+
+## DBD-008 — Defect Status Vocabulary
+
+**Decision:** A defect's status is one of exactly four values: `Open`, `Pending`, `Closed`, `Removed`.
+
+**Reason:** Resolves the placeholder vocabulary used during physical database design (previously `open`/`in_progress`/`resolved`, explicitly flagged as unconfirmed).
+
+**Alternatives Considered:** The placeholder set used during initial physical design — superseded, not a real alternative under consideration.
+
+**Consequences:** `defects.status` CHECK constraint and the corresponding API contract both use this exact four-value set. A defect starts in `Open` when logged (FR-DEF-001).
 
 **Status:** Approved
