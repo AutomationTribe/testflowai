@@ -4,9 +4,19 @@
 
 ## Topology
 
-- **Frontend** (`frontend/`) and **backend** (`backend/`) deploy as two separate Render web services, each built from the monorepo root (`render.yaml`).
+- **Frontend** (`frontend/`) and **backend** (`backend/`) deploy as two separate Render web services, each built from the npm-workspace monorepo (`render.yaml`).
 - **Database**: Neon PostgreSQL (external to Render — `DATABASE_URL` is a plain env var, not a Render-managed database).
 - No custom domain: both services get Render's default `*.onrender.com` URL.
+
+## Repo layout: the app lives in `testflow-ai/`, not the repo root
+
+The GitHub repository's actual root contains only an unrelated stray `package.json` (no `workspaces` field) — the real application (`backend/`, `frontend/`, `e2e/`, and the npm workspace root `package.json`) lives one level down, in `testflow-ai/`. Render clones the repo root by default, so without pointing each service at the right subdirectory, `npm install --workspaces` runs against the stray root `package.json` and fails with `npm error No workspaces found!` — this happened on a real deploy attempt and is why both services in `render.yaml` set:
+
+```yaml
+rootDir: testflow-ai
+```
+
+`rootDir` makes Render treat that subdirectory as the service's working directory for `buildCommand`/`startCommand` (and scopes which file changes trigger a rebuild). Verified locally by reproducing the exact failure from the true repo root (`npm error No workspaces found!`, byte-for-byte matching Render's reported error) and confirming success from `testflow-ai/`.
 
 ## Why two separate origins matters
 

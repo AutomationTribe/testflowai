@@ -3,8 +3,13 @@
 ## var below (sync: false, i.e. set manually in the Render dashboard), not a
 ## Render-managed Postgres instance.
 ##
-## Both services build from the monorepo root, since this is an npm workspace
-## (backend/, frontend/, e2e/) with no per-service subdirectory build story yet.
+## The actual application (npm workspaces: backend/, frontend/, e2e/) lives in
+## the `testflow-ai/` subdirectory of the GitHub repo, not at the repo root —
+## the repo root only has an unrelated stray `package.json` (no workspaces).
+## Each service below sets `rootDir: testflow-ai` so its buildCommand/
+## startCommand run from the directory that actually has the real package.json
+## with `"workspaces"` — without it, `npm install --workspaces` runs against
+## the repo root's stray package.json and fails with "No workspaces found!".
 ##
 ## After first deploy: set the backend service's CORS_ORIGIN to the frontend's
 ## real onrender.com URL, and the frontend service's NEXT_PUBLIC_API_BASE_URL to
@@ -18,6 +23,7 @@ services:
     runtime: node
     plan: free
     region: oregon
+    rootDir: testflow-ai
     buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace backend
     # Render's free tier does not support preDeployCommand (paid-tier-only
     # feature) — the safest free-tier-compatible equivalent is chaining the
@@ -54,6 +60,7 @@ services:
     runtime: node
     plan: free
     region: oregon
+    rootDir: testflow-ai
     buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace frontend
     startCommand: npm run start --workspace frontend
     envVars:
