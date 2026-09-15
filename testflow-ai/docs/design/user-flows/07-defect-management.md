@@ -2,6 +2,10 @@
 
 ---
 
+**CHANGE-001 — GENERALIZE.** The defect lifecycle/status set below is unchanged. What's new: **Severity** is a stable TestFlow semantic (e.g., Critical/High/Medium/Low) with an organisation-configurable **display label** layered on top for presentation only; **Priority** is a separate, fully organisation-configured field; and **release-blocking** is a separate boolean flag, not derived from Severity or Priority. The defect form and detail view must show these as three distinct fields/controls — never merged or implied to be the same thing (§24 constraint). Project Readiness's two defect-related gates (UXF-027) read Severity's stable semantic and the release-blocking flag respectively, never the organisation's display label or Priority.
+
+---
+
 ## UXF-011 — Defect Logging & Developer Assignment
 
 **Priority:** Critical MVP

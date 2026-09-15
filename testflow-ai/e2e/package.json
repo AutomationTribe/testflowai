@@ -1,0 +1,19 @@
+{
+  "name": "@testflow/e2e",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TestFlow AI end-to-end tests (Playwright) — Slice 1 Account & Subscription critical journeys.",
+  "scripts": {
+    "pretest": "node prepare-db.js",
+    "test": "playwright test",
+    "test:headed": "node prepare-db.js && playwright test --headed",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.47.0",
+    "@types/node": "^20.14.10",
+    "@types/pg": "^8.11.6",
+    "pg": "^8.12.0",
+    "typescript": "^5.5.3"
+  }
+}

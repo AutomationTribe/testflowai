@@ -1,0 +1,22 @@
+# Local development only (AD-011: production hosting is a single managed PaaS,
+# not Docker). This just gives a developer a disposable local PostgreSQL instance.
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: testflow
+      POSTGRES_PASSWORD: testflow
+      POSTGRES_DB: testflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - testflow_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U testflow']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  testflow_postgres_data:

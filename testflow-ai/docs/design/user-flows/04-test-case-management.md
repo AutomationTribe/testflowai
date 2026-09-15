@@ -2,6 +2,14 @@
 
 ---
 
+## CHANGE-001 Note on This File
+
+- **UXF-006 — GENERALIZE.** Steps 2–4 below now read from the organisation's published, project-resolved Test Case Template (not a free-form/organisation-optional template) and the organisation-configured Priority field. Step 4's "self-service approval" is now only one of three possible configured modes — see the new **UXF-029** below, which supersedes step 4 whenever the project's workflow is Single Approval or Review + Approval. When the workflow is **No Approval**, UXF-006 exactly as written below still applies unchanged.
+- **UXF-008 — SUPERSEDE.** Test Case & Report Template Management is replaced by `13-qa-operating-model-and-governance.md`'s UXF-021 (Template Management) and UXF-022 (Template Builder). Reason: CHANGE-001 makes templates organisation-governed with draft/publish/versioning and System Field protection, rather than simple immediately-live organisation lists with no publish step. The user goal ("create reusable structures") is preserved; the mechanism changed enough to warrant a new ID rather than an in-place edit.
+- **UXF-007 — KEEP**, unaffected by CHANGE-001.
+
+---
+
 ## UXF-006 — Manual Test Case Creation & Self-Service Approval
 
 **Priority:** Critical MVP
@@ -123,3 +131,47 @@ flowchart TD
 **Related Requirements:** FR-TC-008, PD-009.
 
 **Related APIs:** `POST /organisations/{orgId}/test-case-templates`, `GET /organisations/{orgId}/test-case-templates`, `PATCH/DELETE /test-case-templates/{templateId}`, and the equivalent report-template endpoints (`templates.md`).
+
+> **Superseded by CHANGE-001.** See `13-qa-operating-model-and-governance.md` UXF-021/UXF-022. This entry is retained for history; do not build against it.
+
+---
+
+## UXF-029 — Test Case Approval (Three Configured Modes)
+
+**Priority:** Critical MVP.
+
+**Actor:** Author (QA Tester/Manager/Admin), Reviewer, Approver (roles configured per UXF-023).
+
+**Goal:** Move a Test Case through exactly the approval process the organisation configured — no more, no less.
+
+**Entry Point:** A Test Case's own screen, once its content is ready for the next step beyond Draft.
+
+**Preconditions:** Project's effective workflow configuration is Single Approval or Review + Approval (if No Approval, UXF-006 applies unchanged).
+
+**Happy Path — Single Approval:**
+1. Author completes the Test Case, selects **Submit**.
+2. Test Case enters a pending-approval state; the server-computed `availableActions` for the Approver role now include Approve/Reject (and exclude them for everyone else).
+3. Approver reviews, selects **Approve** or **Reject** (with optional comment on rejection).
+4. Approved → usable in runs per UXF-026; Rejected → returns to the Author as Draft with the rejection comment visible.
+
+**Happy Path — Review + Approval:**
+1. Author submits. Test Case enters pending-review.
+2. Reviewer reviews, selects **Approve to next stage** or **Send back**.
+3. If advanced: Test Case enters pending-approval; Approver does the same Approve/Reject step as above.
+4. Approved → usable in runs; rejected/sent-back at either stage → returns to Author as Draft with feedback.
+
+**Decision Points:** Approve vs. reject/send-back, at whichever checkpoint the actor holds.
+
+**Alternative Paths:** Editing an Approved Test Case reverts it to Needs Review/pending-approval automatically, re-entering the same configured checkpoint sequence from the top (consistent with UXF-006's existing "editing an Approved test case" behavior, now routed through whichever mode is configured rather than always self-service).
+
+**Error / Failure Paths:**
+- Actor attempts an action not present in the server-provided `availableActions` for their role/the Test Case's current state (e.g., Author tries to Approve): action not offered — the UI never implies an arbitrary status change is possible (§20 constraint, AD-022).
+- Concurrent action (two Approvers act near-simultaneously): transactionally protected, second actor sees the already-updated state, not a silent double-approval.
+
+**Successful Outcome:** The Test Case reaches Approved only via the exact configured checkpoint sequence, with a clear, role-correct set of available actions at every stage.
+
+**Related Requirements:** FR-WF-001–00x, FR-TC-* (approval-state interaction).
+
+**Related APIs:** `GET /test-cases/{testCaseId}` (includes `availableActions`), `POST /test-cases/{testCaseId}/workflow-actions/{action}`.
+
+**Architecture/module dependency:** Workflow module (subject-agnostic, AD-021); `computeAvailableActions` shared between GET and POST (AD-022).

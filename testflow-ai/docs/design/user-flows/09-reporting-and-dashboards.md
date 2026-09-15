@@ -2,6 +2,10 @@
 
 ---
 
+**CHANGE-001 note on this file:** UXF-013 — GENERALIZE (now template-driven, shares its interaction pattern with the new UXF-030 Regression Report). UXF-014 — GENERALIZE (gains a Project Readiness summary). Both addenda below.
+
+---
+
 ## UXF-013 — Report Generation & Review
 
 **Priority:** Critical MVP
@@ -32,6 +36,48 @@
 **Related Requirements:** FR-RPT-001–004, PD-038, PD-039, PD-040.
 
 **Related APIs:** `POST /projects/{projectId}/reports`, `GET /projects/{projectId}/reports`, `GET /reports/{reportId}`, `GET /reports/{reportId}/comments` (`reports.md`).
+
+**CHANGE-001 addendum:** step 2's compilation now fills the project's applicable, published **Test Report Template** (UXF-021/022) rather than a fixed structure — configurable fields render alongside the stable metrics. If a Test Report is one of the organisation's **required artifacts** (Project Policy, UXF-024) and/or feeds the "Required artifacts completed" quality gate, the report screen shows that relationship (e.g., "Required for Project Readiness") — but generating or approving a report never itself flips a readiness value; Project Readiness (UXF-027) always evaluates current facts on demand, independently.
+
+**CHANGE-002 addendum (methodology-neutral QA Scope, PD-064):** step 1's "Generate Report" screen gains one optional field group:
+
+```
+QA Scope
+[ Enter scope ]
+
+Optional:
+Start Date    End Date
+```
+
+If the organisation has set a preferred scope terminology (FR-QAOM-013, e.g. "Sprint"), that word may appear as supporting terminology (e.g., the field reads "Sprint" with "QA Scope" still the underlying concept) — otherwise the field uses the neutral label **"QA Scope"**, never "Sprint." The field and both dates are entirely optional; leaving them blank is the default, unremarkable case. Once set, the scope value/date range display on the report's list entry and detail view (read-only after generation, consistent with the report's existing immutable-snapshot behaviour — no scope-edit action). This never affects report content, workflow, or Quality Gate/Readiness evaluation.
+
+---
+
+## UXF-030 — Regression Report
+
+**Priority:** Critical MVP.
+
+**Actor:** QA Manager, Admin (generation); BA/PO (review, via link, same pattern as UXF-013).
+
+**Goal:** Produce a regression-testing status snapshot, using the same interaction pattern as Test Report — deliberately not a redesigned experience.
+
+**Entry Point:** Project → Reports → Regression Reports (a sibling surface, not a separate top-level area).
+
+**Preconditions:** Same as UXF-013.
+
+**Happy Path:** Identical in shape to UXF-013 steps 1–5, with two differences: (1) the applicable, published **Regression Report Template** is used instead of Test Report's; (2) content and applicable policy (e.g., whether Regression Report is a required artifact / feeds the "Required regression activity completed" gate) differ, per the organisation's configuration — the interaction itself does not.
+
+**Decision Points / Alternative Paths / Error Paths:** Same as UXF-013.
+
+**Successful Outcome:** Same as UXF-013, for the Regression Report document type.
+
+**Related Requirements:** FR-RPT-* (generalized), FR-QG-*, FR-TPL-*.
+
+**Related APIs:** `POST /projects/{projectId}/regression-reports`, `GET /projects/{projectId}/regression-reports`, `GET /regression-reports/{id}` — implemented server-side by the same underlying QA Document capability as `/reports`, never a duplicated parallel service (AD-025).
+
+**Architecture/module dependency:** QA Documents module, one `QaDocumentService` parameterized by document type (AD-025).
+
+**CHANGE-002 addendum:** identical optional QA Scope field group as UXF-013's addendum above — same interaction, same neutral "QA Scope" default label, same organisation preferred-terminology behavior.
 
 ```mermaid
 flowchart TD
@@ -74,3 +120,5 @@ flowchart TD
 **Related Requirements:** FR-DASH-001–003, FR-TR-004.
 
 **Related APIs:** `GET /projects/{projectId}/dashboard` (`dashboards.md`).
+
+**CHANGE-001 addendum:** the dashboard gains a **Project Readiness** summary tile, computed from the exact same on-demand gate evaluation as UXF-027 — never a second, separately-derived readiness model. Clicking it opens the full Project Readiness experience (UXF-027). All other dashboard metrics continue to use TestFlow's stable semantics (e.g., defect Severity, not organisation display labels), consistent with §29's constraint.

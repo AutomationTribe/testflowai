@@ -1,7 +1,7 @@
 # TestFlow AI — Database (Logical Design)
 
 **Source documents:** vision.md, prd.md, product-decisions.md, functional-requirements.md, non-functional-requirements.md, database-decisions.md (all approved)
-**Status:** Logical design — no physical implementation, no ORM, no SQL. This document defines *what* must be stored and how it relates, not *how* it is stored.
+**Status:** Logical design — no physical implementation, no ORM, no SQL. This document defines *what* must be stored and how it relates, not *how* it is stored. **Re-baselined for CHANGE-001 (Organisation QA Operating Model, PD-049–PD-063) — see §12.** Sections §1–§11 describe the pre-pivot model; §5 and the physical design's "Custom Fields and Templates" section are explicitly marked superseded and retained only for historical reference.
 **Scope:** This is a conceptual/logical data model. Field types are described in plain conceptual terms (identifier, text, number, boolean, date/time, structured data), not database-specific types.
 
 ---
@@ -767,7 +767,9 @@ TestFlow AI's historical-accuracy guarantees rest on four distinct mechanisms, e
 
 ---
 
-## 5. Custom Templates and Fields
+## 5. Custom Templates and Fields — **SUPERSEDED BY CHANGE-001, SEE §12**
+
+> **This section describes the pre-pivot model and is retained for historical reference only.** Under CHANGE-001 (Organisation QA Operating Model, PD-049–PD-063), templates are a structured, field-level, versioned system — see **§12. CHANGE-001 — Organisation QA Operating Model (Database Re-Baseline)** below for the current model. The text below is unchanged from the original design.
 
 - **Test Case Template and Report Template** are modeled as organisation-scoped entities (PD-009) with a `Default Structure` field holding whatever default content a template pre-populates. No approved requirement describes a **custom-field system** (user-definable fields beyond a fixed schema) — PRD's Non-Goals explicitly postpones "fully custom/configurable roles and permissions," and nothing elsewhere approves custom fields on test cases, requirements, or reports. **This model does not include a custom-field entity, because none was requested** — inventing one would violate CLAUDE.md rule 3. If custom fields become a real requirement later, `Default Structure`'s "structured data" typing is flexible enough to extend without a full redesign, but that extension is explicitly out of scope now.
 - **Template versioning:** No approved requirement describes template version history (should editing a template retroactively affect test cases already created from it, or only future ones?). The model treats templates as pre-population sources only, with no persistent link from a created Test Case back to the template it came from — meaning template edits never retroactively affect existing test cases, by construction, regardless of versioning. This resolves the practical risk but the underlying question ("do templates need version history at all") remains open — see §12.
@@ -1074,11 +1076,13 @@ This value must be set once at insert (copied from the parent project) and never
 - **Test run snapshots:** `test_run_test_cases` freezes `steps`/`expected_results` at run creation, independent of whether a `test_case_versions` row exists at that moment — this is the mechanism that actually guarantees execution history can never be altered by a later test case edit (NFR-DI-001).
 - **Execution results:** immutable once the parent `test_runs.status` leaves `'open'` (PD-037). This cannot be expressed as a single-table `CHECK` constraint (it depends on a joined table's value) — it requires a trigger or application-layer enforcement, explicitly flagged as such in `schema.sql`.
 - **Requirements:** do not version (DBD-004) — only `last_edited_at` is tracked, sufficient to trigger the re-review cascade (PD-033) without preserving prior content.
-- **Templates:** no version history — no approved requirement calls for it (flagged as an open item in the logical design, carried forward unchanged here).
+- **Templates:** ~~no version history — no approved requirement calls for it~~ **SUPERSEDED BY CHANGE-001** — templates are now versioned; see §12.
 - **AI generations:** `ai_generation_requests` rows are never updated to reflect a later test case edit — they remain a fixed historical record of the generation event itself.
 - **Audit records:** `audit_log_entries` and `defect_history_entries` are append-only; no UPDATE/DELETE path should be exposed at any layer, including for Admin.
 
-## Custom Fields and Templates
+## Custom Fields and Templates — **SUPERSEDED BY CHANGE-001, SEE §12**
+
+> **This section describes the pre-pivot physical model and is retained for historical reference only.** The tables it describes (`test_case_templates`, `report_templates`) no longer exist in `schema.sql` — see **§12** below for the current structured Template System (`document_templates`, `document_template_versions`, `document_template_fields`, `document_template_field_options`) and the dynamic-value storage strategy (DBD-010) that replaces the reasoning below.
 
 `test_case_templates.default_structure` and `report_templates.default_structure` use `jsonb` to hold whatever default content a template pre-populates. This is **not** a general-purpose custom-field system — no approved requirement describes user-definable fields beyond a fixed schema, so none is built. `jsonb` is used narrowly, only where the logical design already identified "structured data," and is not used as a shortcut in place of proper typed columns elsewhere in the schema (e.g., statuses, dates, and identifiers all have explicit, validated column types, not JSON blobs). No template versioning is modeled, consistent with the logical design's flagged open item — a created test case's `steps`/`expected_results` are copied from the template at creation time and have no ongoing link back to it, so template edits never retroactively affect existing test cases.
 
@@ -1112,3 +1116,137 @@ The schema supports the approved on-demand, single-project reporting model effic
 - **Unnecessary complexity:** none identified; the schema does not introduce partitioning, sharding, materialized views, or other advanced features not justified by approved requirements or volume.
 
 **Nothing found in this review required changing an approved product or database decision.** The one genuine addition proposed (denormalized `organisation_id` for tenant-isolation/RLS support) is a physical-design recommendation, explicitly flagged for confirmation rather than silently adopted as final.
+
+---
+
+# 12. CHANGE-001 — Organisation QA Operating Model (Database Re-Baseline)
+
+**Status:** Re-baselines the logical and physical database design against PD-049–PD-063 and the Stage 2 Functional Requirements (modules QAOM, TPL, WF, POL, QG; FR-TC-005/008/011, FR-DEF-007/008, FR-RPT-003/005, FR-AI-001/006). See `docs/technical/database-decisions.md` DBD-009 through DBD-023 for the reasoning behind each choice below, and `docs/technical/schema.sql` for the resulting DDL. Sections §1–§11 above describe the pre-pivot model; where they conflict with this section, this section governs. The execution core (§2's Requirement/Test Case/Test Suite/Test Run/Execution Result/Defect entities and their relationships) is **retained unchanged** except where explicitly noted below (test case template/priority/meta-state columns; defect severity/priority columns).
+
+## 12.1 The Configuration Hierarchy, in Data
+
+PD-063's four-level hierarchy maps onto the schema as follows:
+
+| Level | Concept | Data |
+|---|---|---|
+| 1. TestFlow System Semantics | Fixed, non-configurable | `execution_results.status`, `test_runs.status`, `defects.status` — all unchanged fixed enums (DBD-018 explicitly confirms Defect status stays fixed) |
+| 2. Organisation QA Operating Model | Organisation-published, versioned | `qa_configuration_versions` and everything it references (templates, workflow definitions, artifact policies, quality gate definitions) |
+| 3. Project Effective QA Configuration | Resolved per project | `projects.qa_configuration_version_id` (pinned base) + `project_artifact_policy_overrides` / `project_quality_gate_overrides` (bounded overrides) |
+| 4. Document/Execution Instance | The actual records | `test_cases`, `qa_documents`, each pinned to the `document_template_version_id` and (via workflow_instances) workflow state applicable when created |
+
+## 12.2 New Entity Catalogue
+
+**QA Configuration Version** — one row per publish, per organisation. Identity = `organisation_id`; version = `version_number`. Draft (mutable, at most one per org) or Published (permanently immutable). Carries `preset_origin` as provenance metadata only (DBD-013) — never a runtime dependency. Everything else in this section either belongs to a configuration version directly (FK) or is reached via it.
+
+**Document Template / Document Template Version / Document Template Field / Document Template Field Option** — the structured Template System (DBD-009), shared across Test Case, Test Report, and Regression Report (`document_type` discriminator). A Template is an identity; a Template Version is the immutable, versioned structure (draft → published, at most one draft per template); a Field belongs to exactly one Template Version and carries type/validation/ordering metadata; an Option belongs to a Dropdown/Multi-select Field (this is also where Test Case Priority's selectable values live).
+
+**QA Configuration Version ↔ Template Version** (junction) — records which specific, immutable template version is "in effect" for each document type under a given configuration version (FR-QAOM-009's "references the specific immutable... definitions in effect at that publish").
+
+**Workflow Definition / Workflow State Label / Workflow Instance / Workflow Transition** — the bounded Document Workflow model (DBD-015). A Workflow Definition (one per configuration version × document type) fixes the shape (No Approval / Single Approval / Review + Approval) and the approver/reviewer role. A Workflow State Label maps a stable internal meta-state onto an organisation's chosen display text (FR-WF-003), per configuration version. A Workflow Instance is the current state of one Test Case or QA Document (polymorphic subject); Workflow Transitions are its append-only history.
+
+**QA Artifact Policy / Project Artifact Policy Override** — Required-artifact governance (FR-POL-001), plus the bounded project-level override.
+
+**Quality Gate Definition / Project Quality Gate Override** — the bounded, six-condition Quality Gate catalogue (FR-QG-001), plus the bounded project-level override. No results table — evaluation is on-demand (DBD-021).
+
+**Defect Severity Label / Defect Priority Option** — organisation-scoped classification tables for the two Defect fields introduced by FR-DEF-007/008; independent of the Template System since Defect is not a templated document type.
+
+## 12.3 Changes to Existing Entities
+
+| Table | Change | Why |
+|---|---|---|
+| `test_cases` | `approval_status` **removed**; `current_meta_state`, `document_template_version_id`, `priority_option_id`, `configurable_field_values` **added** | DBD-017, DBD-009, DBD-020, DBD-010 |
+| `test_case_versions` | `document_template_version_id`, `priority_option_id`, `configurable_field_values` **added** (frozen copies) | Historical fidelity, same principle as `steps`/`expected_results` |
+| `test_run_test_cases` | `priority_option_id`, `configurable_field_values` **added** (frozen copies) | Same |
+| `defects` | `severity_semantic`, `priority_option_id` **added**; `status` **unchanged** | DBD-019, DBD-020, DBD-018 |
+| `reports` | **renamed and generalized to `qa_documents`**; `document_type`, `document_template_version_id`, `current_meta_state`, `configurable_field_values` **added**; all other columns unchanged | DBD-016 |
+| `report_approval_records`, `report_comments`, `access_links` | `report_id` **renamed to `qa_document_id`**, now referencing `qa_documents` | Follows DBD-016; PD-039/PD-040 semantics unchanged |
+| `projects` | `qa_configuration_version_id` **added** (`NOT NULL`) | DBD-014 |
+| `ai_generation_requests` | `qa_configuration_version_id`, `document_template_version_id` **added** | FR-AI-001/006, NFR-AI-010, NFR-CFG-004 |
+| `test_case_templates`, `report_templates` | **removed**, superseded by the Template System (§12.2) | DBD-009 |
+
+No other table in §2's original catalogue changes. `organisations`, `users`, `invitations`, `projects` (beyond the one new column), `project_memberships`, `subscriptions`, `seat_batches`, `payments`, `requirements`, `test_suites`, `test_suite_memberships`, `test_runs`, `execution_results`, `evidence`, `defect_history_entries`, `audit_log_entries`, `notifications` are **retained exactly as designed** in §2.
+
+**CHANGE-002 (Methodology-Neutral QA Scope, DBD-024) — bounded addendum, no new table:** `qa_documents` gains three nullable columns — `scope_value`, `scope_start_date`, `scope_end_date` (FR-RPT-006) — and `organisations` gains one nullable column — `preferred_scope_terminology` (FR-QAOM-013). Both are inert, descriptive/document-instance metadata: not referenced by Quality Gate evaluation, not part of `qa_configuration_versions` versioning, and not read by any behavioural logic. `test_runs` and the readiness evaluation path are unchanged. The table count remains **29** — no Delivery Cycle/Sprint/Release table was added.
+
+## 12.4 Configurable-Field Value Strategy (Summary)
+
+See DBD-010 for full reasoning. Short version: **typed column for Test Case Priority** (a recognized, gate-relevant concept — `priority_option_id`), **validated JSONB (`configurable_field_values`) for everything else organisation-configured**, keyed by `document_template_fields.field_key` and validated at application-write-time against the record's pinned `document_template_version_id`. System fields (title, requirement link, steps, organisation/project/version/audit columns) are **never** represented in this JSONB — they are always real typed columns, which `document_template_fields.is_system_field = true` rows may describe for *display/ordering* purposes only (DBD-011), never as their source of truth.
+
+`document_template_fields.validation_config` documented per-type schema (application-enforced; not a database CHECK, since it's per-row-type-conditional):
+
+| field_type | validation_config shape (example) |
+|---|---|
+| `number` | `{"min": 0, "max": 100}` (both optional) |
+| `date` / `date_time` | `{"min": "2020-01-01", "max": null}` (both optional) |
+| `short_text` / `long_text` / `rich_text` | `{"max_length": 500}` (optional) |
+| `dropdown` / `multi_select` | `{}` — options live in `document_template_field_options`, not here |
+| `attachment` | `{}` — file-type/size limits are the existing platform-wide `NFR-FILE-001/002` rules, not per-field |
+| `entity_link` | `{"target_type": "requirement"}` — constrains which of the four TestFlow-supported relationship targets (Requirement/Test Case/Defect/Test Run) this field links to |
+| `step_table`, `section` | `{}` — Step Table renders the existing `steps`/`expected_results` columns (never dynamic content, §12.5); Section is a pure layout marker with no value |
+
+## 12.5 Test Case Storage — Step Table Resolution
+
+**Decision (§9 of the task):** the template's `step_table` field type does **not** introduce arbitrary JSON step content. It is a marker on the template indicating "this document has a structured Action/Expected-Result section," rendered from the **existing** `test_cases.steps` / `test_cases.expected_results` columns (and their frozen counterparts on `test_case_versions` / `test_run_test_cases`) — which remain protected, execution-critical, typed JSONB with the fixed internal shape TestFlow's execution engine already depends on (NFR-DI-001). This preserves the execution core exactly as designed in §2 while still letting the Step Table field participate in template field ordering/labelling alongside configurable fields.
+
+## 12.6 Quality Gate Parameter Shapes
+
+| gate_type | parameters shape | Reads |
+|---|---|---|
+| `required_artifacts_completed` | `{}` | `qa_artifact_policies`/`project_artifact_policy_overrides` × relevant entity existence/workflow state |
+| `required_approvals_completed` | `{}` | `workflow_instances.current_meta_state = 'approved'` for each in-scope document |
+| `min_requirement_coverage` | `{"threshold_percent": 80}` | `FR-TRACE-002`'s traced/untraced computation |
+| `regression_activity_completed` | `{}` | Existence of a `qa_documents` row with `document_type = 'regression_report'` and, where configured, `current_meta_state = 'approved'` |
+| `no_unresolved_critical_defects` | `{}` | `defects.severity_semantic = 'critical' AND status IN ('open','pending')` |
+| `no_unresolved_release_blocking_defects` | `{"blocking_severities": ["critical","high"]}` | `defects.severity_semantic = ANY(blocking_severities) AND status IN ('open','pending')` (DBD-022 — no new Defect column) |
+
+## 12.7 ER Diagram — Organisation QA Configuration Layer
+
+```mermaid
+erDiagram
+    ORGANISATION ||--o{ QA_CONFIGURATION_VERSION : "publishes"
+    QA_CONFIGURATION_VERSION ||--o{ WORKFLOW_DEFINITION : "defines shape for"
+    QA_CONFIGURATION_VERSION ||--o{ WORKFLOW_STATE_LABEL : "labels states for"
+    QA_CONFIGURATION_VERSION ||--o{ QA_ARTIFACT_POLICY : "requires"
+    QA_CONFIGURATION_VERSION ||--o{ QUALITY_GATE_DEFINITION : "enables"
+    QA_CONFIGURATION_VERSION ||--o{ QA_CONFIG_VERSION_TEMPLATE : "references"
+    QA_CONFIG_VERSION_TEMPLATE }o--|| DOCUMENT_TEMPLATE_VERSION : "pins"
+    ORGANISATION ||--o{ DOCUMENT_TEMPLATE : "owns"
+    DOCUMENT_TEMPLATE ||--o{ DOCUMENT_TEMPLATE_VERSION : "has versions"
+    DOCUMENT_TEMPLATE_VERSION ||--o{ DOCUMENT_TEMPLATE_FIELD : "defines"
+    DOCUMENT_TEMPLATE_FIELD ||--o{ DOCUMENT_TEMPLATE_FIELD_OPTION : "offers"
+    PROJECT }o--|| QA_CONFIGURATION_VERSION : "pinned to"
+```
+
+## 12.8 ER Diagram — Workflow & Documents
+
+```mermaid
+erDiagram
+    WORKFLOW_DEFINITION ||--o{ WORKFLOW_INSTANCE : "governs"
+    WORKFLOW_INSTANCE ||--o{ WORKFLOW_TRANSITION : "history"
+    TEST_CASE ||--|| WORKFLOW_INSTANCE : "subject (polymorphic)"
+    QA_DOCUMENT ||--|| WORKFLOW_INSTANCE : "subject (polymorphic)"
+    TEST_CASE }o--|| DOCUMENT_TEMPLATE_VERSION : "created from"
+    QA_DOCUMENT }o--|| DOCUMENT_TEMPLATE_VERSION : "created from"
+    QA_DOCUMENT ||--o{ REPORT_APPROVAL_RECORD : "BA/PO decision (link-based, separate from workflow)"
+    QA_DOCUMENT ||--o{ REPORT_COMMENT : "BA/PO comment (link-based)"
+    TEST_CASE }o--o| DOCUMENT_TEMPLATE_FIELD_OPTION : "priority"
+    DEFECT }o--o| DEFECT_PRIORITY_OPTION : "priority"
+    DEFECT }o--|| ORGANISATION : "severity label via defect_severity_labels"
+```
+
+## 12.9 Tenant Isolation for New Entities
+
+Every new organisation-owned entity carries `organisation_id` directly (`qa_configuration_versions`, `document_templates`, `defect_severity_labels`, `defect_priority_options`) or is reachable to exactly one organisation through a NOT NULL, RESTRICT-enforced FK chain with no cross-organisation join possible (`document_template_versions` → `document_templates`; `workflow_definitions`/`qa_artifact_policies`/`quality_gate_definitions`/`qa_configuration_version_templates` → `qa_configuration_versions`; `document_template_fields` → `document_template_versions`; `document_template_field_options` → `document_template_fields`). `workflow_instances`/`workflow_transitions` reach their organisation via `workflow_definitions` → `qa_configuration_versions` → `organisation_id`. No new table introduces a nullable or cross-organisation-referenceable path (NFR-SEC-003 extended).
+
+## 12.10 Historical Integrity Rules (Summary)
+
+1. A published `qa_configuration_versions` row, and everything it transitively references, is never updated after `status = 'published'` (DBD-012).
+2. A published `document_template_versions` row and its fields/options are never updated after publish (DBD-009); options may only be soft-deactivated (`is_active = false`), never deleted or renamed in a way that changes historical meaning.
+3. `projects.qa_configuration_version_id` is set once and never silently changed by a later organisation publish (DBD-014) — no migration path exists at MVP.
+4. `test_cases`/`test_case_versions`/`test_run_test_cases`/`qa_documents` each freeze the template version and (for test cases) priority/configurable values applicable at their own creation time — never re-resolved against a later template.
+5. `workflow_transitions` is append-only; `workflow_state_labels` may change in a later configuration version without rewriting any `workflow_transitions.from_meta_state`/`to_meta_state` value, since those store the stable meta-state, never the display label (FR-WF-003).
+6. `defect_severity_labels` semantic levels are permanent (never added/removed); only `display_label` may change, and doing so never changes which defects are Critical/High/Medium/Low.
+
+## 12.11 Deferred / Not Modelled at MVP (Explicit)
+
+Consistent with §30/§35 of the task and CLAUDE.md rule 3: no generic document-type table, no arbitrary workflow state-machine builder, no arbitrary quality-gate expression/rules table, no custom-role table, no `releases` table (readiness is evaluated at Project level per DBD-021/FR-QG-003), no project-configuration-migration table, and no cached/persisted quality-gate-results table. These remain explicitly out of scope until separately approved.

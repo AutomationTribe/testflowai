@@ -21,7 +21,7 @@
 4. User is redirected immediately to the subscription page — no other screen is reachable yet.
 5. User selects a plan: **Trial** (14 days, free, 3-seat cap, one-time-ever) or a paid plan (**Monthly** or **Yearly**, choosing seat count).
 6. For a paid plan, the total is shown before payment; user confirms and completes payment.
-7. On success, a confirmation email is sent (paid plans) and the user lands on their new, empty organisation's project list.
+7. On success, a confirmation email is sent (paid plans) and the user lands on **QA Setup (UXF-018)** — not directly on the project list. Once QA Setup completes (as little as one click for the recommended preset), the user reaches the empty project list. *(CHANGE-001 — MODIFY: step 7's destination changed; see `13-qa-operating-model-and-governance.md#uxf-018`.)*
 
 **Decision Points:**
 - Role at sign-up: Admin vs. QA Manager (no other option is offered).
@@ -56,8 +56,9 @@ flowchart TD
     H --> I{Payment succeeds?}
     I -- No --> H
     I -- Yes --> J[Plan + seats activated\nConfirmation email sent]
-    G --> K[Land on empty project list]
+    G --> K[QA Setup — UXF-018]
     J --> K
+    K --> L[Land on empty project list]
 ```
 
 ---

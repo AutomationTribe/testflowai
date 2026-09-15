@@ -1,0 +1,18 @@
+node_modules/
+dist/
+.next/
+out/
+coverage/
+
+# Playwright E2E artifacts
+e2e/test-results/
+e2e/playwright-report/
+e2e/blob-report/
+e2e/playwright/.cache/
+
+.env
+.env.local
+*.local
+
+.DS_Store
+npm-debug.log*

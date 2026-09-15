@@ -17,9 +17,11 @@
 **Happy Path:**
 1. User opens the project list (Admin/QA Manager see all organisation projects; QA Tester sees only projects they created or were added to — this filtering is automatic, not a toggle the user controls).
 2. User selects "Create Project," enters a name.
-3. Project is created; the creator automatically has access.
+3. Project is created; the creator automatically has access. **(CHANGE-001)** At this exact moment, the project resolves and pins the organisation's *currently published* QA Operating Model version — template set, workflow shape, and default policy/gates all apply immediately with no extra step. This is not shown as a decision the user makes; it happens automatically (see UXF-018/UXF-020). The user is never asked to select a QA configuration version during normal project creation.
 4. User (or Admin/QA Manager) adds other organisation members to the project as needed.
-5. User enters the new, empty project workspace, ready to add requirements.
+5. User enters the new, empty project workspace, ready to add requirements. A "QA Process: Version N" indicator is visible from the project's settings/QA Settings area (UXF-024b) for anyone who wants to confirm what applies.
+
+*(CHANGE-001 — MODIFY: step 3 adds automatic configuration pinning; see `13-qa-operating-model-and-governance.md`.)*
 
 **Decision Points:**
 - Whether to add members now or later (not required before using the project).

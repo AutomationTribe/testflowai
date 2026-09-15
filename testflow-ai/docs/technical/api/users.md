@@ -6,12 +6,12 @@
 
 ## View Organisation Settings
 
-**Requirement IDs:** FR-ORG-003.
+**Requirement IDs:** FR-ORG-003, FR-QAOM-013.
 **Purpose:** Retrieve organisation-level settings.
 **Actor/Permission:** Admin, QA Manager.
 **Method and Path:** `GET /organisations/{orgId}`
 **Request:** Path: `orgId`.
-**Successful Response:** `200 OK` — organisation resource (`id`, `name`, `trialUsed`, `createdAt`).
+**Successful Response:** `200 OK` — organisation resource (`id`, `name`, `trialUsed`, `createdAt`, `preferredScopeTerminology` (CHANGE-002/APID-021, string or `null`)).
 **Business Rules:** None beyond tenant isolation.
 **Error Conditions:** `403 forbidden` (QA Tester or link-based role); `404 not_found` (wrong organisation).
 **Side Effects:** None (read-only).
@@ -23,13 +23,13 @@
 
 ## Update Organisation Settings
 
-**Requirement IDs:** FR-ORG-003.
-**Purpose:** Update organisation-level settings (currently: name).
-**Actor/Permission:** Admin only.
+**Requirement IDs:** FR-ORG-003, FR-QAOM-013.
+**Purpose:** Update organisation-level settings (currently: name; optionally, preferred scope terminology).
+**Actor/Permission:** Admin only. **(CHANGE-002 note: FR-QAOM-013 names Admin and QA Manager as configuring actors; this endpoint's existing Admin-only gate is retained as approved for `PATCH /organisations/{orgId}` as a whole — extending it to QA Manager for this one field only is flagged as a small, non-blocking open item for the permission-checkpoint pass, not resolved here.)**
 **Method and Path:** `PATCH /organisations/{orgId}`
-**Request:** Path: `orgId`. Body: `name`.
+**Request:** Path: `orgId`. Body: `name`, `preferredScopeTerminology` (CHANGE-002/APID-021, optional string, e.g. `"Sprint"`; pass `null`/empty to clear, reverting UI to the neutral "QA Scope" label).
 **Successful Response:** `200 OK` — updated organisation resource.
-**Business Rules:** None beyond tenant isolation.
+**Business Rules:** None beyond tenant isolation. `preferredScopeTerminology` is descriptive only (PD-064) — this endpoint never validates it against any methodology list, and changing it has no effect on QA Configuration Versions, Quality Gates, or Readiness.
 **Error Conditions:** `403 forbidden` (non-Admin); `422 validation_error`.
 **Side Effects:** Changes data.
 **Audit Behaviour:** Audited.

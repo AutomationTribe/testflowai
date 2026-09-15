@@ -1,7 +1,7 @@
 # TestFlow AI — Non-Functional Requirements (NFR)
 
 **Source documents:** vision.md, prd.md, product-decisions.md, functional-requirements.md (all approved)
-**Status:** Approved — all numerical targets and policies below have been reviewed and confirmed by the product owner, except where explicitly marked as an open decision.
+**Status:** Approved — all numerical targets and policies below have been reviewed and confirmed by the product owner, except where explicitly marked as an open decision. Extended for CHANGE-001 (Organisation QA Operating Model pivot) with new NFR categories CFG (Configuration Integrity) and DYN (Dynamic Field Validation & Performance); existing categories DI, SEC, AUD, AI, PERF gain new requirements/cross-references reflecting the pivot's new FR modules (QAOM, TPL, WF, POL, QG).
 **Scope:** This document defines measurable quality expectations only. It does not specify technology, database design, API design, architecture, or UI design.
 
 ---
@@ -43,6 +43,13 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 **Priority:** MVP
 **Related Functional Areas:** FR-IMP-001, FR-IMP-002, FR-IMP-003
 **Open Decision:** Exact record-count threshold depends on resolving which entity types are in scope for import/export (open question carried from functional-requirements.md).
+
+### NFR-PERF-005 — Quality Gate Evaluation Performance **[New — CHANGE-001]**
+**Requirement:** The system shall evaluate a project's enabled Quality Gate conditions (FR-QG-003) and return a readiness result within 3 seconds for a typical project's data volume.
+**Purpose:** Readiness is meant to be checked frequently (e.g., before a release decision); slow evaluation undermines that.
+**Measurement/Acceptance Criteria:** Gate evaluation for a typical project completes within 3 seconds; "typical project size" threshold shares the same open decision as NFR-PERF-003.
+**Priority:** MVP
+**Related Functional Areas:** FR-QG-003, FR-QG-004, FR-DASH-004
 
 ---
 
@@ -209,6 +216,13 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 **Related Functional Areas:** FR-AI-005
 **Open Decision:** Depends on the still-open usage limit/cost model decision for the platform-provided AI option (FR-AI-005).
 
+### NFR-SEC-014 — Configuration/Governance Actions Restricted to Authorized Roles **[New — CHANGE-001]**
+**Requirement:** The system shall enforce that only Admin or QA Manager (per FR-WF-006's permission checkpoints) can draft, publish, or modify organisation QA configuration, templates, workflow, policy, or quality gates; QA Tester shall not be able to perform any of these actions through any path.
+**Purpose:** Directly required by §27 of the task — tenant isolation already covers cross-organisation access (NFR-SEC-003); this specifically covers within-organisation configuration authority.
+**Measurement/Acceptance Criteria:** No configuration/governance action is reachable by a QA Tester or link-based role through any code path, verified through authorization testing.
+**Priority:** MVP
+**Related Functional Areas:** FR-WF-006, FR-QAOM-008, FR-TPL-006, FR-TPL-007, FR-QG-002, FR-POL-004
+
 ---
 
 # PRIV — Privacy and Data Protection
@@ -255,6 +269,56 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 
 ---
 
+# CFG — Configuration Integrity **[New Category — CHANGE-001]**
+
+### NFR-CFG-001 — Published Configuration Immutability
+**Requirement:** The system shall ensure that a published Organisation QA Configuration Version, template version, or workflow/policy/gate definition (FR-QAOM-009, FR-TPL-007) can never be modified in place after publish.
+**Purpose:** Technical enforcement of PD-057 — the foundation every other historical-consistency guarantee in this section depends on.
+**Measurement/Acceptance Criteria:** No code path exists that mutates a published configuration/template version's content; only a new publish creates a new version.
+**Priority:** MVP
+**Related Functional Areas:** FR-QAOM-008, FR-QAOM-009, FR-TPL-006, FR-TPL-007
+
+### NFR-CFG-002 — Historical Records Remain Interpretable
+**Requirement:** The system shall ensure that a Test Case, Test Report, Regression Report, or other governed document remains fully interpretable (fields, labels, workflow meta-state mapping) using the configuration/template version applicable when it was created, regardless of how many newer versions have since been published.
+**Purpose:** Directly extends the existing Test Case Version / Test Run Snapshot historical-accuracy guarantee (NFR-DI-001) to the new configuration layer.
+**Measurement/Acceptance Criteria:** No document's rendering/interpretation silently changes as a side effect of a later, unrelated configuration publish.
+**Priority:** MVP
+**Related Functional Areas:** FR-TPL-009, FR-QAOM-012, FR-WF-003
+
+### NFR-CFG-003 — Effective Configuration Deterministic Resolution
+**Requirement:** The system shall resolve a project's effective QA configuration (organisation published version + permitted overrides) deterministically — the same inputs always produce the same effective configuration, with no race condition or ambiguity about which version applies.
+**Purpose:** Supports FR-POL-002/FR-POL-005's requirement that effective configuration always be identifiable.
+**Measurement/Acceptance Criteria:** Effective-configuration resolution is idempotent and produces a single unambiguous result for any given project at any point in time, verified through testing.
+**Priority:** MVP
+**Related Functional Areas:** FR-POL-002, FR-POL-004, FR-POL-005, FR-QAOM-012
+
+### NFR-CFG-004 — Configuration Version Traceability
+**Requirement:** The system shall retain, for every governed document, an identifiable reference to the exact configuration/template version applicable to it at creation, discoverable by an authorized user without ambiguity.
+**Purpose:** Supports auditability (FR-AUD-005) and historical reporting (NFR-CFG-002) — a version reference that can't actually be traced back defeats the purpose of versioning.
+**Measurement/Acceptance Criteria:** Every governed document exposes its applicable configuration/template version identifier to an authorized viewer.
+**Priority:** MVP
+**Related Functional Areas:** FR-TPL-009, FR-QAOM-009, FR-AUD-005
+
+---
+
+# DYN — Dynamic Field Validation & Performance **[New Category — CHANGE-001]**
+
+### NFR-DYN-001 — Configurable Field Values Validated Against Applicable Template Version
+**Requirement:** The system shall validate every configurable field's value against the field's definition (type, required/optional, allowed options, numeric validation) from the document's applicable template version (FR-TPL-009) at the time of every create/update, not merely at initial creation.
+**Purpose:** A template's configurability is only meaningful if values are actually enforced against it — otherwise the Template System is decorative.
+**Measurement/Acceptance Criteria:** No create/update path bypasses field-definition validation for any configurable field, verified through testing across all field types (FR-TPL-003).
+**Priority:** MVP
+**Related Functional Areas:** FR-TPL-001–004, FR-TPL-009, FR-AI-006
+
+### NFR-DYN-002 — Configurable Fields Do Not Degrade Common List/Filter Performance
+**Requirement:** The system shall ensure that the presence of organisation-configured fields on Test Case, Test Report, or Regression Report does not cause common list/filter operations (e.g., the Test Case list, filtered by a configurable field) to fall outside NFR-PERF-001's standard page response target at typical organisation-configured field counts.
+**Purpose:** Directly required by §27 of the task — dynamic fields must not make common operations unusably slow.
+**Measurement/Acceptance Criteria:** List/filter operations involving configurable fields meet NFR-PERF-001's 2-second, 95th-percentile target at a typical field count (exact "typical" threshold shares the same open-decision status as other volume thresholds in this document — see Open Decisions).
+**Priority:** MVP
+**Related Functional Areas:** FR-TPL-001, FR-TC-008, NFR-PERF-001
+
+---
+
 # DI — Data Integrity
 
 ### NFR-DI-001 — Test Case Version Integrity
@@ -284,6 +348,13 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 **Measurement/Acceptance Criteria:** Cascade archive operations are atomic — either fully complete or fully rolled back, verified through failure-injection testing.
 **Priority:** MVP
 **Related Functional Areas:** FR-REQ-004, FR-TC-010, FR-TR
+
+### NFR-DI-005 — Current Configuration Changes Do Not Reinterpret Historical Execution/Reporting **[New — CHANGE-001]**
+**Requirement:** The system shall ensure that a change to the organisation's QA Operating Model, templates, or workflow — however published afterward — never alters the recorded meaning of already-closed test runs, already-recorded execution results, or already-generated reports.
+**Purpose:** Directly required by §27 of the task — extends the existing execution-result immutability guarantee (NFR-DI-003) to cover the new configuration layer, ensuring backward/historical consistency.
+**Measurement/Acceptance Criteria:** No code path re-derives a historical execution result's meaning, or a generated report's content, from a configuration version other than the one applicable when that record was created/generated.
+**Priority:** MVP
+**Related Functional Areas:** FR-QAOM-012, FR-TPL-009, NFR-CFG-002, NFR-DI-001, NFR-DI-003
 
 ---
 
@@ -335,6 +406,13 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 **Measurement/Acceptance Criteria:** No role other than QA Manager or Admin can access audit history views, verified through testing.
 **Priority:** MVP
 **Related Functional Areas:** FR-AUD-003
+
+### NFR-AUD-004 — Configuration Change Traceability **[New — CHANGE-001]**
+**Requirement:** The system shall ensure every configuration/governance action listed in FR-AUD-005 reliably produces a corresponding audit entry, with no silent gaps, consistent with NFR-AUD-001's existing completeness guarantee.
+**Purpose:** Directly required by §16/§24 of the task — configuration changes must be traceable.
+**Measurement/Acceptance Criteria:** Systematic testing confirms an audit entry is produced for every action currently defined as auditable in FR-AUD-005.
+**Priority:** MVP
+**Related Functional Areas:** FR-AUD-005, FR-QAOM-008, FR-TPL-007, FR-WF-002, FR-QG-002, FR-POL-004
 
 ---
 
@@ -503,22 +581,31 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 **Priority:** MVP
 **Related Functional Areas:** FR-AI-002, FR-AI-003
 
+### NFR-AI-010 — Generation Template/Configuration Version Identifiable **[New — CHANGE-001]**
+**Requirement:** The system shall retain, for every AI generation request, an identifiable record of which Test Case template version (FR-TPL-009) it was generated against, viewable by an authorized user.
+**Purpose:** Directly required by §27 of the task's AI category — supports troubleshooting when a template changes and generated output stops matching expectations, and supports historical interpretation of older AI-generated content.
+**Measurement/Acceptance Criteria:** Every AI generation request/result exposes its applicable template version identifier to an authorized viewer.
+**Priority:** MVP
+**Related Functional Areas:** FR-AI-001, FR-AI-006, FR-TPL-009, NFR-CFG-004
+
 ---
 
 # Requirement Summary
 
 | Category | Count | MVP | Post-MVP |
 |---|---|---|---|
-| PERF | 4 | 4 | 0 |
+| PERF | 5 | 5 | 0 |
 | SCALE | 3 | 3 | 0 |
 | AVAIL | 2 | 1 | 1 |
 | REL | 3 | 3 | 0 |
-| SEC | 13 | 13 | 0 |
+| SEC | 14 | 14 | 0 |
 | PRIV | 3 | 3 | 0 |
 | AUTHZ | 2 | 2 | 0 |
-| DI | 4 | 4 | 0 |
+| CFG | 4 | 4 | 0 |
+| DYN | 2 | 2 | 0 |
+| DI | 5 | 5 | 0 |
 | BCK | 3 | 3 | 0 |
-| AUD | 3 | 3 | 0 |
+| AUD | 4 | 4 | 0 |
 | FILE | 2 | 2 (partial Post-MVP for video) | — |
 | ACC | 1 | 0 | 1 |
 | COMPAT | 1 | 1 | 0 |
@@ -526,8 +613,8 @@ Each requirement includes a Priority (MVP / Post-MVP / Future) and references th
 | OBS | 3 | 3 | 0 |
 | MAINT | 1 | 1 | 0 |
 | TEST | 1 | 1 | 0 |
-| AI | 9 | 9 | 0 |
-| **Total** | **59** | | |
+| AI | 10 | 10 | 0 |
+| **Total** | **70** | | |
 
 ---
 
@@ -542,6 +629,8 @@ These remain open and are not yet approved targets. They should be resolved befo
 5. **Data retention period after account/organisation cancellation** (NFR-PRIV-002) — no policy has been approved yet; this is a new decision requiring product-owner input, not just a number.
 6. **AI usage/rate limit for the platform-provided AI option** (NFR-AI-008, NFR-SEC-013) — blocked on the still-open cost/usage-limit model decision for FR-AI-005.
 7. **Concurrent user / load capacity baseline** underlying the "expected load" language in NFR-PERF-001 and NFR-PERF-002 — recommend deferring until real usage data exists.
+8. **"Typical" configurable-field count threshold** for NFR-DYN-002 — recommend defining once real organisation template customization data is available, same posture as item 1.
+9. **Exact configuration/template version identifier display mechanism** for NFR-CFG-004/NFR-AI-010 — the capability is required; its exact surfacing (e.g., a version badge vs. a detail-panel field) is a design-phase decision, not an NFR-layer one.
 
 These open items do not block progress to technical design, except where a requirement explicitly states a dependency (e.g., NFR-AI-008 depends on the AI cost model decision, which should be resolved before AI provider selection).
 

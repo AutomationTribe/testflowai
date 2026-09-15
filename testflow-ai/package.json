@@ -1,0 +1,20 @@
+{
+  "name": "testflow-ai-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "TestFlow AI — workspace root. See README.md.",
+  "workspaces": [
+    "backend",
+    "frontend",
+    "e2e"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "migrate": "npm run migrate --workspace backend",
+    "typecheck": "npm run typecheck --workspace backend && npm run typecheck --workspace frontend && npm run typecheck --workspace e2e",
+    "lint": "npm run lint --workspace backend && npm run lint --workspace frontend",
+    "test": "npm run test --workspace backend && npm run test --workspace frontend",
+    "test:e2e": "npm run test --workspace e2e"
+  }
+}

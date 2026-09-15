@@ -1,26 +1,34 @@
 # TestFlow AI — Product Requirements Document (PRD)
 
 ## 1. Product Overview
-TestFlow AI is a multi-tenant, web-based test management system that supports the full testing lifecycle — requirements, test case management, test suites, test execution, defects, traceability, and reporting — with AI-assisted test case generation as a core differentiator.
+TestFlow AI is a multi-tenant, web-based **QA operating platform** that supports the full testing lifecycle — requirements, test case management, test suites, test execution, defects, traceability, and reporting — with AI-assisted test case generation as a core differentiator.
 
-An organisation can contain multiple projects. Templates are organisation-scoped. Users hold one role at the organisation level (Admin, QA Manager, or QA Tester) that governs their capabilities across every project they have access to. Business Analyst/Product Owner, Developer, and Stakeholder are not organisation members; they participate via temporary, scoped access links.
+**Approved product pivot:** TestFlow provides stable, platform-controlled test-management semantics (execution, traceability, versioning, historical integrity) while each organisation defines and governs its own **QA Operating Model** — document templates, document lifecycle/workflow, project policy, and release/quality gates — within boundaries TestFlow permits. See `product-decisions.md` (ORG-QA-DEC-001 through ORG-QA-DEC-015) and `requirements-change-log.md` for the full record of this change. The configuration hierarchy is: **TestFlow System Semantics → Organisation QA Operating Model → Project Effective QA Configuration → Document/Execution Instance**; a lower level may only configure what the level above explicitly permits. **Terminology note (CHANGE-001 clarification):** a Project inherits a specific published Organisation QA Operating Model version — not a live link to "whatever the organisation currently publishes." Project-level configuration consists only of explicitly permitted **Project Exceptions** (bounded overrides) layered on top of that inherited version. The **Effective Project QA Process** is always: inherited Organisation QA Process + permitted Project Exceptions. Publishing a newer organisation version never silently changes an existing Project (PD-056, PD-057, PD-063).
 
-TestFlow AI is a paid, subscription-based product. A new organisation is created via public sign-up (Admin or QA Manager only) and must have an active trial or paid subscription to access any platform functionality (PD-019, PD-020).
+**Methodology neutrality (CHANGE-002):** TestFlow does not model or enforce Scrum, Kanban, Waterfall, or other development methodologies as governed system concepts. Test Report and Regression Report may optionally carry a **QA Scope** value (and optional date range) describing the period/slice of work a document covers; an organisation may optionally set its preferred scope terminology as descriptive UI copy only. No Delivery Cycle/Sprint/Release entity exists, and Project Readiness remains Project-level (PD-064).
+
+An organisation can contain multiple projects. Document templates (Test Case, Test Report, Regression Report) are organisation-scoped and organisation-configurable, built from TestFlow-provided defaults. Users hold one role at the organisation level (Admin, QA Manager, or QA Tester) that governs their capabilities across every project they have access to. Business Analyst/Product Owner, Developer, and Stakeholder are not organisation members; they participate via temporary, scoped access links.
+
+TestFlow AI is a paid, subscription-based product. A new organisation is created via public sign-up (Admin or QA Manager only) and must have an active trial or paid subscription to access any platform functionality (PD-019, PD-020). After organisation creation, the organisation completes Organisation QA Setup — conceptually mandatory, but completable instantly via a TestFlow-provided starting preset (ORG-QA-DEC-013) — before normal project work begins.
 
 ## 2. Background / Problem
-QA teams manually author large volumes of test cases, and typically manage requirements, testing, and defects across disconnected tools. TestFlow AI addresses this by combining core test management functions with AI-assisted test case generation and configurable team workflow, in a single system.
+QA teams manually author large volumes of test cases, and typically manage requirements, testing, and defects across disconnected tools. Beyond that, QA organisations do not all share one QA process — they differ in what documents they require, how strict their approval process is, and what "release ready" means to them. TestFlow AI addresses this by combining core test management functions with AI-assisted test case generation and an organisation-governed QA Operating Model, in a single system, rather than forcing every team into one fixed process.
 
 ## 3. Product Goals
 - Provide a complete test management workflow from requirement to execution to report.
-- Reduce manual test case authoring effort using AI.
-- Preserve full traceability between requirements, test cases, runs, and defects.
-- Allow QA managers to configure team-specific workflow and templates. Test case approval is self-service (PD-048) — no separate approval-configuration goal applies.
+- Reduce manual test case authoring effort using AI, generated against the organisation's applicable published template.
+- Preserve full traceability between requirements, test cases, runs, and defects, with TestFlow-controlled semantics that remain stable regardless of organisation configuration.
+- Allow each organisation to define and govern its own QA Operating Model — document templates, document lifecycle/approval behaviour, project policy, and release/quality gates — starting from TestFlow-provided defaults rather than a blank canvas. The previous self-service-only test case approval behaviour (PD-048) remains the default/lightweight behaviour; organisations may opt into stronger governance (ORG-QA-DEC-001).
 - Support multi-tenant use at unlimited scale, with organisations able to manage multiple projects.
 - Keep external stakeholder participation lightweight through scoped, temporary access.
 
 ## 4. Non-Goals (for now)
 - Automated test execution — postponed.
-- Fully custom/configurable roles and permissions — postponed.
+- Fully custom/configurable roles and permissions — postponed. QA-configuration authority (drafting/publishing templates, workflows, policy) is layered onto the existing three fixed organisation roles via explicit permission checkpoints, not a custom-role builder (ORG-QA-DEC-011).
+- A generic workflow/BPM engine or arbitrary state-machine builder — postponed. MVP supports a small, bounded set of parameterized workflow shapes only (ORG-QA-DEC-004).
+- An open-ended quality-gate rules language — postponed. MVP supports a bounded, TestFlow-understood catalogue of gate conditions (ORG-QA-DEC-010).
+- Arbitrary organisation-defined custom document types — postponed. MVP's configurable document types are limited to the built-in Test Report and Regression Report definitions (ORG-QA-DEC-003); Requirement, Test Case, Test Suite, Test Run, Execution Result, and Defect remain fixed, TestFlow-controlled system entities, not configurable document types.
+- Calculated template fields and field-level edit permissions — postponed (ORG-QA-DEC-005).
 - Scheduled/automated report distribution — postponed.
 - AI generation from free-text task descriptions — postponed.
 - Cross-organisation template sharing/library — postponed.
@@ -30,6 +38,7 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - Requirements import/sync from external tools — postponed (native authoring only, sourced manually from wherever the requirement originates, e.g., Jira).
 - Test plan as a concept distinct from test run — postponed.
 - Organisation membership/accounts for BA/PO, Developer, and Stakeholder — not planned; these roles use link-based access instead.
+- Automatic migration of historical documents onto a newer published template/workflow/policy version — not planned; published configuration versions are immutable and historical documents retain the version applicable when they were created (ORG-QA-DEC-009).
 
 ## 5. Target Users
 - New customers signing up to create an organisation (Admin or QA Manager)
@@ -47,8 +56,8 @@ QA teams manually author large volumes of test cases, and typically manage requi
 | Role | Responsibilities |
 |---|---|
 | **Admin** | Per-organisation role. Manages organisation settings, invites/manages users, oversees all projects in the organisation. Is the only role that can change another member's role (PD-031); cannot be removed or reassigned away from Admin if they are the organisation's last remaining Admin (PD-030). Can perform any action available to QA Manager or QA Tester. |
-| **QA Manager** | Invites organisation members and sets their role at invitation; can create/update/archive projects; sees all projects in the organisation; defines QA workflow settings; creates test case and test report templates (organisation-scoped); reviews and comments on test cases (feedback only — approval itself is self-service, PD-048); reviews reports (single report type, including its Post-Deployment section — PD-038); views project dashboards; views billing and seat history (PD-047); generates temporary access links for BA/PO, Developer, and Stakeholder; can perform any action available to a QA Tester. Cannot change another member's role (PD-031). |
-| **QA Tester** | Can create, update, and archive projects; sees only projects they created or were added to; enters requirements (e.g., from a Jira ticket or wherever the requirement originates); triggers AI test case generation and/or writes test cases manually; approves their own test cases (self-service, PD-048); organizes suites; executes tests; records results; attaches evidence; logs defects; can add other organisation members to a project they have access to; can remove users from a project they have access to; generates temporary access links for BA/PO, Developer, and Stakeholder. |
+| **QA Manager** | Invites organisation members and sets their role at invitation; can create/update/archive projects; sees all projects in the organisation; **defines and publishes the organisation's QA Operating Model** — document templates (Test Case, Test Report, Regression Report), document workflow/approval behaviour, project policy, and release/quality gates (ORG-QA-DEC series) — or adopts a TestFlow-provided starting preset; configures project-level policy within what the organisation permits to be overridden; reviews and comments on test cases, and approves documents where the organisation's configured workflow assigns that role to QA Manager (default self-service behaviour is unchanged, PD-048/ORG-QA-DEC-001); reviews reports (Test Report, and Regression Report where configured — PD-038); views project dashboards; views billing and seat history (PD-047); generates temporary access links for BA/PO, Developer, and Stakeholder; can perform any action available to a QA Tester. Cannot change another member's role (PD-031). |
+| **QA Tester** | Can create, update, and archive projects; sees only projects they created or were added to; enters requirements (e.g., from a Jira ticket or wherever the requirement originates); triggers AI test case generation (against the organisation's applicable published Test Case template) and/or writes test cases manually; approves their own test cases under the organisation's default self-service behaviour, or participates in a configured review/approval workflow where the organisation has opted into one (PD-048/ORG-QA-DEC-001); organizes suites; executes tests; records results; attaches evidence; logs defects; can add other organisation members to a project they have access to; can remove users from a project they have access to; generates temporary access links for BA/PO, Developer, and Stakeholder. |
 
 ### Link-Based Roles (no account; access via temporary, expiring link shared by QA Tester/QA Manager/Admin)
 
@@ -68,20 +77,23 @@ QA teams manually author large volumes of test cases, and typically manage requi
 
 ## 7. Major Product Modules
 1. Organisation & Project Management
-2. Requirements Management
-3. Test Case Management
-4. AI Test Generation
-5. Template Management (organisation-scoped)
-6. Test Suite Management
-7. Test Run / Execution
-8. Defect Management
-9. Traceability
-10. Reporting & Dashboards
-11. User & Access Management (organisation-level roles)
-12. Link-Based Access (for BA/PO, Developer, Stakeholder)
-13. Audit / History
-14. Notifications
-15. Subscription & Billing
+2. **Organisation QA Operating Model** (QA process/governance configuration, project policy, release/quality gates — new module; supersedes the narrow "Template Management" framing below)
+3. Requirements Management
+4. Test Case Management
+5. AI Test Generation
+6. Template Management (organisation-scoped; generalized into a structured Template System under the QA Operating Model — see §18)
+7. Test Suite Management
+8. Test Run / Execution
+9. Defect Management
+10. Traceability
+11. Reporting & Dashboards
+12. User & Access Management (organisation-level roles)
+13. Link-Based Access (for BA/PO, Developer, Stakeholder)
+14. Audit / History
+15. Notifications
+16. Subscription & Billing
+
+**Note:** module 2 (Organisation QA Operating Model) and module 6's generalization are the direct product-layer result of the approved pivot. Their exact functional scope (configuration catalogue, template field model, workflow shapes, quality gate catalogue) is deferred to Functional Requirements — see §18 for the bounded, non-detailed capability statement approved at this layer.
 
 ## 8. Core Product Capabilities
 - Multi-tenant support for unlimited organisations and projects
@@ -92,16 +104,17 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - Requirements: native authoring by QA Tester, QA Manager, or Admin, typically sourced from an external record such as a Jira ticket (PD-015)
 - Archiving a requirement cascades to archive its linked test cases and reports, and to cancel/archive any active, unclosed test run those test cases belong to (PD-016, extended by PD-034)
 - Editing a requirement with already-approved linked test cases triggers re-review of those test cases (status reverts to Needs Review) (PD-033)
-- AI-generated test cases: full set of test cases generated per requirement, reviewable/editable before saving
+- AI-generated test cases: full set of test cases generated per requirement, generated against the organisation's applicable published Test Case template, reviewable/editable before saving (ORG-QA-DEC-012)
 - Manual test case creation and editing
-- Test case and test report templates, organisation-scoped
+- **Organisation QA Operating Model**: organisation-configurable document templates (Test Case, Test Report, Regression Report), built from TestFlow-provided defaults; document lifecycle/approval behaviour chosen from a bounded set of workflow shapes (No Approval / Single Approval / Review + Approval); project policy (which QA artifacts a project requires); and release/quality gates drawn from a bounded, TestFlow-understood catalogue (ORG-QA-DEC-003 through ORG-QA-DEC-010) — see §18
 - Test suite organization
-- Manual test execution with statuses: Pass, Fail, Blocked, Skipped
+- Manual test execution with statuses: Pass, Fail, Blocked, Skipped (unchanged, TestFlow-controlled system semantics — ORG-QA-DEC applies only to document/record workflow status, not execution result status)
 - Evidence attachment on execution results; execution results are immutable once a test run is closed (PD-037)
-- Native defect logging
+- Native defect logging, with Defect Severity carrying stable TestFlow-controlled semantics (organisation-configurable display labels) and Defect Priority as an organisation-configurable field, distinct concepts (ORG-QA-DEC-007)
 - Requirement-to-test-case traceability, distinguishing traced vs. untraced test cases
-- On-demand reporting (single report type, including a Post-Deployment section for production testing) and dashboards (PD-038)
-- Self-service test case approval, with Draft → Approved → Needs Review states; any user with edit access can approve directly, at any time — no QA Manager gate (PD-048)
+- On-demand reporting (Test Report as a built-in configurable document type, with a Post-Deployment section for production testing; Regression Report as a second built-in configurable document type) and dashboards (PD-038, ORG-QA-DEC-003)
+- Test case approval defaults to the existing self-service behaviour (Draft → Approved → Needs Review; any user with edit access can approve directly, at any time — PD-048); organisations may instead opt into a configured Single Approval or Review + Approval workflow shape (ORG-QA-DEC-001, ORG-QA-DEC-004)
+- Release/quality gates, evaluated by TestFlow against configured document-workflow state and system data (e.g., "no unresolved Critical defects," "required Test Report approved") — document workflow approval and quality-gate evaluation are separate, explicitly related concerns (ORG-QA-DEC-002)
 - Optional AI provider key configuration per project, plus a platform-provided AI option
 - Temporary, scoped access links for BA/PO, Developer, and Stakeholder, with configurable expiry (default 24h), no identity verification, named or generic recipients, and multi-use until expiry/revocation (PD-018, PD-042–PD-046)
 - BA/PO can leave comments on a report via their link, visible only to the QA Tester and excluded from the report itself (PD-040)
@@ -128,18 +141,19 @@ QA teams manually author large volumes of test cases, and typically manage requi
 3. Receives a confirmation email
 4. Is redirected to the subscription page
 5. Selects a trial or paid (monthly/yearly) plan; platform access remains blocked until one is active
-6. Once active, can invite other organisation members (QA Tester, additional Admin/QA Manager) and generate link-based access as needed
+6. Completes **Organisation QA Setup**: conceptually mandatory (every organisation must have a published QA Operating Model), but satisfiable instantly by selecting a TestFlow-provided starting preset (Standard QA recommended default, Lightweight QA, Controlled QA, or Custom Setup) rather than a lengthy configuration wizard — ORG-QA-DEC-013
+7. Once active and QA Setup is complete, can invite other organisation members (QA Tester, additional Admin/QA Manager) and generate link-based access as needed
 
 **QA Manager**
 1. Invites organisation members (Admin, QA Manager, or QA Tester), setting their role at invitation
 2. Creates or oversees projects (sees all projects in the organisation)
-3. Sets the project's QA workflow settings
-4. Creates test case and test report templates, available across the organisation's projects
+3. Defines and publishes the organisation's QA Operating Model, or adopts/refines a starting preset — document templates, document workflow, project policy, and release/quality gates
+4. Sets project-level policy within what the organisation permits to be overridden
 5. Adds/removes organisation members' access to specific projects
-6. Reviews and comments on test cases (feedback only — approval is self-service, PD-048)
+6. Reviews and comments on test cases; approves documents where the organisation's configured workflow assigns that role to QA Manager (self-service remains the default — PD-048/ORG-QA-DEC-001)
 7. Generates temporary access links for BA/PO (report approval), Developer (defect resolution), and Stakeholder (dashboard/report viewing)
-8. Reviews pre- and post-deployment reports
-9. Views a project progress dashboard
+8. Reviews Test Reports (including the Post-Deployment section) and, where configured, Regression Reports
+9. Views a project progress dashboard, including release/quality-gate readiness where configured
 10. Can perform any action available to a QA Tester
 
 **QA Tester**
@@ -186,17 +200,24 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - **Project creation, update, and archiving are available to Admin, QA Manager, and QA Tester (PD-014).**
 - **QA Manager and Admin see all projects in their organisation; QA Tester sees only projects they created or were added to (PD-014).**
 - **Adding a user to a project is an access grant, not a role assignment; the added user's organisation role governs their capabilities on that project.**
-- QA workflow settings are configurable per project (excluding approval, which is not configurable — see below).
-- **Test cases follow a simplified state model: Draft → Approved → Needs Review. There is no QA Manager approval gate — any user with edit access can set a test case directly to Approved, at any time (PD-048, supersedes PD-006/PD-007/PD-035/PD-036).**
-- **If an Approved test case is edited, it reverts to "Needs Review"; the user reviews and re-approves it themselves when ready.**
-- **Editing a requirement that has already-approved linked test cases triggers those test cases into "Needs Review," which the user then re-approves themselves (PD-033, PD-048).**
+- **Every organisation has a published QA Operating Model, governing document templates, document lifecycle/workflow, project policy, and release/quality gates (ORG-QA-DEC-013). Organisations adopt a TestFlow-provided starting preset (Standard QA, Lightweight QA, Controlled QA) or configure Custom Setup from scratch; the exact content of each preset is deferred to Functional Requirements (ORG-QA-DEC-014), except that the Standard QA preset's conceptual basis is the previously approved TestFlow default behaviour, generalized where the new model requires it.**
+- **Test case approval defaults to the simplified self-service state model — Draft → Approved → Needs Review, any user with edit access can set a test case directly to Approved, at any time — as the Standard QA default (PD-048, generalized by ORG-QA-DEC-001; supersedes PD-006/PD-007/PD-035/PD-036). An organisation may instead configure a Single Approval or Review + Approval workflow shape; exact states/transitions/approver-role rules are deferred to Functional Requirements (ORG-QA-DEC-004).**
+- **If an Approved test case is edited, it reverts to "Needs Review"; under the default self-service behaviour the user reviews and re-approves it themselves when ready. Under a configured approval workflow, re-approval follows that workflow's rule instead.**
+- **Editing a requirement that has already-approved linked test cases triggers those test cases into "Needs Review" (PD-033); re-approval then follows whichever document-workflow behaviour the organisation has configured (self-service by default, ORG-QA-DEC-001).**
+- **Document workflow status (e.g., a test case's or report's lifecycle state) is organisation-configurable within TestFlow-supported workflow shapes; it is distinct from TestFlow-controlled execution result status (Pass/Fail/Blocked/Skipped, unchanged) and test run lifecycle status (unchanged). TestFlow retains stable internal/meta semantics for document workflow status so organisation-specific labels do not break reporting, traceability, AI, or quality-gate evaluation (ORG-QA-DEC-002, §10 of the impact analysis).**
+- **An approved document (e.g., an approved Test Report) does not itself block or trigger anything by default — document workflow and release/quality gates are separate concerns. An organisation may configure a quality gate that depends on a document's workflow state (e.g., "an approved Test Report is required for Release Ready"); the gate evaluator checks that state (ORG-QA-DEC-002, generalizes PD-039's record-only default).**
+- **Defect Severity carries stable, TestFlow-controlled semantic levels (Critical/High/Medium/Low) so reporting and quality gates can reason consistently; organisations may configure the display label mapped to each level, but not remove the underlying semantic mapping where it's used by system functionality. Defect Priority and Test Case Priority are organisation-configurable fields, distinct from Severity (ORG-QA-DEC-007).**
+- **Projects inherit the organisation's published QA Operating Model by default. Project-level overrides are not automatically allowed — the organisation determines which settings are overridable, only authorized roles may exercise an override, overrides are explicit and audited, and the effective configuration for a project must remain identifiable at all times. The MVP override surface is intentionally limited (ORG-QA-DEC-008).**
+- **Published QA configuration (templates, workflows, organisation policy, project-effective configuration, quality gates) is versioned and immutable once published — changes are prepared separately and published as a new version. Historical documents are unaffected by a later publish and remain interpretable against the configuration version applicable when they were created (ORG-QA-DEC-009).**
+- **Release/quality gates are evaluated by TestFlow against a bounded, TestFlow-understood catalogue of conditions the organisation selects/configures (e.g., required artifacts completed, required approvals completed, minimum requirement coverage, no unresolved Critical defects) — not an open-ended rules language (ORG-QA-DEC-010).**
+- **AI-generated test cases must be generated against the organisation's applicable published Test Case template and validated against it (required fields, allowed structure, configured options) before being offered for the existing mandatory human review/save step; AI must not bypass workflow, permissions, or governance (ORG-QA-DEC-012).**
 - AI provider key configuration is optional per project; a platform-provided AI option is also available.
-- Templates are organisation-scoped.
+- **Templates are organisation-scoped and are no longer merely a pre-population blob — they define a structured, field-level document schema distinguishing TestFlow-protected system fields from organisation-configurable fields, with TestFlow-provided sensible defaults so organisations are not required to start from a blank canvas (ORG-QA-DEC-005, ORG-QA-DEC-006). Exact field types/properties are deferred to Functional Requirements.**
 - **Requirements are authored by QA Tester, QA Manager, or Admin — not by BA/PO (PD-015).**
 - **Archiving a requirement cascades to archive its linked test cases and reports; if a linked test case belongs to an active, unclosed test run, that run is also cancelled and archived (PD-016, extended by PD-034).**
 - **Execution results cannot be edited once a test run is closed — this is a hard rule with no exception (PD-037).**
-- **There is a single report type, not separate pre-deployment and post-deployment reports; the single report includes a "Post-Deployment" section covering testing performed in production (PD-038). This supersedes any earlier framing of pre-/post-deployment as distinct report types.**
-- **A BA/PO's approval or rejection of a report via their link is record-keeping only — it does not trigger, gate, or block any other action or workflow (PD-039).**
+- **There is a single built-in Test Report document type, not separate pre-deployment and post-deployment reports; it includes a "Post-Deployment" section covering testing performed in production (PD-038). A second built-in configurable document type, Regression Report, is also approved at this layer (ORG-QA-DEC-003); its detailed content is deferred to Functional Requirements. This supersedes any earlier framing of pre-/post-deployment as distinct report types.**
+- **A BA/PO's approval or rejection of a report via their link is record-keeping only by default — it does not itself trigger, gate, or block any other action or workflow (PD-039, as the Standard QA default). An organisation may configure a quality gate that depends on this approval record (e.g., requiring an approved Test Report for Release Ready); the dependency lives in the quality gate configuration, not in report approval itself (ORG-QA-DEC-002).**
 - **A BA/PO can leave comments on a report via their link; these comments are visible only to the QA Tester, are not included in the report itself, and are a private feedback channel (PD-040).**
 - **Only QA Manager and Admin can view audit history; QA Tester and link-based roles cannot (PD-041).**
 - **Only Admin can change another organisation member's role; QA Manager cannot (PD-031). An organisation must always retain at least one Admin — the last remaining Admin cannot be removed or reassigned away from Admin (PD-030).**
@@ -217,18 +238,19 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - All subscription and seat amounts are in US dollars.
 
 ## 11. AI Capabilities
-*(Unchanged from previous approved version.)*
 - Generate a full set of test cases from a selected requirement (MVP).
-- Generated test cases must be reviewable and editable before saving.
+- **Generation must target the organisation's applicable published Test Case template and be validated against it (required fields, allowed structure, configured options, organisation terminology) before being offered for review (ORG-QA-DEC-012) — a change from the previous fixed-shape generation behaviour.**
+- Generated test cases must be reviewable and editable before saving; human review remains mandatory and AI must not bypass workflow, permissions, or governance.
 - AI generation from free-text task descriptions is postponed.
 - Optional per-project AI provider key, plus a platform-provided AI option.
 - AI provider selection and platform usage limits/cost model: not yet decided.
+- The same template-awareness principle is intended to extend to future AI-generated configurable QA documents, where that capability is separately approved — not committed as MVP scope here.
 
 ## 12. Test Case Template Capabilities
-*(Unchanged.)* Organisation-scoped, created by QA Manager, MVP scope.
+Organisation-scoped, structured field-level template (superseding the previous simple pre-population blob), with TestFlow-provided defaults and a distinction between protected system fields and organisation-configurable fields (ORG-QA-DEC-005, ORG-QA-DEC-006). Authored/published by QA Manager or authorized organisation administrator. Exact field types/properties/validation are deferred to Functional Requirements. MVP scope.
 
 ## 13. Test Report Template Capabilities
-*(Unchanged.)* Organisation-scoped, created by QA Manager, MVP scope; on-demand reporting only.
+Organisation-scoped, same structured template model as §12, applied to the built-in Test Report and Regression Report document types (ORG-QA-DEC-003). Authored/published by QA Manager or authorized organisation administrator; on-demand reporting only. Exact field types/properties are deferred to Functional Requirements. MVP scope.
 
 ## 14. Requirements and Traceability Capabilities
 - Requirements are natively authored by QA Tester, QA Manager, or Admin (PD-015), typically sourced from an external record such as a Jira ticket.
@@ -284,8 +306,40 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - Audit history visibility restricted to QA Manager and Admin is in MVP scope (PD-041).
 - Configurable link expiry (24h default), no identity verification, named/generic links, multi-use, and free link sharing are in MVP scope (PD-042–PD-046).
 - Payment processor selection, detailed billing UI, and itemized invoicing beyond the confirmation email are implementation/design details, not covered here.
+- Organisation QA Setup as an onboarding step, satisfiable instantly via a starting preset, is in MVP scope at the product-definition layer (ORG-QA-DEC-013); its detailed configuration surface is not yet specified (see §18).
+- A bounded Template System (structured fields, system/configurable-field distinction, TestFlow defaults), a bounded set of document-workflow shapes, a bounded quality-gate catalogue, and project-policy overrides are in MVP scope at the product-definition layer (ORG-QA-DEC-003 through ORG-QA-DEC-010); their detailed specification is deferred to Functional Requirements.
 
-## 17. Open Questions / Decisions Still Required
+## 18. Organisation QA Operating Model (Approved Product Pivot)
+
+**Status:** Approved at the product-definition layer only (this document, `vision.md`, `product-decisions.md`). Functional Requirements, database, API, architecture, user flows, and design documentation have not yet been re-baselined to reflect this — see `requirements-change-log.md` for the pivot record and `requirements-traceability.md` for re-baseline status.
+
+**Principle:** TestFlow is a QA operating platform. It retains stable, platform-controlled semantics for execution, traceability, historical integrity, AI validation, and platform operation. Each organisation defines and governs its own QA Operating Model within the boundaries TestFlow permits. Configuration hierarchy: **TestFlow System Semantics → Organisation QA Operating Model → Project Effective QA Configuration → Document/Execution Instance**. A lower level may only configure what the level above explicitly permits.
+
+**Onboarding:** Sign Up → Subscribe → Create Organisation → **Organisation QA Setup** → Create/Operate Projects. Every organisation must have a published QA Operating Model, but manual configuration is not required to get there — selecting a TestFlow-provided starting preset (Standard QA recommended, Lightweight QA, Controlled QA, or Custom Setup) satisfies setup immediately (ORG-QA-DEC-013). The exact contents of each preset are a future product-definition task, except that Standard QA is conceptually grounded in TestFlow's existing approved default behaviour wherever compatible with the new model (ORG-QA-DEC-014).
+
+**First-class system entities** (fixed platform semantics, not configurable document types): Requirement, Test Case, Test Suite, Test Run, Execution Result, Defect. Their content may include organisation-configurable fields where TestFlow permits; their core relationships and execution/traceability behaviour remain platform-controlled (ORG-QA-DEC-003).
+
+**Built-in configurable QA documents:** Test Report and Regression Report. Organisations configure their templates. Arbitrary custom document types (e.g., Performance/Security/UAT Test Report, Release QA Sign-off, Checklist) are documented as possible future expansions only, not an MVP commitment (ORG-QA-DEC-003).
+
+**Template System:** supersedes the previous narrow "pre-population blob" template concept. Templates define a structured, field-level schema distinguishing TestFlow-protected system fields (record identity, tenant/project ownership, execution semantics, traceability, versioning, audit/history) from organisation-configurable fields. TestFlow provides sensible default templates; organisations are not required to start from a blank canvas (ORG-QA-DEC-005, ORG-QA-DEC-006, §18 of the impact analysis).
+
+**Document workflow / approval:** bounded to a small set of parameterized shapes — No Approval, Single Approval, Review + Approval — not a generic workflow/BPM engine. The existing self-service Draft → Approved → Needs Review behaviour is the No-Approval default; organisations may opt into a stronger shape (ORG-QA-DEC-001, ORG-QA-DEC-004).
+
+**Quality Gates:** a separate concern from document workflow. TestFlow evaluates a bounded, TestFlow-understood catalogue of gate conditions (e.g., required artifacts completed, required approvals recorded, minimum coverage, no unresolved Critical defects) that an organisation selects/configures; a document's workflow/approval state can be a gate condition's input without report/document approval itself becoming a generic blocking mechanism (ORG-QA-DEC-002, ORG-QA-DEC-010).
+
+**Project policy & inheritance:** projects inherit the organisation's published QA Operating Model by default; overrides are not automatic, require organisation-designated overridability, permission, and are audited; the effective configuration for a project must always be identifiable (ORG-QA-DEC-008).
+
+**Versioning:** published configuration (templates, workflows, policy, quality gates) is immutable once published; changes publish as a new version; historical documents remain interpretable against the version applicable when created; no silent retroactive mutation, no automatic migration of historical documents (ORG-QA-DEC-009).
+
+**Permissions:** the existing three-role model (Admin, QA Manager, QA Tester) is retained; QA-configuration authority (draft/publish templates, configure workflow/policy, approve documents, perform permitted overrides) is layered on via explicit permission checkpoints, not a custom-role builder (ORG-QA-DEC-011).
+
+**AI:** generation must target and validate against the applicable published template/configuration before the mandatory human-review/save step; AI must not bypass workflow, permissions, or governance (ORG-QA-DEC-012).
+
+**Design status:** the approved visual design direction (`docs/design/design-direction.md`, `docs/design/design-system.md`) remains valid; the Dashboard and Test Case Management screens remain representative references. Any hard-coded fields/statuses shown in those references are illustrative pending formal configuration-backed specification — no design documents are modified by this pivot.
+
+**Deferred to Functional Requirements:** the exact configuration catalogue (which QA rules are configurable and their options), template field types/properties, workflow states/transitions/permissions, quality-gate catalogue and calculation rules, and the precise content of each starting preset. This section establishes the capability and its boundaries, not the detailed specification.
+
+## 19. Open Questions / Decisions Still Required
 - What happens to an organisation's data/access at the end of the trial if the user never subscribes and never returns (long-term dormant/unpaid organisations) — is there a data retention or deletion policy?
 - Can a trial-capped seat limit (3 seats) be reached exactly, or is there any warning before the cap blocks a new invitation, similar to paid-plan seat blocking?
 - Is there any upper limit on how many seats can be purchased in a single transaction (proactive or blocked-invitation-triggered)?
@@ -295,3 +349,11 @@ QA teams manually author large volumes of test cases, and typically manage requi
 - What is the organisation name uniqueness policy at sign-up — must names be globally unique, or can duplicates exist across organisations?
 - What is the session expiry/duration policy for logged-in users?
 - Can QA Tester view the organisation member list, or is that restricted to Admin/QA Manager only?
+- **Exact content of the Standard QA, Lightweight QA, and Controlled QA presets** — deferred to Functional Requirements (ORG-QA-DEC-014).
+- **Exact template field-type palette, field properties, and validation rules** for the Template System — deferred to Functional Requirements (ORG-QA-DEC-005).
+- **Exact document-workflow states, transition rules, and approver-role assignment** for the No Approval / Single Approval / Review + Approval shapes — deferred to Functional Requirements (ORG-QA-DEC-004).
+- **Exact quality-gate condition catalogue and calculation rules** — deferred to Functional Requirements (ORG-QA-DEC-010).
+- **Exact set of project-policy settings organisations may mark overridable** — deferred to Functional Requirements (ORG-QA-DEC-008).
+- **Exact Defect Severity default label set and how organisations remap display labels** — deferred to Functional Requirements (ORG-QA-DEC-007).
+- **Exact permission checkpoints and role assignment for QA-configuration actions** (draft/publish/configure/override) — deferred to Functional Requirements (ORG-QA-DEC-011).
+- **Whether Organisation QA Setup blocks project creation entirely, or projects can exist against an implicit default before setup is explicitly completed** — flagged, not resolved, at this layer.

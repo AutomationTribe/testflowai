@@ -437,7 +437,7 @@ This log records product decisions explicitly approved during product definition
 
 ---
 
-## PD-039 — Report Approval Is Record-Keeping Only
+## PD-039 — Report Approval Is Record-Keeping Only — **GENERALIZED BY PD-050**
 
 **Decision:** A BA/PO approving or rejecting a report via their access link is a record-keeping action only. It does not trigger, gate, or block any other action or workflow in the system.
 
@@ -447,7 +447,9 @@ This log records product decisions explicitly approved during product definition
 
 **Product Impact:** Reporting & Dashboards, Link-Based Access.
 
-**Status:** Approved
+**Current Status Note (Organisation QA Operating Model pivot):** This decision's *default* behaviour is retained exactly as written — report approval still does not, by itself, trigger, gate, or block anything. What changes is that "workflow gating logic" is no longer categorically unapproved: an organisation may now configure a **Quality Gate** (a separate concept from document workflow, PD-050) that reads this approval record as one of its input conditions (e.g., "Release Ready requires an approved Test Report"). The gate — not report approval itself — becomes the blocking mechanism, so this decision's core principle (approval ≠ automatic gate) is preserved, not reversed.
+
+**Status:** Generalized — record-only default retained; gate-dependency layer added by PD-050 (see below)
 
 ---
 
@@ -563,7 +565,7 @@ This log records product decisions explicitly approved during product definition
 
 ---
 
-## PD-048 — Test Case Approval Simplified: No QA Manager Gate, Self-Service Approval Only (Supersedes PD-006, PD-007, PD-035, PD-036)
+## PD-048 — Test Case Approval Simplified: No QA Manager Gate, Self-Service Approval Only (Supersedes PD-006, PD-007, PD-035, PD-036) — **GENERALIZED BY PD-049**
 
 **Decision:** The QA Manager approval gate for test cases is removed entirely. Any user with edit access to a test case (QA Tester, QA Manager, or Admin) can set its status directly to "Approved" at any time, regardless of any per-project workflow setting — there is no separate submission/review/reject cycle. The test case status model is simplified to three states: **Draft → Approved → Needs Review**. Editing an Approved test case (directly, or via the requirement-edit re-review trigger, PD-033) reverts it to Needs Review; the user reviews and re-approves it themselves when ready. "Pending Approval" no longer exists as a status, and there is no QA Manager rejection action. QA Manager commenting on a test case (PD-006's original commenting capability) is retained as optional feedback, not a gate.
 
@@ -572,5 +574,237 @@ This log records product decisions explicitly approved during product definition
 **Alternatives Considered:** Keep the QA-Manager-gated workflow as configurable per project (original PD-006 model, now replaced). Keep a four-state model with Pending Approval retained but no reviewer role (considered and rejected as an unnecessary intermediate state once there is no reviewer to pend for).
 
 **Product Impact:** Test Cases, Approvals, QA Workflow Configuration (the per-project `approval_workflow_enabled` setting is removed), User Roles (QA Manager's role description no longer includes approving test cases), Requirements (PD-033's re-review trigger is unaffected — it still reverts an Approved test case to Needs Review). **This decision supersedes PD-006, PD-007, PD-035, and PD-036.**
+
+**Current Status Note (Organisation QA Operating Model pivot):** This decision's *behaviour* is retained exactly as written and is now the **Standard QA / default workflow shape ("No Approval")** under the Organisation QA Operating Model (see PD-049). It is no longer stated as the *only* behaviour every organisation must use — an organisation may configure a stronger workflow shape (Single Approval or Review + Approval) instead. The clause "regardless of any per-project workflow setting" is superseded: workflow setting now determines whether this self-service behaviour applies. Historical record preserved above unchanged; PD-049 is the current governing decision for approval configurability.
+
+**Status:** Generalized — self-service behaviour retained as the default; configurability layer added by PD-049 (see below)
+
+---
+
+# Organisation QA Operating Model — Approved Product Pivot (PD-049 through PD-063)
+
+**Context:** The following decisions formalize the approved Organization QA Operating Model pivot (see `docs/product/requirements-change-log.md` for the full pivot record, and the prior read-only impact analysis for the reasoning/options behind each). Core principle: *"Organizations should be able to define and govern their QA operating model within TestFlow while TestFlow retains stable system semantics required for core test-management functionality."* These decisions are product-definition-layer only — none of them yet change Functional Requirements, database, API, architecture, user flows, or design documentation; each defers exact specification to a future Functional Requirements pass, as noted.
+
+## PD-049 — Configurable Test Case Approval; Self-Service Remains the Default (ORG-QA-DEC-001; Generalizes PD-048)
+
+**Decision:** Organisations may configure test case approval behaviour as part of their QA Operating Model, chosen from the bounded workflow shapes established in PD-052. The previous self-service-only behaviour (PD-048: Draft → Approved → Needs Review, any editor may approve) remains available and is the **default/lightweight ("No Approval") shape** — it is not removed. Organisations may instead opt into Single Approval or Review + Approval for test cases.
+
+**Reason:** The impact analysis identified a direct conflict between the newly clarified governance principle (organisations should be able to require test case approval) and the recently-approved PD-048 (which removed approval gating entirely). Resolving in favour of "PD-048 as default, configurable stronger option available" preserves the deliberate recent simplification for organisations who want it, while enabling the governance capability for organisations who need it.
+
+**Alternatives Considered:** Fully reopen PD-048 and make approval-gating unconditionally configurable with no special-cased default (rejected — would silently discard a recent, deliberate product simplification without preserving it as an option). Leave PD-048 completely unconfigurable and reject the governance requirement (rejected — conflicts with the approved core principle).
+
+**Product Impact:** Test Cases, QA Operating Model, Product Decisions (annotates PD-048).
+
+**Status:** Approved
+
+---
+
+## PD-050 — Document Workflow and Quality Gates Are Separate Concerns (ORG-QA-DEC-002; Generalizes PD-039)
+
+**Decision:** Document/record workflow (a document's lifecycle/approval state) and Quality Gates (organisation-configured conditions for release/readiness) are formally separate product concepts. A document's approval, by itself, never automatically blocks or triggers another action. An organisation may configure a Quality Gate that depends on a document's workflow state (e.g., "Release Ready requires an approved Test Report") — the gate evaluator reads that state; the document workflow itself remains non-blocking by default. This preserves PD-039's record-only default for report approval while allowing gate-dependent behaviour where an organisation explicitly configures it.
+
+**Reason:** Prevents the governance principle from silently reversing PD-039 (which deliberately decoupled report approval from any blocking behaviour), while still enabling the real governance value described in the clarified model (organisations that want approval to matter for release readiness can configure that, explicitly, via a gate).
+
+**Alternatives Considered:** Make report/document approval itself capable of blocking downstream actions directly (rejected — conflates two concerns and reverses PD-039 without an explicit, scoped mechanism).
+
+**Product Impact:** Reporting & Dashboards, Quality Gates (new capability), Product Decisions (annotates PD-039).
+
+**Status:** Approved
+
+---
+
+## PD-051 — First-Class System Entities vs. Built-In Configurable QA Documents (ORG-QA-DEC-003)
+
+**Decision:** Requirement, Test Case, Test Suite, Test Run, Execution Result, and Defect remain TestFlow-controlled, first-class system entities — not generic/configurable document types. Their core relationships and execution/traceability/versioning behaviour remain platform-controlled; their content may include organisation-configurable fields where TestFlow permits (see PD-054). Test Report and Regression Report are approved as **built-in configurable QA document types** — organisations configure their templates, but the document types themselves are TestFlow-defined, not user-created. Arbitrary organisation-defined custom document types (e.g., Performance/Security/UAT Test Report, Release QA Sign-off, Checklist) are deferred as future expansion only and are not an MVP commitment.
+
+**Reason:** Preserves the execution/traceability/historical-integrity guarantees that depend on these six entities' specific, non-generic shape, while giving organisations real document-configurability where it doesn't threaten that integrity. Avoids the "generic form builder" trap explicitly flagged as a risk in the impact analysis.
+
+**Alternatives Considered:** Make every entity, including Test Case/Test Run/Defect, a configurable document type (rejected — would threaten NFR-DI-001-class historical-accuracy guarantees and the versioning/snapshot model). Support arbitrary custom document types at MVP (rejected — unbounded scope, no approved requirement calls for it yet).
+
+**Product Impact:** Requirements, Test Cases, Test Suites, Test Runs, Execution Results, Defects, Reporting, QA Operating Model.
+
+**Status:** Approved
+
+---
+
+## PD-052 — Bounded Workflow Shapes, Not a Generic Workflow/BPM Engine (ORG-QA-DEC-004)
+
+**Decision:** MVP document-workflow configurability is limited to a small, fixed set of parameterized workflow shapes: **No Approval, Single Approval, Review + Approval**. Exact states, transition rules, and approver-role assignment per shape are deferred to Functional Requirements. A generic, arbitrary state-machine/workflow builder is explicitly out of scope for MVP.
+
+**Reason:** Delivers the governance value organisations need (the ability to require review/approval) without building a general-purpose BPM engine — directly following the impact analysis's recommendation and the explicit instruction to avoid that complexity trap.
+
+**Alternatives Considered:** Fully generic, arbitrary workflow builder (rejected for MVP — unjustified complexity, open-ended scope, high implementation/maintenance risk).
+
+**Product Impact:** QA Operating Model, Test Cases, Reporting (Test Report/Regression Report workflow).
+
+**Status:** Approved
+
+---
+
+## PD-053 — Structured Template Field Model (ORG-QA-DEC-005)
+
+**Decision:** The Template System (see PD-009's org-scoping, generalized here) supports a structured, field-level document schema — not merely a pre-population blob. Organisations may add/remove configurable fields, rename configurable/display labels, reorder fields, configure field options, and configure required/optional behaviour and validation, within a bounded field-type palette. Advanced capabilities — calculated fields and field-level edit permissions — are explicitly deferred, not MVP. Exact field types/properties are deferred to Functional Requirements.
+
+**Reason:** The previous template model (`database.md` §5, `templates.md`) was found materially insufficient for the clarified governance principle. A bounded field model delivers real configurability without the complexity of calculated fields or per-field permission graphs, which the impact analysis flagged as disproportionate for MVP.
+
+**Alternatives Considered:** Full field palette including calculated fields and field-level edit permissions at MVP (rejected — deferred as future expansion, real but uncertain value against real complexity).
+
+**Product Impact:** Template Management (generalized), Test Cases, Reporting, AI Test Generation.
+
+**Status:** Approved
+
+---
+
+## PD-054 — Protected System Fields vs. Configurable Fields — Formal Boundary (ORG-QA-DEC-006)
+
+**Decision:** TestFlow owns and protects fields required for record identity, tenant ownership, project relationships, execution semantics, traceability, versioning, audit/history, and platform integrity. Organisations cannot remove or redefine the underlying semantics of these fields. All other fields — business-content fields, and any field TestFlow explicitly exposes as configurable — are organisation-configurable. The Template System (PD-053) must clearly distinguish protected/system fields from configurable fields wherever templates are authored.
+
+**Reason:** Establishes the conceptual boundary the clarified model requires, protecting the platform guarantees (execution, traceability, versioning, audit) that the rest of the product depends on, while giving organisations genuine control over the rest.
+
+**Alternatives Considered:** Not explicitly discussed as an alternative — this boundary is foundational to the approved core principle and has no reasonable alternative within it.
+
+**Product Impact:** Template Management, Database integrity (future re-baseline), Audit/History, all first-class system entities.
+
+**Status:** Approved
+
+---
+
+## PD-055 — Defect Severity vs. Priority Model (ORG-QA-DEC-007)
+
+**Decision:** Defect Severity carries stable, TestFlow-controlled semantic levels — **Critical, High, Medium, Low** — so that reporting and Quality Gates can reason consistently across organisations. Organisations may configure the *display label* mapped to each semantic level (e.g., Critical → "S1 Showstopper") but cannot destroy or redefine the underlying semantic mapping where it's used by system functionality (e.g., a gate condition keyed to "no unresolved Critical defects"). Defect Priority and Test Case Priority are organisation-configurable fields, with no TestFlow-mandated semantic mapping. Priority and Severity are explicitly not treated as equivalent concepts.
+
+**Reason:** Closes a gap flagged twice previously (design-system phase, impact analysis) — neither field existed at all in the approved schema. The Severity/Priority split reflects that release-readiness logic needs a stable axis to reason about (Severity), while triage ordering is legitimately organisation-specific (Priority).
+
+**Alternatives Considered:** Treat Priority and Severity as one field (rejected — explicitly against the clarified model's instruction and conflates two different concerns). Make Severity fully organisation-configurable with no stable semantics (rejected — would break Quality Gate conditions that need to reason about severity consistently).
+
+**Product Impact:** Defects, Test Cases, Reporting, Quality Gates, Template Management.
+
+**Status:** Approved
+
+---
+
+## PD-056 — Project Policy Inheritance and Bounded Overrides (ORG-QA-DEC-008)
+
+**Decision:** Projects inherit the organisation's published QA Operating Model by default. Project-level overrides are not automatically allowed — the organisation determines which settings are overridable at all. Where override is permitted: only authorized roles may exercise it, the override is explicit (never implicit/silent), it is audited, and the project's effective configuration must remain identifiable at all times. The organisation may also lock a setting to forbid override entirely. The MVP override surface is intentionally kept limited (a small number of policy toggles, not every setting).
+
+**Reason:** Gives organisations real flexibility for legitimate project-level variation (e.g., a higher-risk project needing a stricter gate) without the complexity and audit burden of unlimited, ungoverned overrides.
+
+**Alternatives Considered:** Unlimited, unaudited project overrides (rejected — explicitly named as a risk to avoid in the impact analysis and clarified prompt). No overrides permitted at all (rejected — too rigid for real organisational variation, e.g., across project risk levels).
+
+**Product Impact:** Project Management, QA Operating Model, Audit/History, Permissions.
+
+**Status:** Approved
+
+**Terminology clarification (CHANGE-001 product-model refinement, no behavior change):** this decision already expresses the approved model exactly — a Project does not own an independent QA process. State it precisely as **inheritance with explicit exceptions**: a Project inherits a specific published Organisation QA Operating Model version (PD-057/PD-063); "override" here means a **Project Exception** — an explicit, bounded, permission-controlled, audited deviation from that inherited version, never a second, independently-governed configuration. The **Effective Project QA Process** is always resolved as *inherited Organisation QA Process + permitted Project Exceptions*, never described as the project "having its own QA process." This annotation does not change PD-056's decision, MVP override surface, or any approved behavior — it fixes terminology drift risk across FR/API/architecture/user-flow documents.
+
+---
+
+## PD-057 — Immutable Published Configuration Versions (ORG-QA-DEC-009)
+
+**Decision:** Published QA configuration — templates, workflows, organisation QA policy, project-effective configuration, and quality gates — is versioned and immutable once published. Changes are prepared separately (as a draft) and published as a new version; the previous version is never mutated in place. Existing documents retain the configuration/template version applicable when they were created and remain historically interpretable against it, regardless of later publishes. New projects/documents use the currently applicable published configuration per the inheritance rules (PD-056). Automatic migration of historical documents onto a newer version is explicitly not built.
+
+**Reason:** Protects historical reporting and audit integrity — directly analogous to, and reusing the proven precedent of, the existing Test Case Version / Test Run Snapshot model (NFR-DI-001) that already guarantees this kind of historical accuracy elsewhere in the product.
+
+**Alternatives Considered:** Allow published templates/workflows to mutate in place, retroactively affecting existing documents (rejected — explicitly named as a must-not-promise in the clarified model; would silently corrupt historical reporting/auditability).
+
+**Product Impact:** Template Management, QA Operating Model, Reporting, Audit/History, Database (future re-baseline).
+
+**Status:** Approved
+
+---
+
+## PD-058 — Bounded Quality Gate Catalogue, Not an Open-Ended Rules Engine (ORG-QA-DEC-010)
+
+**Decision:** Quality Gates are approved as a TestFlow capability for MVP, built from a bounded, TestFlow-understood catalogue of gate conditions (e.g., required QA artifacts completed, required approvals completed, minimum requirement coverage achieved, required regression activity completed, no unresolved Critical defects, no unresolved release-blocking defects). Organisations choose/configure which supported conditions apply; they cannot compose arbitrary new conditions or logic. The exact gate catalogue and calculation rules are deferred to Functional Requirements. A generic, open-ended rules language/engine is explicitly out of scope for MVP.
+
+**Reason:** Delivers the release-readiness governance value described in the clarified model — likely the single highest-leverage new capability — without the complexity, performance risk, and maintenance burden of a general rules engine.
+
+**Alternatives Considered:** Open-ended, organisation-composable rule logic (rejected for MVP — explicitly named as a risk/trap to avoid).
+
+**Product Impact:** Reporting & Dashboards, QA Operating Model, Test Reports, Defects, Requirements/Traceability.
+
+**Status:** Approved
+
+---
+
+## PD-059 — Existing Role Model Retained; Permission Checkpoints, Not Custom Roles (ORG-QA-DEC-011)
+
+**Decision:** The existing three-role organisation model (Admin, QA Manager, QA Tester) is retained as the basis for QA-configuration authority. Fully custom/configurable roles and permissions remain a Non-Goal (PRD §4), unaffected by this pivot. Instead, explicit permission checkpoints are layered onto the existing roles for configuration/governance actions — e.g., configure QA process, draft templates, publish configuration/templates, configure policies, approve documents, perform a permitted project override. Exact role-to-permission mappings are deferred to Functional Requirements.
+
+**Reason:** Delivers the governance-permission granularity the clarified model requires without reopening the fully-custom-roles Non-Goal, which the impact analysis confirmed remains sound and low-risk to preserve.
+
+**Alternatives Considered:** Reopen fully custom/configurable roles and permissions to support this (rejected — explicitly instructed not to, and unjustified complexity relative to the fixed-role-plus-checkpoints approach).
+
+**Product Impact:** User Roles, Permissions, QA Operating Model, Template Management.
+
+**Status:** Approved
+
+---
+
+## PD-060 — AI Generation Must Be Configuration-Aware (ORG-QA-DEC-012)
+
+**Decision:** AI-generated test cases must be generated against the organisation's applicable published Test Case template and validated against it (required fields, allowed field structure, configured options, organisation terminology) before being offered for the existing mandatory human-review/save step (NFR-AI-004, unchanged). AI must not bypass workflow, permissions, or governance. This principle is intended to extend to future AI-generated configurable QA documents where that capability is separately approved, but that extension is not itself an MVP commitment here.
+
+**Reason:** Without this, AI generation would produce output inconsistent with an organisation's configured document structure, undermining the entire Template System. Extends, rather than replaces, the existing AI-review safeguards (NFR-AI-004, CLAUDE.md rules 13/16).
+
+**Alternatives Considered:** Keep AI generation producing a single fixed structure regardless of organisation template (rejected — directly contradicts the approved core principle and would produce output inconsistent with the organisation's configured document, requiring manual restructuring on every generation).
+
+**Product Impact:** AI Test Generation, Template Management, Test Cases.
+
+**Status:** Approved
+
+---
+
+## PD-061 — Organisation QA Setup Is Conceptually Mandatory but Instantly Satisfiable via Preset (ORG-QA-DEC-013)
+
+**Decision:** Every organisation must have a published QA Operating Model — Organisation QA Setup is conceptually mandatory as an onboarding step (Sign Up → Subscribe → Create Organisation → **Organisation QA Setup** → Create/Operate Projects). However, manual configuration is not mandatory: selecting a TestFlow-provided starting preset (Standard QA — recommended default, Lightweight QA, Controlled QA, or Custom Setup) satisfies Organisation QA Setup immediately. Onboarding must not require a lengthy configuration wizard before first value.
+
+**Reason:** Balances the governance principle (every organisation operates under *some* published QA Operating Model, never an undefined one) against the product's existing bias toward fast time-to-first-project, which a mandatory manual wizard would directly undermine.
+
+**Alternatives Considered:** Fully mandatory manual configuration before any project work (rejected — high onboarding friction, contrary to existing fast-activation product bias). Fully optional/deferred setup with no default in effect (rejected — leaves organisations with an undefined QA Operating Model, contrary to the governance principle).
+
+**Product Impact:** Onboarding, Organisation Setup, QA Operating Model.
+
+**Status:** Approved
+
+---
+
+## PD-062 — Standard QA Preset Is Grounded in Existing Approved Behaviour Where Compatible (ORG-QA-DEC-014)
+
+**Decision:** The Standard QA preset's conceptual foundation is the currently approved TestFlow default behaviour (self-service test case approval per PD-048/PD-049, record-only report approval per PD-039/PD-050, single Test Report with Post-Deployment section per PD-038, existing project/role/link model), carried forward wherever it remains compatible with the newly approved model. Where an existing decision conflicts with the new model (e.g., PD-048's "regardless of any workflow setting" clause), the preset reflects the *generalized*, current decision, not the original unconditional wording. The exact full contents of Standard QA, Lightweight QA, and Controlled QA remain a future product-definition task.
+
+**Reason:** Maximizes retention of already-completed, carefully-considered product design work rather than discarding it, while being explicit that compatibility — not blind copying — governs what carries forward.
+
+**Alternatives Considered:** Design Standard QA from scratch with no reference to existing decisions (rejected — wastes substantial completed, approved design work with no benefit). Copy every existing decision verbatim into the preset regardless of conflicts (rejected — would reintroduce exactly the conflicts PD-049/PD-050 were created to resolve).
+
+**Product Impact:** Onboarding, QA Operating Model, all superseded/generalized decisions listed above.
+
+**Status:** Approved
+
+---
+
+## PD-063 — Configuration Hierarchy (Formal Structure)
+
+**Decision:** The following four-level configuration hierarchy is formally approved as a foundational product structure: **Level 1 — TestFlow System Semantics; Level 2 — Organisation QA Operating Model; Level 3 — Project Effective QA Configuration; Level 4 — Document/Execution Instance.** A lower level may only configure what the level immediately above it explicitly permits. Effective configuration at any level must always be determinable. Overrides must be explicit, never implicit. Historical records must remain interpretable against the configuration version applicable when they were created. Applicable configuration versions must be traceable.
+
+**Reason:** Gives every other decision in this pivot (PD-049 through PD-062) a single, consistent structural frame, and gives Functional Requirements/database/API design a clear governing principle to build against rather than an ad-hoc collection of independent rules.
+
+**Alternatives Considered:** Leave the hierarchy implicit across the individual decisions above (rejected — the impact analysis and clarified model both treat this hierarchy as a named, foundational structure, not an incidental byproduct; recording it formally avoids future inconsistency).
+
+**Product Impact:** Every module touched by this pivot — Organisation & Project Management, QA Operating Model, Template Management, Reporting, AI Test Generation, Permissions, Audit/History.
+
+**Status:** Approved
+
+---
+
+## PD-064 — Methodology-Neutral QA Scope (CHANGE-002)
+
+**Decision:** TestFlow does not model or enforce Scrum, Kanban, Waterfall, Agile, SAFe, or any other development/delivery methodology as a governed system concept — no methodology enum, engine, or configuration surface is introduced. Where an actual QA artifact genuinely needs contextual scoping, TestFlow instead provides lightweight, methodology-neutral **QA Scope** metadata: Test Report and Regression Report may each optionally carry a **scope value** (free text, e.g., "Sprint 17," "System Testing," "September Production Verification") and an optional scope date range. Separately, an organisation may optionally define its **preferred scope terminology** (e.g., "Sprint," "Iteration," "Phase," "Cycle," "Testing Window") — this is purely descriptive UI copy, used only to label the scope field; it must never alter application behaviour, gate evaluation, or any other system logic. No Delivery Cycle, Test Cycle, Sprint, Iteration, Phase, or Release entity is introduced. QA Scope is document-instance metadata, not part of QA Operating Model draft/publish versioning (PD-057/PD-063) — changing a scope value or an organisation's preferred terminology is not a governance/publish event. Project Readiness (FR-QG-003) remains evaluated at the Project level only, using current live data; it is not made scope-aware, and no per-scope/per-cycle readiness is introduced. Test Runs remain independent execution containers (PD-034/PD-037), structurally unrelated to QA Scope — a Test Run is never equated with a Sprint, cycle, or scope.
+
+**Reason:** An in-progress visual design surfaced an accidental Scrum/Sprint assumption ("Sprint Test Report," "Sprint Readiness"). Impact analysis (CHANGE-002) found the approved underlying model already methodology-neutral in requirements, database, API, and architecture — the one gap was that QA Documents had no neutral way to express *what period or slice of work* they cover. Modelling "methodology" itself would add a taxonomy with no behavioural consumer anywhere in the approved requirement set, and risks turning TestFlow into project-management software (a stated non-goal) or silently reintroducing the Release-entity complexity already deliberately rejected for Readiness (FR-QG-003, AD-023).
+
+**Alternatives Considered:** A governed Scrum/Kanban/Waterfall methodology enum with per-methodology behaviour (rejected — no requirement branches on methodology; pure speculative generality, and a fixed enum would itself remain too restrictive for hybrid/custom delivery approaches). A first-class Delivery Cycle/Test Cycle entity (rejected — no requirement needs to query, join, or manage lifecycle across scopes; would reintroduce the Release-entity complexity already rejected for Readiness). Scope-aware/per-cycle Project Readiness (rejected — contradicts FR-QG-003's approved on-demand, Project-level, no-persisted-result design). Equating Test Run with Sprint/cycle (rejected — a Sprint or Waterfall phase may contain many Test Runs, and Kanban may have none; the two concepts are independent).
+
+**Product Impact:** Reporting (Test Report, Regression Report), Organisation QA Operating Model (descriptive setting only), Project Readiness (explicitly unaffected), Test Runs (explicitly unaffected), Quality Gates (unchanged).
 
 **Status:** Approved

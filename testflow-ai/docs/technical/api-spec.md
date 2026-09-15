@@ -1,7 +1,7 @@
 # TestFlow AI — API Specification (Shared Conventions)
 
 **Source documents:** vision.md, prd.md, product-decisions.md, functional-requirements.md, non-functional-requirements.md, architecture.md, architecture-decisions.md, database.md, database-decisions.md, schema.sql (all approved), plus the API decisions approved during API design review (see `api-decisions.md`).
-**Status:** Approved — reflects only explicitly approved decisions.
+**Status:** Approved — reflects only explicitly approved decisions. **Re-baselined for CHANGE-001 (Organisation QA Operating Model) — see `api-decisions.md` APID-010 through APID-020 and the new module documents `qa-configuration.md`, `templates.md` (rewritten), `workflows.md`, `project-policy.md`, `quality-gates.md`, `severity-priority.md`.**
 **Scope:** This document defines the rules shared by every TestFlow AI API. Individual endpoints are documented per module in `docs/technical/api/`. No backend code, controllers, routes, or middleware are implemented by this document.
 
 ---
@@ -69,12 +69,13 @@ Every authenticated request resolves its target resource's Organisation ID serve
 ## Filtering
 
 Only filters with clear approved meaning are supported, and only on indexed fields (matching `database.md`'s Index Strategy):
-- Test cases: `status` (`draft`/`approved`/`needs_review`), `requirementId` (traced/untraced), `suiteId`.
+- Test cases: `metaState` (CHANGE-001, renamed from `status` — `draft`/`in_review`/`submitted_for_approval`/`approved`/`needs_review`), `requirementId` (traced/untraced), `suiteId`, `priorityOptionId` (CHANGE-001, FR-TC-011).
 - Test runs: `status` (`open`/`closed`/`cancelled_archived`).
-- Defects: `status` (`open`/`pending`/`closed`/`removed`).
+- Defects: `status` (`open`/`pending`/`closed`/`removed`), `severity` (CHANGE-001, FR-DEF-007 — stable semantic value only, never a display label), `priorityOptionId` (CHANGE-001, FR-DEF-008).
 - Requirements: `status` (`active`/`archived`).
+- Reports/Regression Reports: `metaState` (CHANGE-001).
 
-No filter is provided for concepts that don't exist in the approved model (priority, assignee, tags) — adding one would be inventing scope.
+**Dynamic/configurable-field filtering boundary (CHANGE-001, §34 of the task):** organisation-configured fields (`configurableFieldValues`, `templates.md`) are **not** filterable at MVP, beyond the two special-cased typed columns above (Test Case Priority, Defect Severity/Priority) which exist specifically because they're recognized concepts with real typed/indexed storage (DBD-010, DBD-020). This is a deliberate boundary, not an oversight — arbitrary server-side filtering over every organisation-defined field would require either a generic query-builder (out of scope) or per-field indexes that don't exist. No filter is provided for any other configurable-field content, or for any concept that doesn't exist in the approved model — adding one would be inventing scope.
 
 ## Sorting
 
@@ -109,15 +110,19 @@ Simple case-insensitive substring match on a resource's `title`/`name` field onl
 | An approved usage/rate limit is exceeded (AI generation, once a limit is defined — currently an open item, see `non-functional-requirements.md`) | 429 | `rate_limited` |
 | Unexpected server-side failure | 500 | `internal_error` |
 
+**CHANGE-001 domain error codes** (all still use the shared envelope above — no new error shape is introduced, APID-007 unchanged): `CONFIGURATION_DRAFT_ALREADY_EXISTS`, `CONFIGURATION_INVALID`, `CONFIGURATION_NOT_PUBLISHED`, `PUBLISHED_VERSION_IMMUTABLE`, `TEMPLATE_VALIDATION_FAILED`, `REQUIRED_FIELD_MISSING`, `UNKNOWN_FIELD`, `FIELD_NOT_ACTIVE`, `INVALID_FIELD_VALUE`, `INVALID_FIELD_OPTION`, `INVALID_ENTITY_REFERENCE`, `INVALID_STEP_TABLE_STRUCTURE`, `FIELD_NOT_PERMITTED_ON_TEMPLATE_VERSION`, `WORKFLOW_ACTION_NOT_ALLOWED`, `APPROVAL_REQUIRED_FOR_EXECUTION`, `PROJECT_SETTING_LOCKED`, `QUALITY_GATE_CONFIGURATION_INVALID`. Each is documented in its owning module (`qa-configuration.md`, `templates.md`, `workflows.md`, `project-policy.md`, `quality-gates.md`, `test-cases.md`, `defects.md`) alongside the `error`/HTTP-status it maps to (`validation_error`/422 for the field- and configuration-shape codes; `invalid_state`/409 for `WORKFLOW_ACTION_NOT_ALLOWED`, `APPROVAL_REQUIRED_FOR_EXECUTION`, `PROJECT_SETTING_LOCKED`, `PUBLISHED_VERSION_IMMUTABLE`, `CONFIGURATION_DRAFT_ALREADY_EXISTS`; `not_found`/404 for `CONFIGURATION_NOT_PUBLISHED`).
+
 `401` vs. `403` are always kept distinct (never collapsed), since the system has both login-based and link-based access and the distinction matters for both client handling and security review.
 
 ## Concurrency
 
-**APID-003 (approved):** optimistic concurrency on Test Case and Requirement edits — the two resources whose edits trigger meaningful side effects (approval-status reversion, PD-048; re-review cascade, PD-033), making a silent overwrite worse than an ordinary CRUD conflict. Every `GET` of a Test Case or Requirement returns a `version` field (Test Case: `currentVersionNumber`, already part of the resource; Requirement: a new response-only `revisionToken` derived from `lastEditedAt`, since requirements don't version per DBD-004). The corresponding `PATCH` must include the same value it read; a mismatch returns `409 conflict` rather than silently applying the edit over someone else's. Other resources (test suites, templates, projects) do not carry this mechanism at MVP — no approved requirement flags a comparable risk there, and adding it everywhere would be unjustified complexity.
+**APID-003 (approved):** optimistic concurrency on Test Case and Requirement edits — the two resources whose edits trigger meaningful side effects (approval-status reversion, PD-048; re-review cascade, PD-033), making a silent overwrite worse than an ordinary CRUD conflict. Every `GET` of a Test Case or Requirement returns a `version` field (Test Case: `currentVersionNumber`, already part of the resource; Requirement: a new response-only `revisionToken` derived from `lastEditedAt`, since requirements don't version per DBD-004). The corresponding `PATCH` must include the same value it read; a mismatch returns `409 conflict` rather than silently applying the edit over someone else's. Other resources (test suites, projects) do not carry this mechanism at MVP — no approved requirement flags a comparable risk there, and adding it everywhere would be unjustified complexity.
+
+**APID-013 (approved, CHANGE-001):** the same optimistic-concurrency pattern extends to **QA Configuration drafts and Template drafts** (`qa-configuration.md`, `templates.md`), using an `If-Match: <version>` request header rather than a body field (since these are edited via `PATCH`/`POST` sub-resource calls, not a single resource `PATCH`) — a mismatch returns `409 conflict`, identically to Test Case/Requirement. Two QA Managers editing the same draft is the same "lost update" risk APID-003 already addresses, now extended to configuration/template editing rather than inventing a second, unrelated mechanism (see §28 of the API re-baseline task). No live-collaboration/co-editing feature is introduced. Published versions carry no concurrency token at all — they're immutable, so there's nothing to conflict over (a mutation attempt against one is simply rejected outright, `PUBLISHED_VERSION_IMMUTABLE`, not a concurrency conflict).
 
 ## Idempotency
 
-**APID-006 (approved):** an `Idempotency-Key` request header is honored on: `POST /v1/organisations/{orgId}/subscription/*`, `POST /v1/organisations/{orgId}/seats`, `POST /v1/requirements/{id}/ai-generations`, `POST /v1/projects/{id}/test-runs`, `POST /v1/projects/{id}/reports`. If the same key is replayed within a reasonable window, the original result is returned rather than the action repeating. This protects against double-charging a customer (subscription/seat purchases) and against double-triggering an expensive AI generation or report compilation on a retried/double-clicked request.
+**APID-006 (approved):** an `Idempotency-Key` request header is honored on: `POST /v1/organisations/{orgId}/subscription/*`, `POST /v1/organisations/{orgId}/seats`, `POST /v1/requirements/{id}/ai-generations`, `POST /v1/projects/{id}/test-runs`, `POST /v1/projects/{id}/reports`, `POST /v1/projects/{id}/regression-reports` (CHANGE-001), `POST /v1/organisations/{orgId}/qa-configuration/draft/publish` (CHANGE-001, APID-013), `POST /v1/templates/{templateId}/draft/publish` (CHANGE-001, APID-013). If the same key is replayed within a reasonable window, the original result is returned rather than the action repeating. This protects against double-charging a customer (subscription/seat purchases), double-triggering an expensive AI generation or report compilation, and — new under CHANGE-001 — double-publishing a configuration or template version on a retried/double-clicked request.
 
 ## Asynchronous Operations
 

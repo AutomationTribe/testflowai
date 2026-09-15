@@ -1,0 +1,55 @@
+/*
+ * Design-system foundation tokens (Step 8). Only values explicitly approved in
+ * docs/design/design-system.md §3.1 are hard-coded here. Semantic status colours
+ * (§3.2) are deliberately NOT invented — they are pending product confirmation.
+ * Dark-theme token values are deferred (design-system.md does not specify them yet);
+ * the `data-theme` attribute hook is wired so dark/system mode can be added later
+ * without restructuring the app shell.
+ */
+:root {
+  --color-primary: #001f47;
+  --color-primary-container: #02346d;
+  --color-surface-low: #f4f3f9;
+  --color-outline-variant: #c3c6d1;
+
+  --color-surface: #ffffff;
+  --color-text: #14181f;
+  --color-text-muted: #4c5566;
+
+  --font-ui: var(--font-ui-family, 'Hanken Grotesk'), system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --sidebar-width-expanded: 220px;
+  --sidebar-width-collapsed: 56px;
+}
+
+/* Reserved for future dark-theme values once approved (design-system.md §19). */
+[data-theme='dark'] {
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--color-surface-low);
+  color: var(--color-text);
+  font-family: var(--font-ui);
+}
+
+button,
+input {
+  font-family: inherit;
+}

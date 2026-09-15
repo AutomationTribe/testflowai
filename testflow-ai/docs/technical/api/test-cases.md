@@ -1,22 +1,39 @@
 # API — Test Case Management
 
-**Module:** TC. See `docs/technical/api-spec.md` for shared conventions. Test Case Templates are documented in `templates.md`; Test Suites in `test-suites.md`; AI generation in `ai.md`.
+**Module:** TC. See `docs/technical/api-spec.md` for shared conventions. The Template System is documented in `templates.md`; workflow shape configuration and action endpoints in `workflows.md`; Test Suites in `test-suites.md`; AI generation in `ai.md`.
+
+**CHANGE-001 summary:** `approvalStatus` is replaced by `workflowState`/`availableActions` (see `workflows.md`); `templateId` selection on create is removed (the server resolves the project's applicable Test Case template automatically, since template selection is not project-overridable, FR-POL-003); `priority` and organisation-configurable fields are added.
 
 ---
 
 ## Create Test Case
 
-**Requirement IDs:** FR-TC-001, FR-TC-006, FR-TC-008, FR-TC-010.
-**Purpose:** Author a new test case, manually or from a template.
+**Requirement IDs:** FR-TC-001, FR-TC-006, FR-TC-008, FR-TC-010, FR-TC-011, FR-TPL-009.
+**Purpose:** Author a new test case, manually or from AI-generated content, against the project's applicable Test Case template.
 **Actor/Permission:** QA Tester, QA Manager, Admin (with project access).
 **Method and Path:** `POST /projects/{projectId}/test-cases`
-**Request:** Path: `projectId`. Body: `title`, `steps` (structured), `expectedResults` (structured), `requirementId` (optional), `templateId` (optional — pre-populates `steps`/`expectedResults`; no ongoing link to the template is kept after creation).
-**Successful Response:** `201 Created` — the test case (`approvalStatus: draft`, `currentVersionNumber: 1`, `isAiGenerated: false`).
-**Business Rules:** Requirement link is optional (PD-005). Template content is copied at creation time only — later template edits never retroactively affect this test case.
-**Error Conditions:** `403 forbidden`; `404 not_found` (project/requirement/template); `409 conflict` (project archived); `422 validation_error`.
+**Request:** Path: `projectId`. Body: `title`, `steps` (structured), `expectedResults` (structured), `requirementId` (optional), `priorityOptionId` (optional — must be an active option on the field the applicable template defines for Priority, `templates.md`), `configurableFieldValues` (optional object, keyed by `fieldKey`, validated against the applicable template version — see `templates.md`'s Field-Type Contract). **No `templateId` field is accepted** — the server resolves the project's currently applicable, published Test Case template version itself (via the project's pinned `qaConfigurationVersionId`, `project-policy.md`), since template selection is not a client choice at MVP (FR-POL-003).
+**Successful Response:** `201 Created` — the test case, including `documentTemplateVersionId` (the resolved version, for client transparency — see `templates.md` to fetch its field definitions if needed), `workflowState`/`availableActions` (`workflows.md`), `currentVersionNumber: 1`, `isAiGenerated: false`.
+**Business Rules:** Requirement link is optional (PD-005). `configurableFieldValues` is validated field-by-field against the resolved template version before creation succeeds — an unknown `fieldKey`, an inactive field, a missing required field, a wrong-shaped value, or an invalid dropdown/entity-link reference all reject the whole request (no partial creation) — see Error Conditions.
+**Error Conditions:** `403 forbidden`; `404 not_found` (project/requirement); `409 conflict` (project archived); `422 validation_error` with `fields` identifying each problem, using the field-value error codes below.
 **Side Effects:** Creates data.
 **Audit Behaviour:** Reasonable to log (not on the strict FR-AUD-001 minimum list).
-**Security Considerations:** `approvalStatus`, `currentVersionNumber`, `isAiGenerated` are never client-writable on create — server-computed only.
+**Security Considerations:** `workflowState`, `currentVersionNumber`, `isAiGenerated`, `documentTemplateVersionId` are never client-writable on create — server-computed only.
+
+### Configurable Field Value Errors
+
+`422 validation_error`, `fields` entries use these codes (§9 of the task):
+
+| Code | Meaning |
+|---|---|
+| `REQUIRED_FIELD_MISSING` | A required configurable field (per the applicable template version) was omitted |
+| `UNKNOWN_FIELD` | `configurableFieldValues` includes a `fieldKey` not defined on the applicable template version |
+| `FIELD_NOT_ACTIVE` | The field exists but is deactivated (`isActive: false`) on the applicable template version |
+| `INVALID_FIELD_VALUE` | Wrong type/shape for the field's `fieldType` (e.g. a string where `number` is expected) |
+| `INVALID_FIELD_OPTION` | `dropdown`/`multi_select` value (or `priorityOptionId`) references an unknown or inactive `optionKey` |
+| `INVALID_ENTITY_REFERENCE` | `entity_link` value doesn't resolve to an existing, same-organisation record of the field's `targetType` |
+| `INVALID_STEP_TABLE_STRUCTURE` | (Applies to `steps`/`expectedResults` directly, not `configurableFieldValues` — `step_table` fields render these system columns, `templates.md` §Field-Type Contract) malformed step structure |
+| `FIELD_NOT_PERMITTED_ON_TEMPLATE_VERSION` | A value was supplied for a field that exists on a *different* template version than the one resolved for this record (stale client state — re-fetch the applicable template) |
 
 ---
 
@@ -26,9 +43,9 @@
 **Purpose:** List and filter test cases within a project.
 **Actor/Permission:** Any member with project access.
 **Method and Path:** `GET /projects/{projectId}/test-cases`
-**Request:** Path: `projectId`. Query: pagination, `?status=draft|approved|needs_review`, `?requirementId={id}|none` (traced/untraced filter), `?suiteId={id}`, `?q=` (title search).
+**Request:** Path: `projectId`. Query: pagination, `?metaState=draft|in_review|submitted_for_approval|approved|needs_review` (CHANGE-001: renamed from `status`, same underlying filter concept, now spanning all workflow shapes — not just the pre-pivot 3-value set), `?requirementId={id}|none` (traced/untraced filter), `?suiteId={id}`, `?priorityOptionId={id}` (CHANGE-001, FR-TC-011), `?q=` (title search).
 **Successful Response:** `200 OK` — list of test cases.
-**Business Rules:** None beyond project access.
+**Business Rules:** None beyond project access. `metaState` and `priorityOptionId` are filterable because both are typed, indexed columns (`test_cases.current_meta_state`, `test_cases.priority_option_id` — `database.md` §12, NFR-DYN-002); no other configurable field is filterable at MVP (see §34 of the task's boundary, restated in `api-spec.md`'s Filtering section).
 **Error Conditions:** `403 forbidden`.
 **Side Effects:** None.
 
@@ -50,20 +67,21 @@
 
 ## Edit Test Case
 
-**Requirement IDs:** FR-TC-002, FR-TC-003.
-**Purpose:** Update a test case's content or set its approval status directly (self-service, PD-048).
-**Actor/Permission:** QA Tester, QA Manager, Admin (with project access) — any of these may set `approvalStatus` to `approved`; there is no QA-Manager-only gate.
+**Requirement IDs:** FR-TC-002, FR-TC-003, FR-TC-005, FR-TC-011.
+**Purpose:** Update a test case's content, priority, or configurable field values. Under the `no_approval` workflow shape only, also set its status directly (self-service, PD-048/PD-049); under a stronger shape, status changes go through `workflows.md`'s bounded action endpoints instead.
+**Actor/Permission:** QA Tester, QA Manager, Admin (with project access).
 **Method and Path:** `PATCH /test-cases/{testCaseId}`
-**Request:** Path: `testCaseId`. Body: any of `title`/`steps`/`expectedResults` (content edit), or `approvalStatus: "approved"` (direct self-service approval) — `currentVersionNumber` (required, APID-003 concurrency token).
-**Successful Response:** `200 OK` — updated test case, reflecting new `approvalStatus` and, if a "significant" content edit occurred (a full replacement of `steps` and `expectedResults` together — DBD-003), an incremented `currentVersionNumber`.
+**Request:** Path: `testCaseId`. Body: any of `title`/`steps`/`expectedResults` (content edit), `priorityOptionId`, `configurableFieldValues` (partial — only the keys being changed), or — **only when the project's Test Case workflow shape is `no_approval`** — `setApproved: true` (direct self-service approval, equivalent to the pre-pivot `approvalStatus: "approved"` PATCH). `currentVersionNumber` (required, APID-003 concurrency token).
+**Successful Response:** `200 OK` — updated test case, reflecting the new `workflowState`/`availableActions` (`workflows.md`) and, if a "significant" content edit occurred (a full replacement of `steps` and `expectedResults` together — DBD-003), an incremented `currentVersionNumber`.
 **Business Rules:**
-- If the test case is currently `approved` and its content is edited, it reverts to `needs_review` (PD-048) — regardless of edit size.
-- A "significant" edit (full content replacement) creates a new Test Case Version; a partial edit (e.g., one field) mutates the current version in place with no history.
-- Setting `approvalStatus: "approved"` is available from `draft` or `needs_review`, by any user with edit access — no reviewer gate, no restriction to the original creator.
-**Error Conditions:** `403 forbidden`; `404 not_found`; `409 conflict` (`currentVersionNumber` mismatch — concurrent edit; or test case archived); `422 validation_error`.
-**Side Effects:** Changes data; may create a Test Case Version; may change `approvalStatus`; creates an audit entry.
+- If the test case is currently `approved` (any shape) and its content is edited, it reverts to `needs_review` (PD-048/PD-049) — regardless of edit size or workflow shape.
+- A "significant" edit (full content replacement) creates a new Test Case Version, freezing `documentTemplateVersionId`/`priorityOptionId`/`configurableFieldValues` at that moment; a partial edit mutates the current version in place with no history (unchanged from pre-pivot).
+- `setApproved: true` is rejected with `422 validation_error` (`WORKFLOW_ACTION_NOT_ALLOWED`) if the project's Test Case workflow shape is `single_approval` or `review_approval` — the client must use `POST /test-cases/{id}/workflow/submit`/`approve` instead (`workflows.md`). This is the direct implementation of §10's "do not let clients directly set protected workflow meta-state" beyond the one shape where it's genuinely equivalent to today's approved self-service behaviour.
+- `priorityOptionId`/`configurableFieldValues` are validated against the test case's `documentTemplateVersionId` exactly as at creation (same error codes as Create Test Case above).
+**Error Conditions:** `403 forbidden`; `404 not_found`; `409 conflict` (`currentVersionNumber` mismatch — concurrent edit; or test case archived); `422 validation_error` (content/field-value errors, or `setApproved` attempted under a shape that doesn't support it).
+**Side Effects:** Changes data; may create a Test Case Version; may change `workflowState`; creates an audit entry.
 **Audit Behaviour:** Audited (status changes are explicitly a minimum action, FR-AUD-001).
-**Security Considerations:** `isAiGenerated` and the AI generation link are never client-writable via this endpoint.
+**Security Considerations:** `isAiGenerated`, the AI generation link, and `documentTemplateVersionId` are never client-writable via this endpoint.
 
 ---
 
@@ -88,7 +106,7 @@
 **Actor/Permission:** Any member with project access.
 **Method and Path:** `GET /test-cases/{testCaseId}/versions/{versionNumber}`
 **Request:** Path: `testCaseId`, `versionNumber`.
-**Successful Response:** `200 OK` — read-only version snapshot (`steps`, `expectedResults`, `createdAt`) — no `approvalStatus` (that belongs to the live test case, not a frozen version).
+**Successful Response:** `200 OK` — read-only version snapshot (`steps`, `expectedResults`, `documentTemplateVersionId`, `priorityOptionId`, `configurableFieldValues`, `createdAt`) — no `workflowState` (that belongs to the live test case, not a frozen version, same principle as the pre-pivot `approvalStatus` exclusion here).
 **Business Rules:** None.
 **Error Conditions:** `404 not_found` (test case or that specific version number).
 **Side Effects:** None.
@@ -132,7 +150,7 @@
 **Method and Path:** `POST /test-cases/{testCaseId}/archive`
 **Request:** Path: `testCaseId`.
 **Successful Response:** `200 OK` — test case with `recordStatus: archived`.
-**Business Rules:** Archiving is separate from `approvalStatus` — an archived test case retains whatever approval status it last had.
+**Business Rules:** Archiving is separate from `workflowState` — an archived test case retains whatever workflow meta-state it last had.
 **Error Conditions:** `403 forbidden`; `409 conflict` (already archived).
 **Side Effects:** Test case becomes read-only.
 **Audit Behaviour:** Reasonable to log.

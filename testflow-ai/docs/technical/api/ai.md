@@ -8,15 +8,15 @@
 
 ## Trigger Generation
 
-**Requirement IDs:** FR-AI-001, FR-AI-005, NFR-AI-001, NFR-AI-007.
-**Purpose:** Ask the AI to draft a full set of test cases from a requirement.
+**Requirement IDs:** FR-AI-001, FR-AI-005, FR-AI-006, NFR-AI-001, NFR-AI-007, NFR-AI-010, NFR-CFG-004.
+**Purpose:** Ask the AI to draft a full set of test cases from a requirement, structured to the project's applicable Test Case template.
 **Actor/Permission:** QA Tester, QA Manager, Admin (with project access).
 **Method and Path:** `POST /requirements/{requirementId}/ai-generations`
-**Request:** Path: `requirementId`. Body: none beyond the requirement reference — no free-text task description field is accepted; generation is requirement-scoped only for MVP (FR-AI-005). Header: `Idempotency-Key` (APID-006).
+**Request:** Path: `requirementId`. Body: none beyond the requirement reference — no free-text task description field, and **no `templateId`/`templateVersionId` field** (CHANGE-001): the server resolves the requirement's project → pinned QA Configuration Version → applicable Test Case template version itself (`templates.md`, `qa-configuration.md`), the same server-side resolution `test-cases.md`'s Create Test Case uses. Generation is requirement-scoped only for MVP (FR-AI-005). Header: `Idempotency-Key` (APID-006).
 **Successful Response:** `202 Accepted` — `{ "id": "...", "status": "requested" }`. Generation is asynchronous, not returned synchronously (APID-005).
-**Business Rules:** Only the selected requirement's content is sent to the configured AI provider (platform key or project key, FR-AI-003/FR-AI-004) — no other project data is included in the generation request (NFR-AI-007).
+**Business Rules:** Only the selected requirement's content is sent to the configured AI provider (platform key or project key, FR-AI-003/FR-AI-004) — no other project data, and no raw template internals, are included in the generation request (NFR-AI-007). The resolved `documentTemplateVersionId` is recorded on the generation request for traceability (NFR-AI-010) but is not itself sent to the provider as free text — only the field labels/types the model needs to structure output correctly.
 **Error Conditions:** `403 forbidden`; `404 not_found` (requirement); `409 conflict` (requirement archived); `503 internal_error`-equivalent (no AI provider configured/available — degrades gracefully per NFR-AI-003, does not 500).
-**Side Effects:** Schedules a background job (AD-009); creates an AI Generation Request record.
+**Side Effects:** Schedules a background job (AD-009); creates an AI Generation Request record, now including `qaConfigurationVersionId` and `documentTemplateVersionId` (CHANGE-001, `database.md` §12.3).
 **Audit Behaviour:** Not on the strict minimum list; reasonable to log the trigger event.
 **Security Considerations:** No customer data beyond the requirement's own content is transmitted to the provider (NFR-PRIV-001).
 
@@ -24,13 +24,13 @@
 
 ## Check Generation Status / Retrieve Drafts
 
-**Requirement IDs:** NFR-AI-002, FR-AI-002.
-**Purpose:** Poll for completion and retrieve draft candidates for review.
+**Requirement IDs:** NFR-AI-002, FR-AI-002, FR-AI-006, NFR-AI-010.
+**Purpose:** Poll for completion and retrieve draft candidates for review, already validated against the applicable template.
 **Actor/Permission:** Same as trigger.
 **Method and Path:** `GET /ai-generations/{generationId}`
 **Request:** Path: `generationId`.
-**Successful Response:** `200 OK` — `status` (`requested` | `succeeded` | `failed` | `timed_out`) and, if `succeeded`, the array of draft test cases (`title`, `steps`, `expectedResults`) — returned in the response body only, **never persisted as real Test Case rows** at this point.
-**Business Rules:** A request exceeding 60 seconds is surfaced as `timed_out` with a retry option (NFR-AI-002), not left pending indefinitely.
+**Successful Response:** `200 OK` — `status` (`requested` | `succeeded` | `failed` | `timed_out`), `documentTemplateVersionId` (CHANGE-001, the version candidates were generated/validated against — client transparency, §25 of the task), and, if `succeeded`, the array of draft test cases — each with `title`/`steps`/`expectedResults` plus `configurableFieldValues`/`priorityOptionId` shaped to that template version — returned in the response body only, **never persisted as real Test Case rows** at this point. Each draft also carries a `templateValidation` object: `{ "valid": true, "errors": [] }` (or populated `errors`, same shape as `templates.md`'s validate endpoint) — CHANGE-001/FR-AI-006, so a reviewer sees which fields need attention before saving, rather than discovering a rejection only at save time.
+**Business Rules:** A request exceeding 60 seconds is surfaced as `timed_out` with a retry option (NFR-AI-002), not left pending indefinitely. Template validation happens server-side before candidates are ever returned in this response (FR-AI-006) — an invalid candidate is still shown (never silently dropped), but flagged, so the reviewer can fix it during the mandatory review step rather than losing the AI's work entirely.
 **Error Conditions:** `404 not_found`; `403 forbidden`.
 **Side Effects:** None (read-only poll).
 **Notes:** Drafts are visibly/textually distinguishable from saved test cases wherever the client displays them (NFR-AI-005) — a client-side/UX concern noted here for traceability, not something this endpoint's contract itself enforces beyond simply never mixing draft and saved data in the same resource shape.
@@ -39,14 +39,14 @@
 
 ## Save Selected Drafts as Test Cases
 
-**Requirement IDs:** FR-AI-002, NFR-AI-004, FR-TC-010, NFR-AI-006.
+**Requirement IDs:** FR-AI-002, FR-AI-006, NFR-AI-004, FR-TC-010, FR-TC-011, NFR-AI-006.
 **Purpose:** The mandatory human-review gate — convert reviewed (and possibly edited) drafts into real, saved test cases.
 **Actor/Permission:** Same as trigger.
 **Method and Path:** `POST /ai-generations/{generationId}/test-cases`
-**Request:** Path: `generationId`. Body: array of drafts to keep, each with final (possibly human-edited) `title`/`steps`/`expectedResults`. Drafts not included in this array are implicitly discarded — no separate "reject" call is needed or provided.
-**Successful Response:** `201 Created` — the newly created Test Case resources (`isAiGenerated: true`, `currentVersionNumber: 1`).
-**Business Rules:** This is the **only** path by which AI-generated content becomes a real Test Case (NFR-AI-004, structurally enforced, matching AD-009 — there is no shortcut). Discarded drafts are never persisted anywhere, in any table.
-**Error Conditions:** `422 validation_error` (malformed draft content); `403 forbidden`; `404 not_found` (generation not found, or already fully consumed); `409 conflict` (generation not yet `succeeded`).
+**Request:** Path: `generationId`. Body: array of drafts to keep, each with final (possibly human-edited) `title`/`steps`/`expectedResults`/`configurableFieldValues`/`priorityOptionId`. Drafts not included in this array are implicitly discarded — no separate "reject" call is needed or provided.
+**Successful Response:** `201 Created` — the newly created Test Case resources (`isAiGenerated: true`, `currentVersionNumber: 1`, `documentTemplateVersionId` matching the generation's resolved version).
+**Business Rules:** This is the **only** path by which AI-generated content becomes a real Test Case (NFR-AI-004, structurally enforced, matching AD-009 — there is no shortcut). Discarded drafts are never persisted anywhere, in any table. **This endpoint re-runs the same field-value validation as Create Test Case** (`test-cases.md`'s Configurable Field Value Errors) on every draft being saved — a draft flagged invalid at poll time (`templateValidation.valid: false`) that the reviewer did not fix is rejected here with the same `422 validation_error` codes, never silently saved incomplete. AI must not bypass workflow: each saved test case starts in its workflow's normal initial meta-state (`draft`), exactly as a manually authored one would — there is no "AI-approved" shortcut.
+**Error Conditions:** `422 validation_error` (malformed draft content, or unresolved template validation errors — same codes as `test-cases.md`); `403 forbidden`; `404 not_found` (generation not found, or already fully consumed); `409 conflict` (generation not yet `succeeded`).
 **Side Effects:** Creates one or more Test Case rows, each retaining a permanent link back to this Generation Request (NFR-AI-006 — source traceability survives later edits).
 **Audit Behaviour:** Reasonable to log (test case creation).
 **Security Considerations:** The response never includes internal provider details (raw prompt text, if ever logged internally) — only the fields the approved data model stores.

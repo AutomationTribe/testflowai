@@ -2,6 +2,10 @@
 
 ---
 
+**CHANGE-001 — GENERALIZE.** UXF-010 is unchanged in its core execution semantics (Pass/Fail/Blocked/Skipped remain a fixed set, never replaced by configurable workflow status). It gains one addendum: **UXF-026 — Execution Eligibility at Test Run Time**, in `13-qa-operating-model-and-governance.md`, which governs the case where the organisation's workflow restricts execution of not-yet-approved Test Cases. Test Case **workflow state** (Draft/pending-review/pending-approval/Approved) and **execution result** (Pass/Fail/Blocked/Skipped) remain two distinct concepts and must never be presented as one status field.
+
+---
+
 ## UXF-010 — Test Run Creation & Execution
 
 **Priority:** Critical MVP
