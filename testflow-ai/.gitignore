@@ -16,3 +16,5 @@ e2e/playwright/.cache/
 
 .DS_Store
 npm-debug.log*
+.neon
+.mcp.json

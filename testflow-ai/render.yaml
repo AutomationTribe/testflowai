@@ -1,0 +1,62 @@
+## Render Blueprint for TestFlow (staging/beta — $0 hosting, no custom domain).
+## Database is external (Neon PostgreSQL) — DATABASE_URL is set as a plain env
+## var below (sync: false, i.e. set manually in the Render dashboard), not a
+## Render-managed Postgres instance.
+##
+## Both services build from the monorepo root, since this is an npm workspace
+## (backend/, frontend/, e2e/) with no per-service subdirectory build story yet.
+##
+## After first deploy: set the backend service's CORS_ORIGIN to the frontend's
+## real onrender.com URL, and the frontend service's NEXT_PUBLIC_API_BASE_URL to
+## the backend's real onrender.com URL, then trigger a redeploy of each (this is
+## a one-time chicken-and-egg step since neither URL exists until the other
+## service has deployed once).
+
+services:
+  - type: web
+    name: testflow-backend
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace backend
+    # Runs once per deploy, before the new instance takes traffic — safe home for
+    # the idempotent migration runner (backend/src/db/migrate.ts tracks applied
+    # migrations in schema_migrations, so re-running on every deploy is a no-op
+    # once a migration has already been applied).
+    preDeployCommand: npm run migrate --workspace backend
+    startCommand: npm run start --workspace backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false # set manually — Neon connection string, never committed
+      - key: CORS_ORIGIN
+        sync: false # set manually once the frontend service's URL is known
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM_ADDRESS
+        sync: false
+      - key: E2E_FAKE_PAYMENTS
+        value: 'false' # must never be true in production — see backend/src/app.ts's double-gate
+
+  - type: web
+    name: testflow-frontend
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace frontend
+    startCommand: npm run start --workspace frontend
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NEXT_TELEMETRY_DISABLED
+        value: '1'
+      - key: NEXT_PUBLIC_API_BASE_URL
+        sync: false # set manually once the backend service's URL is known — baked in at BUILD time
+      - key: NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: NEXT_PUBLIC_E2E_FAKE_PAYMENTS
+        value: 'false'
