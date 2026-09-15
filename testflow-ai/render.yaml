@@ -19,12 +19,19 @@ services:
     plan: free
     region: oregon
     buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace backend
-    # Runs once per deploy, before the new instance takes traffic — safe home for
-    # the idempotent migration runner (backend/src/db/migrate.ts tracks applied
-    # migrations in schema_migrations, so re-running on every deploy is a no-op
-    # once a migration has already been applied).
-    preDeployCommand: npm run migrate --workspace backend
-    startCommand: npm run start --workspace backend
+    # Render's free tier does not support preDeployCommand (paid-tier-only
+    # feature) — the safest free-tier-compatible equivalent is chaining the
+    # migration into startCommand with `&&`, which runs on every boot (every
+    # deploy, and every cold start after the free tier's idle-sleep). This is
+    # safe because the migration runner (backend/src/db/migrate.ts) is
+    # idempotent — it tracks applied migrations in schema_migrations and
+    # re-running it is a no-op once a migration has already been applied.
+    # `&&` also gives the required safety property for free: `migrate`
+    # exits non-zero on failure (see migrate.ts's catch block), which
+    # short-circuits the command — `start` never runs and Render marks the
+    # deploy/boot as failed rather than serving traffic against an
+    # unmigrated or partially-migrated database.
+    startCommand: npm run migrate --workspace backend && npm run start --workspace backend
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
