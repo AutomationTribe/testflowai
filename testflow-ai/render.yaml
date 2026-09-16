@@ -11,6 +11,19 @@
 ## with `"workspaces"` — without it, `npm install --workspaces` runs against
 ## the repo root's stray package.json and fails with "No workspaces found!".
 ##
+## Both services' buildCommand runs `npm install` with NPM_CONFIG_PRODUCTION=false.
+## This is required because NODE_ENV=production (set as an envVar below) makes
+## npm skip devDependencies during install — but devDependencies here include
+## typescript, @types/node, @types/express, @types/pg, @types/bcryptjs (backend
+## tsc build) and typescript (frontend `next build`, needed to resolve the `@/*`
+## tsconfig path alias). Without this override, both builds fail: the backend
+## with dozens of `Cannot find name 'process'/'console'` TS errors, and the
+## frontend with `Module not found: Can't resolve '@/components/...'` — this
+## happened on a real deploy attempt. NPM_CONFIG_PRODUCTION=false only affects
+## `npm install`'s dependency selection; NODE_ENV=production still applies at
+## runtime (Express/Next.js production behavior), so this doesn't change what
+## ships, only what's available at build time.
+##
 ## After first deploy: set the backend service's CORS_ORIGIN to the frontend's
 ## real onrender.com URL, and the frontend service's NEXT_PUBLIC_API_BASE_URL to
 ## the backend's real onrender.com URL, then trigger a redeploy of each (this is
@@ -24,7 +37,7 @@ services:
     plan: free
     region: oregon
     rootDir: testflow-ai
-    buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace backend
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm install --workspaces --include-workspace-root && npm run build --workspace backend
     # Render's free tier does not support preDeployCommand (paid-tier-only
     # feature) — the safest free-tier-compatible equivalent is chaining the
     # migration into startCommand with `&&`, which runs on every boot (every
@@ -61,7 +74,7 @@ services:
     plan: free
     region: oregon
     rootDir: testflow-ai
-    buildCommand: npm install --workspaces --include-workspace-root && npm run build --workspace frontend
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm install --workspaces --include-workspace-root && npm run build --workspace frontend
     startCommand: npm run start --workspace frontend
     envVars:
       - key: NODE_ENV

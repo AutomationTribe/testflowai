@@ -43,6 +43,18 @@ This runs on **every boot** — every deploy, and every cold start after the fre
 
 **Failure safety:** `migrate.ts` exits non-zero on failure (its `catch` block calls `process.exit(1)`), which short-circuits the `&&` — `npm run start` never runs, so the backend cannot come up against an unmigrated or partially-migrated database. Render observes the overall process exiting non-zero and marks the boot as failed rather than routing traffic to it. Verified directly: pointing `DATABASE_URL` at an unreachable database and running the exact chained command confirms `start` is never invoked and the process exits 1.
 
+## devDependencies must install despite NODE_ENV=production
+
+Both services set `NODE_ENV=production` as a runtime env var, but that same variable is visible to `npm install` during the build — and npm skips `devDependencies` when `NODE_ENV=production` unless told otherwise. That broke a real deploy: the backend build failed with dozens of `Cannot find name 'process'/'console'` TypeScript errors (missing `@types/node`, `@types/express`, `@types/pg`, `@types/bcryptjs`), and the frontend build failed with `Module not found: Can't resolve '@/components/...'` (missing `typescript`, needed for Next.js to resolve the `@/*` path alias from `tsconfig.json`).
+
+Fix: both `render.yaml` build commands now run `npm install` with `NPM_CONFIG_PRODUCTION=false` prefixed, e.g.:
+
+```
+NPM_CONFIG_PRODUCTION=false npm install --workspaces --include-workspace-root && npm run build --workspace backend
+```
+
+This only overrides `npm install`'s dependency selection — `NODE_ENV=production` still applies at runtime for both Express and Next.js. Verified locally by reproducing both exact failures with `NODE_ENV=production npm install` (devDependencies missing, both builds fail identically to Render's logs), then confirming both builds succeed with `NPM_CONFIG_PRODUCTION=false` added.
+
 ## Environment variables
 
 See `render.yaml` for the full list per service. Values marked `sync: false` must be set manually in the Render dashboard (Neon connection string, Paystack/Resend keys, and the cross-referenced URLs from step 2 above) — never committed.
