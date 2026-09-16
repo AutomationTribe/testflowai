@@ -31,3 +31,20 @@ test('Flow E — login routes a subscribed user to the QA Setup boundary', { tag
   await page.waitForURL('**/app');
   await expect(page.getByRole('heading', { name: 'TestFlow' })).toBeVisible();
 });
+
+test('Flow E — after sign out, /app is re-blocked even via direct navigation (session invalidated server-side, not just client state)', { tag: ['@critical', '@regression'] }, async ({ page }) => {
+  const user = uniqueUser();
+  await signUp(page, user);
+  await page.goto('/subscription');
+  await page.getByRole('button', { name: 'Start Free Trial' }).click();
+  await page.waitForURL('**/subscription/success**');
+
+  await page.goto('/app');
+  await signOut(page);
+
+  // A fresh direct navigation (not the client redirecting itself) — proves the
+  // server actually destroyed the session (NFR-SEC-002), not merely that the
+  // frontend cleared its own in-memory state.
+  await page.goto('/app');
+  await expect(page).toHaveURL(/\/login/);
+});

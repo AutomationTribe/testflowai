@@ -215,6 +215,21 @@ describe('subscription domain', () => {
     expect(replay.body.duplicate).toBe(true);
   });
 
+  it('rejects a webhook with no signature header at all (distinct from an invalid one)', async () => {
+    const event = chargeEvent('charge.success', 'ref_no_sig', {
+      amount: 100,
+      metadata: { organisationId: '00000000-0000-0000-0000-000000000000', planType: 'monthly', seatCount: '1', usdAmountCents: '100' },
+    });
+
+    const res = await request(app)
+      .post('/v1/webhooks/payments')
+      .set('Content-Type', 'application/json')
+      .send(JSON.stringify(event));
+
+    expect(res.status).toBe(400);
+    expect(res.body.message).toMatch(/missing signature/i);
+  });
+
   it('rejects a forged webhook (invalid signature) and performs no side effects', async () => {
     const { organisationId } = await signUpAndGetCookie();
     const event = chargeEvent('charge.success', 'ref_forged', {
@@ -274,5 +289,109 @@ describe('subscription domain', () => {
   it('rejects subscription access with no session at all', async () => {
     const res = await request(app).get('/v1/organisations/00000000-0000-0000-0000-000000000000/subscription');
     expect(res.status).toBe(401);
+  });
+
+  describe('POST /organisations/{orgId}/seats — FR-SUB-007/008', () => {
+    async function activatePaidPlan(organisationId: string, seatCount = 5) {
+      const event = chargeEvent('charge.success', `ref_seed_${organisationId}`, {
+        amount: 100,
+        metadata: { organisationId, planType: 'monthly', seatCount: String(seatCount), usdAmountCents: '5000' },
+      });
+      const res = await request(app)
+        .post('/v1/webhooks/payments')
+        .set('Content-Type', 'application/json')
+        .set('x-paystack-signature', 'valid')
+        .send(JSON.stringify(event));
+      expect(res.status).toBe(200);
+    }
+
+    it('rejects adding seats when there is no active subscription at all (409)', async () => {
+      const { cookie, organisationId } = await signUpAndGetCookie();
+      const res = await request(app)
+        .post(`/v1/organisations/${organisationId}/seats`)
+        .set('Cookie', cookie)
+        .send({ seatCount: 2 });
+      expect(res.status).toBe(409);
+    });
+
+    it('rejects adding seats while still on trial (must convert to paid first) (409)', async () => {
+      const { cookie, organisationId } = await signUpAndGetCookie();
+      await request(app).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
+
+      const res = await request(app)
+        .post(`/v1/organisations/${organisationId}/seats`)
+        .set('Cookie', cookie)
+        .send({ seatCount: 2 });
+      expect(res.status).toBe(409);
+    });
+
+    it('rejects an invalid seat quantity', async () => {
+      const { cookie, organisationId } = await signUpAndGetCookie();
+      await activatePaidPlan(organisationId);
+
+      const res = await request(app)
+        .post(`/v1/organisations/${organisationId}/seats`)
+        .set('Cookie', cookie)
+        .send({ seatCount: 0 });
+      expect(res.status).toBe(422);
+    });
+
+    it('initializes a Paystack transaction for additional seats on an active monthly plan, at the plan rate', async () => {
+      const { cookie, organisationId } = await signUpAndGetCookie();
+      await activatePaidPlan(organisationId, 5);
+      initializeTransactionMock.mockClear();
+
+      const res = await request(app)
+        .post(`/v1/organisations/${organisationId}/seats`)
+        .set('Cookie', cookie)
+        .send({ seatCount: 3 });
+
+      expect(res.status).toBe(201);
+      expect(res.body).toMatchObject({ planType: 'monthly', seatCount: 3, amountCents: 3000 }); // 3 x $10.00
+      expect(initializeTransactionMock).toHaveBeenCalledWith(
+        expect.objectContaining({ amountCents: 3000, seatCount: 3, planType: 'monthly' }),
+      );
+    });
+
+    it('is idempotent under a repeated Idempotency-Key', async () => {
+      const { cookie, organisationId } = await signUpAndGetCookie();
+      await activatePaidPlan(organisationId, 5);
+      initializeTransactionMock.mockClear();
+      const key = 'seats-add-key-1';
+
+      const first = await request(app)
+        .post(`/v1/organisations/${organisationId}/seats`)
+        .set('Cookie', cookie)
+        .set('Idempotency-Key', key)
+        .send({ seatCount: 2 });
+      const replay = await request(app)
+        .post(`/v1/organisations/${organisationId}/seats`)
+        .set('Cookie', cookie)
+        .set('Idempotency-Key', key)
+        .send({ seatCount: 2 });
+
+      expect(first.status).toBe(201);
+      expect(replay.body).toEqual(first.body);
+      expect(initializeTransactionMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('rejects a request for another organisation\'s seats (tenant isolation, 404)', async () => {
+      const orgA = await signUpAndGetCookie({ email: 'seats-a@example.com', organisationName: 'Seats Org A' });
+      const orgB = await signUpAndGetCookie({ email: 'seats-b@example.com', organisationName: 'Seats Org B' });
+      await activatePaidPlan(orgB.organisationId);
+
+      const res = await request(app)
+        .post(`/v1/organisations/${orgB.organisationId}/seats`)
+        .set('Cookie', orgA.cookie)
+        .send({ seatCount: 2 });
+      expect(res.status).toBe(404);
+    });
+
+    it('rejects an unauthenticated request', async () => {
+      const res = await request(app)
+        .post('/v1/organisations/00000000-0000-0000-0000-000000000000/seats')
+        .send({ seatCount: 2 });
+      expect(res.status).toBe(401);
+    });
   });
 });
