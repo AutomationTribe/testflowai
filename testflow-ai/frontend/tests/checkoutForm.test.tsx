@@ -68,6 +68,26 @@ describe('CheckoutForm', () => {
     expect(onChoosePlanDifferently).toHaveBeenCalled();
   });
 
+  it('shows the same Payment unsuccessful banner (not an unhandled crash) when payWithPaystack REJECTS — e.g. the Paystack script fails to load', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    payWithPaystack.mockRejectedValueOnce(new Error('Could not load the payment provider. Please try again.'));
+    const onPaymentSubmitted = vi.fn();
+    const onChoosePlanDifferently = vi.fn();
+
+    render(<CheckoutForm {...baseProps} planType="monthly" amountCents={5000} onPaymentSubmitted={onPaymentSubmitted} onChoosePlanDifferently={onChoosePlanDifferently} />);
+    fireEvent.click(screen.getByRole('button', { name: /pay \$50\.00/i }));
+
+    expect(await screen.findByText('Payment unsuccessful')).toBeInTheDocument();
+    expect(screen.getByText('Could not load the payment provider. Please try again.')).toBeInTheDocument();
+    expect(onPaymentSubmitted).not.toHaveBeenCalled();
+
+    // Not stuck disabled/processing forever — same recoverable state as any other failure.
+    expect(screen.getByRole('button', { name: /pay \$50\.00/i })).not.toBeDisabled();
+    expect(errorSpy).toHaveBeenCalledWith('Paystack initialization failed', expect.any(Error));
+
+    errorSpy.mockRestore();
+  });
+
   it('never renders a tax/VAT line or a next-renewal date (neither is an approved concept)', () => {
     render(<CheckoutForm {...baseProps} onPaymentSubmitted={vi.fn()} onChoosePlanDifferently={vi.fn()} />);
     expect(screen.queryByText(/tax/i)).not.toBeInTheDocument();

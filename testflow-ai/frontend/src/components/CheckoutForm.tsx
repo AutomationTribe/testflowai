@@ -50,7 +50,23 @@ export function CheckoutForm({
     setSubmitting(true);
     setError(null);
 
-    const result = await payWithPaystack(accessCode);
+    let result: Awaited<ReturnType<typeof payWithPaystack>>;
+    try {
+      result = await payWithPaystack(accessCode);
+    } catch (err) {
+      // payWithPaystack rejects (rather than resolving { success: false, ... })
+      // when the Paystack script itself fails to load — e.g. an ad-blocker, a
+      // network hiccup, or Paystack's CDN being unreachable. That's a real
+      // payment-initialization failure, not a code bug, so it gets the exact
+      // same PaymentFailureBanner as a declined card or a cancelled popup
+      // (no new error UI pattern) rather than becoming an unhandled rejection.
+      // The real error is preserved (not swallowed) via console.error for
+      // diagnostics, while the banner shows a message the user can act on.
+      console.error('Paystack initialization failed', err);
+      setError(err instanceof Error ? err.message : 'Your payment could not be processed. Please try again.');
+      setSubmitting(false);
+      return;
+    }
 
     if (!result.success) {
       setError(result.message ?? 'Your payment could not be processed. Please try again.');

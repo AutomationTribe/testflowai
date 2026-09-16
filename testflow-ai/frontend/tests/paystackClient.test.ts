@@ -53,16 +53,16 @@ describe('payWithPaystack', () => {
     expect(result).toEqual({ success: false, message: 'Your payment could not be processed. Please try again.' });
   });
 
-  // KNOWN DEFECT (reported separately, not fixed here — see QA baseline report):
-  // when the Paystack script itself fails to load, `payWithPaystack` throws
-  // instead of resolving `{ success: false, message }` like every other failure
-  // path (cancel, provider onError). CheckoutForm.tsx's handlePay() has no
-  // try/catch around `await payWithPaystack(...)`, so this becomes an unhandled
-  // rejection in a React event handler — the user sees no PaymentFailureBanner at
-  // all, unlike a declined card or a cancelled popup. This test documents the
-  // CURRENT (defective) behaviour; it should be updated to assert a resolved
-  // `{ success: false, ... }` once the underlying bug is fixed.
-  it('[KNOWN DEFECT] currently REJECTS (does not resolve a friendly failure) if the Paystack script never loads', async () => {
+  // By design, payWithPaystack still REJECTS (rather than resolving
+  // { success: false, message }) when the Paystack script itself fails to load —
+  // unlike its onCancel/onError paths, which resolve because Paystack's own popup
+  // reported them. A script-load failure has no popup instance to report through,
+  // so it surfaces as a thrown error instead. This is safe: CheckoutForm.tsx's
+  // handlePay() now wraps the call in try/catch and shows the same
+  // PaymentFailureBanner as any other failure (see checkoutForm.test.tsx's
+  // "payWithPaystack REJECTS" case) — the fix lives at the call site, not by
+  // changing this function's contract.
+  it('rejects (rather than resolving a friendly failure) if the Paystack script never loads — handled by the caller', async () => {
     const appendChildSpy = vi.spyOn(document.body, 'appendChild').mockImplementation((node) => {
       const script = node as HTMLScriptElement;
       queueMicrotask(() => script.onerror?.(new Event('error')));
