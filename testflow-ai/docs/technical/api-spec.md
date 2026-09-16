@@ -4,6 +4,8 @@
 **Status:** Approved — reflects only explicitly approved decisions. **Re-baselined for CHANGE-001 (Organisation QA Operating Model) — see `api-decisions.md` APID-010 through APID-020 and the new module documents `qa-configuration.md`, `templates.md` (rewritten), `workflows.md`, `project-policy.md`, `quality-gates.md`, `severity-priority.md`.**
 **Scope:** This document defines the rules shared by every TestFlow AI API. Individual endpoints are documented per module in `docs/technical/api/`. No backend code, controllers, routes, or middleware are implemented by this document.
 
+**Machine-readable contract:** `docs/technical/api/openapi.yaml` is the maintained OpenAPI 3.0 contract for every endpoint that actually exists in `backend/src/modules` (CLAUDE.md rule 21). It must be updated whenever an endpoint is added or changed, and its request/response shapes verified against the real implementation — this document and the per-module files remain the narrative source of truth; the OpenAPI file is the machine-readable mirror of them, not a separate source. Swagger UI serves it at `/docs` outside production by default (`SWAGGER_UI_ENABLED`, `backend/src/config/env.ts`) — never exposed in production unless explicitly enabled.
+
 ---
 
 ## API Purpose

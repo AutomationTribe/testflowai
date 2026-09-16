@@ -1,6 +1,21 @@
 # Deployment
 
-**Status:** Staging/beta target defined (Render + Neon), not yet deployed. $0 hosting budget, no custom domain yet.
+**Status:** Deployed to Render + Neon (public staging/beta). $0 hosting budget, no custom domain yet.
+
+## Deployment gate
+
+The normal path from implementation to a live deployment (CLAUDE.md rule 20):
+
+```
+Implementation → Unit Tests → QA agent → Security agent → DevOps agent → Deployment → Smoke Verification
+```
+
+- **Unit tests** run and are reported as part of the implementation itself (CLAUDE.md rule 19).
+- **`qa` agent** (`.claude/agents/qa.md`) independently verifies the change — API/UI tests, regression coverage, critical-journey checks — ending in `QA STATUS: PASS | FAIL`.
+- **`security` agent** (`.claude/agents/security.md`) reviews the change for security issues before anything is deployed, ending in `SECURITY STATUS: PASS | PASS WITH WARNINGS | FAIL`.
+- **`devops` agent** (`.claude/agents/devops.md`) only then handles readiness checks, build, migration, deploy, health checks, and smoke tests — see its own test-failure approval gate for what happens if something fails at that stage.
+
+If QA or Security reports a failure, the agent explains exactly what failed, the deployment risk, and its recommendation — then explicitly asks the user whether to proceed anyway. No agent silently overrides a reported failure; the user is always the final deployment decision-maker.
 
 ## Topology
 

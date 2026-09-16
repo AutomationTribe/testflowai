@@ -19,6 +19,16 @@ const BACKEND_PORT = 4100;
 const FRONTEND_PORT = 3100;
 const E2E_DATABASE_URL = 'postgres://testflow:testflow@localhost:5432/testflow_e2e';
 
+/**
+ * Developer/manual runs are HEADED by default (`headless: !!process.env.CI` below) —
+ * GitHub Actions sets CI=true automatically, so CI stays headless with no extra flag,
+ * and a developer running `npm run test:*` locally sees the browser without needing
+ * `--headed`. Speed presets (slow/normal/fast — see package.json scripts) control
+ * `slowMo` via PW_SPEED so a developer can watch a run step-by-step or blast through it.
+ */
+const SLOW_MO_MS: Record<string, number> = { slow: 750, normal: 200, fast: 0 };
+const slowMo = SLOW_MO_MS[process.env.PW_SPEED ?? 'normal'] ?? 0;
+
 export default defineConfig({
   testDir: './tests',
   timeout: 30_000,
@@ -33,8 +43,11 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['github']] : [['list']],
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
+    headless: !!process.env.CI,
+    launchOptions: { slowMo },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [

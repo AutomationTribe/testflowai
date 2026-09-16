@@ -12,7 +12,7 @@ import { signUp } from './helpers';
  * failure branch of the test-support endpoint — the Paystack-equivalent of using a
  * known decline test card, without a real Paystack account.
  */
-test('Flow D — simulated payment failure keeps access blocked and allows retry', async ({ page }) => {
+test('Flow D — simulated payment failure keeps access blocked and allows retry', { tag: ['@critical', '@regression'] }, async ({ page }) => {
   await signUp(page);
 
   await page.goto('/subscription/checkout?plan=monthly&seats=3&simulate=fail');

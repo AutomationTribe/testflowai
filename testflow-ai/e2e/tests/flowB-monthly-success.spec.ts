@@ -12,7 +12,7 @@ import { signUp } from './helpers';
  * reconciliation code (`recordSuccessfulPayment`) the real Paystack webhook uses;
  * only the transport differs.
  */
-test('Flow B — Monthly checkout with 5 seats, simulated payment success', async ({ page }) => {
+test('Flow B — Monthly checkout with 5 seats, simulated payment success', { tag: ['@critical'] }, async ({ page }) => {
   await signUp(page);
   await page.goto('/subscription');
 
@@ -41,7 +41,7 @@ test('Flow B — Monthly checkout with 5 seats, simulated payment success', asyn
   await expect(page.getByText(/Plan:\s*monthly/i)).toBeVisible();
 });
 
-test('Flow B — Yearly checkout with 5 seats via its own independent seat stepper', async ({ page }) => {
+test('Flow B — Yearly checkout with 5 seats via its own independent seat stepper', { tag: ['@regression'] }, async ({ page }) => {
   await signUp(page);
   await page.goto('/subscription');
 

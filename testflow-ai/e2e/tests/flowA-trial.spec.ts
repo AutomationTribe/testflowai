@@ -6,7 +6,7 @@ import { signUp } from './helpers';
  * Visitor → Sign Up → Organisation created → blocked at Subscription →
  * select Trial → Trial activates → reaches QA Setup boundary.
  */
-test('Flow A — sign up, trial activation, and the QA Setup boundary', async ({ page }) => {
+test('Flow A — sign up, trial activation, and the QA Setup boundary', { tag: ['@critical', '@smoke'] }, async ({ page }) => {
   await signUp(page);
 
   // FR-SUB-002: normal application access is unavailable before any trial/subscription exists.

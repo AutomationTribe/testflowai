@@ -98,3 +98,30 @@ jobs:
           name: playwright-report
           path: testflow-ai/e2e/playwright-report/
           retention-days: 7
+
+  security-audit:
+    # Dependency vulnerability scan (docs/technical/security.md). Non-blocking by design —
+    # continue-on-error surfaces findings in the run summary without breaking merges/deploys
+    # on a transitive advisory the team hasn't triaged yet. The `security` agent performs the
+    # broader pre-deployment review this doesn't cover (authZ, tenant isolation, etc.).
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: testflow-ai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: testflow-ai/package-lock.json
+      - run: npm install --workspaces --include-workspace-root
+      - name: npm audit (backend)
+        continue-on-error: true
+        run: npm audit --workspace backend --audit-level=high
+      - name: npm audit (frontend)
+        continue-on-error: true
+        run: npm audit --workspace frontend --audit-level=high
+      - name: npm audit (e2e)
+        continue-on-error: true
+        run: npm audit --workspace e2e --audit-level=high

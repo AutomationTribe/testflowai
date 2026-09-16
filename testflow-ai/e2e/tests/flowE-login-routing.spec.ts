@@ -6,7 +6,7 @@ import { login, signOut, signUp, uniqueUser } from './helpers';
  * Existing user → Sign In → backend resolves organisation/subscription state →
  * correct destination is selected based on that state — never inferred client-side.
  */
-test('Flow E — login routes an unsubscribed user to Subscription Required', async ({ page }) => {
+test('Flow E — login routes an unsubscribed user to Subscription Required', { tag: ['@critical', '@smoke'] }, async ({ page }) => {
   const user = uniqueUser();
   await signUp(page, user);
   await page.goto('/app'); // land on the blocked screen so signOut() finds its button
@@ -17,7 +17,7 @@ test('Flow E — login routes an unsubscribed user to Subscription Required', as
   await expect(page.getByRole('heading', { name: 'Subscription required' })).toBeVisible();
 });
 
-test('Flow E — login routes a subscribed user to the QA Setup boundary', async ({ page }) => {
+test('Flow E — login routes a subscribed user to the QA Setup boundary', { tag: ['@critical'] }, async ({ page }) => {
   const user = uniqueUser();
   await signUp(page, user);
   await page.goto('/subscription');

@@ -1,6 +1,8 @@
 import cors from 'cors';
 import express, { type Express } from 'express';
+import swaggerUi from 'swagger-ui-express';
 import { env, isProduction } from './config/env.js';
+import { loadOpenApiSpec } from './lib/openapi.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { authRouter } from './modules/auth/auth.routes.js';
@@ -40,6 +42,15 @@ export function createApp(): Express {
 
   // Health check is deliberately unversioned infra, not a product API resource.
   app.use(healthRouter);
+
+  // Swagger UI (docs/technical/api/openapi.yaml): on by default outside production,
+  // off by default in production — never exposed publicly in a mature production
+  // deployment unless someone explicitly sets SWAGGER_UI_ENABLED=true.
+  if (env.swaggerUiEnabled) {
+    const openApiSpec = loadOpenApiSpec();
+    app.use('/docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
+    app.get('/docs.json', (_req, res) => res.json(openApiSpec));
+  }
 
   // The Paystack webhook needs the exact raw request bytes to verify its signature —
   // it must be registered with express.raw(), scoped to only its own exact path, and

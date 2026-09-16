@@ -7,7 +7,7 @@ import { signOut, signUp } from './helpers';
  * access → Subscription Required displayed → normal functionality unavailable →
  * Sign Out remains available.
  */
-test('Flow C — subscription gate blocks /app and exposes only the permitted actions', async ({ page }) => {
+test('Flow C — subscription gate blocks /app and exposes only the permitted actions', { tag: ['@critical', '@regression'] }, async ({ page }) => {
   await signUp(page);
 
   await page.goto('/app');

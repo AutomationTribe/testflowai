@@ -41,6 +41,10 @@ export const env = {
   // API key from https://resend.com/api-keys.
   resendApiKey: optional('RESEND_API_KEY', 're_placeholder_not_a_real_key'),
   emailFromAddress: optional('EMAIL_FROM_ADDRESS', 'TestFlow <onboarding@resend.dev>'),
+  // Swagger UI (docs/technical/api/openapi.yaml). Defaults on outside production and
+  // off in production — mature production must never expose it unless someone
+  // explicitly opts in by setting SWAGGER_UI_ENABLED=true (never the default).
+  swaggerUiEnabled: optional('SWAGGER_UI_ENABLED', process.env.NODE_ENV === 'production' ? 'false' : 'true') === 'true',
 } as const;
 
 export const isProduction = env.nodeEnv === 'production';
