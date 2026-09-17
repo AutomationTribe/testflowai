@@ -47,6 +47,7 @@ test('Flow F — Custom Setup starts a draft but does not publish, and does not 
 test('Flow F — Back returns to the previous screen without changing the QA process', { tag: ['@regression'] }, async ({ page }) => {
   await signUpAndReachQaSetup(page);
 
-  await page.getByRole('button', { name: '← Back' }).click();
+  // The arrow is an aria-hidden icon, so the accessible name is just "Back".
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.waitForURL('**/subscription/success**');
 });

@@ -30,11 +30,14 @@ describe('AppSidebar', () => {
 
   it('marks only the given activeKey as active (bold/highlighted), matching whichever screen renders it', () => {
     render(<AppSidebar activeKey="qa-operating-model" />);
-    const active = screen.getByText('QA Operating Model').closest('div')!;
-    expect(active).toHaveStyle({ fontWeight: '600' });
 
+    const active = screen.getByText('QA Operating Model').closest('div')!;
     const inactive = screen.getByText('Dashboard').closest('div')!;
-    expect(inactive).toHaveStyle({ fontWeight: '400' });
+
+    // Asserts the active/inactive distinction rather than an exact weight, so
+    // tuning the design's typography doesn't break this.
+    expect(active).toHaveStyle({ fontWeight: '600' });
+    expect(inactive).not.toHaveStyle({ fontWeight: '600' });
   });
 
   it('shows the signed-in user with their real role, and signs out on click', () => {

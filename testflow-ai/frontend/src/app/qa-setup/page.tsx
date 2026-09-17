@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { AppSidebar } from '@/components/AppSidebar';
-import { Button } from '@/components/Button';
+import { AppSidebar, Tile } from '@/components/AppSidebar';
 import { ErrorState } from '@/components/ErrorState';
+import { Icon, type IconName } from '@/components/Icon';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { apiClient, ApiError, type QaPresetOrigin } from '@/lib/apiClient';
 import { useSession } from '@/lib/SessionProvider';
@@ -25,9 +25,7 @@ import { useSession } from '@/lib/SessionProvider';
  * published is still always exactly what the backend materializes.
  */
 
-type BulletTone = 'check' | 'cross';
-
-interface SummaryColumn {
+interface SummaryBox {
   label: string;
   value: string;
   caption: string;
@@ -36,36 +34,37 @@ interface SummaryColumn {
 interface PresetCardDetail {
   presetOrigin: QaPresetOrigin;
   name: string;
-  tag: string | null;
+  tag: string;
   recommended: boolean;
   description: string;
-  bullets: Array<{ tone: BulletTone; text: string }>;
+  bullets: Array<{ icon: IconName; text: string }>;
+  footerIcon: IconName;
   bestFor: string;
-  /** Custom Setup's card shows a secondary action instead of publishing directly. */
-  secondaryAction?: string;
-  summary: { templates: SummaryColumn; workflows: SummaryColumn; policy: SummaryColumn; gates: SummaryColumn };
+  /** Custom Setup alone shows this box above its footer. */
+  configureNote?: string;
+  summary: { templates: SummaryBox; workflows: SummaryBox; policy: SummaryBox; gates: SummaryBox };
 }
 
 const PRESET_DETAILS: PresetCardDetail[] = [
   {
     presetOrigin: 'standard',
     name: 'Standard QA',
-    tag: null,
+    tag: 'Recommended',
     recommended: true,
     description: 'A balanced QA process for teams that want structured testing without mandatory approval overhead.',
     bullets: [
-      { tone: 'check', text: 'Standard Test Case, Test Report and Regression Report templates' },
-      { tone: 'check', text: 'No mandatory approvals' },
-      { tone: 'check', text: 'Test Cases can be executed without approval' },
-      { tone: 'check', text: 'Test Report required · Regression Report optional' },
-      { tone: 'check', text: 'No Quality Gates enabled by default' },
+      { icon: 'file-text', text: 'Standard Test Case, Test Report and Regression Report templates' },
+      { icon: 'check-circle', text: 'Test Cases can be executed without approval' },
+      { icon: 'check-square', text: 'Test Report required · Regression Report optional' },
+      { icon: 'minus-circle', text: 'No Quality Gates enabled by default' },
     ],
+    footerIcon: 'star',
     bestFor: 'Best starting point for most QA teams',
     summary: {
-      templates: { label: 'Templates', value: '3 Standard templates', caption: 'Test Case, Test Report, Regression Report' },
+      templates: { label: 'Templates', value: '3 Standard templates', caption: 'Test Case v1, Test Report v1, Reg v1' },
       workflows: { label: 'Workflows', value: 'Draft → Ready', caption: 'No mandatory Test Case approval' },
       policy: { label: 'Project Policy', value: 'Test Report Required', caption: 'Regression Report optional' },
-      gates: { label: 'Quality Gates', value: '0 of 6 Gates Active', caption: 'No gates enforced by default' },
+      gates: { label: 'Quality Gates', value: '0 of 6 Gates Active', caption: 'Optional execution threshold' },
     },
   },
   {
@@ -75,15 +74,16 @@ const PRESET_DETAILS: PresetCardDetail[] = [
     recommended: false,
     description: 'Minimal governance for teams that want to start testing quickly without extra formal steps.',
     bullets: [
-      { tone: 'check', text: 'Standard starter templates' },
-      { tone: 'cross', text: 'No mandatory approvals' },
-      { tone: 'cross', text: 'No mandatory Test Report' },
-      { tone: 'cross', text: 'No mandatory Regression Report' },
-      { tone: 'cross', text: 'No Quality Gates enabled by default' },
+      { icon: 'file-text', text: 'Standard starter templates' },
+      { icon: 'no-approval', text: 'No mandatory approvals' },
+      { icon: 'no-report', text: 'No mandatory Test Report' },
+      { icon: 'check-circle', text: 'No mandatory Regression Report' },
+      { icon: 'minus-circle', text: 'No Quality Gates enabled by default' },
     ],
+    footerIcon: 'zap',
     bestFor: 'Best for small or fast-moving teams',
     summary: {
-      templates: { label: 'Templates', value: '3 Standard templates', caption: 'Test Case, Test Report, Regression Report' },
+      templates: { label: 'Templates', value: '3 Standard templates', caption: 'Test Case v1, Test Report v1, Reg v1' },
       workflows: { label: 'Workflows', value: 'Draft → Ready', caption: 'No mandatory approvals' },
       policy: { label: 'Project Policy', value: 'No Required Artifacts', caption: 'Test Report and Regression optional' },
       gates: { label: 'Quality Gates', value: '0 of 6 Gates Active', caption: 'No gates enforced' },
@@ -94,17 +94,18 @@ const PRESET_DETAILS: PresetCardDetail[] = [
     name: 'Controlled QA',
     tag: 'Governance',
     recommended: false,
-    description: 'Stronger governance for teams requiring formal review, sign-off, and strict compliance.',
+    description: 'Stronger governance for teams requiring formal review, multi-party sign-off, and strict compliance.',
     bullets: [
-      { tone: 'check', text: 'Test Case Review + Approval checkpoints' },
-      { tone: 'check', text: 'Test Cases cannot be executed before required approval' },
-      { tone: 'check', text: 'Test Report required with approval' },
-      { tone: 'check', text: 'Regression Report required' },
-      { tone: 'check', text: 'Selected Quality Gates enabled by default' },
+      { icon: 'user-check', text: 'Test Case Review + Approval checkpoints' },
+      { icon: 'lock', text: 'Test Cases cannot be executed before required approval' },
+      { icon: 'check-square', text: 'Test Report required with approval' },
+      { icon: 'gear', text: 'Regression Report required' },
+      { icon: 'shield', text: 'Selected Quality Gates enabled by default' },
     ],
+    footerIcon: 'at-sign',
     bestFor: 'Best for teams with formal QA governance',
     summary: {
-      templates: { label: 'Templates', value: '3 Standard templates', caption: 'Test Case, Test Report, Regression Report' },
+      templates: { label: 'Templates', value: '3 Standard templates', caption: 'Test Case v1, Test Report v1, Reg v1' },
       workflows: { label: 'Workflows', value: 'Draft → Review → Approved', caption: 'Test Case approval required' },
       policy: { label: 'Project Policy', value: 'Test Report + Regression Required', caption: 'Approval required on both' },
       gates: { label: 'Quality Gates', value: '3 of 6 Gates Active', caption: 'Artifacts, approvals, critical defects' },
@@ -117,13 +118,14 @@ const PRESET_DETAILS: PresetCardDetail[] = [
     recommended: false,
     description: 'Start with the supported TestFlow QA controls and configure each operational standard yourself.',
     bullets: [
-      { tone: 'check', text: 'Choose supported templates' },
-      { tone: 'check', text: 'Review and approval checkpoints' },
-      { tone: 'check', text: 'Required QA artifacts & Quality Gates' },
-      { tone: 'check', text: 'Permitted project exceptions' },
+      { icon: 'sliders', text: 'Choose supported templates' },
+      { icon: 'layout', text: 'Review and approval checkpoints' },
+      { icon: 'layout', text: 'Required QA artifacts & Quality Gates' },
+      { icon: 'branch', text: 'Permitted project exceptions' },
     ],
+    footerIcon: 'alert',
     bestFor: 'Best for custom enterprise workflows',
-    secondaryAction: 'Configure in QA Operating Model',
+    configureNote: 'Configures in QA Operating Model',
     summary: {
       templates: { label: 'Templates', value: 'Chosen by you', caption: 'Selected in QA Operating Model' },
       workflows: { label: 'Workflows', value: 'Chosen by you', caption: 'Selected in QA Operating Model' },
@@ -133,22 +135,6 @@ const PRESET_DETAILS: PresetCardDetail[] = [
   },
 ];
 
-function CheckMark(): JSX.Element {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden style={{ flexShrink: 0, marginTop: 2 }}>
-      <path d="m3.5 8.4 3 3 6-6.8" stroke="#1e7a46" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function CrossMark(): JSX.Element {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden style={{ flexShrink: 0, marginTop: 2 }}>
-      <path d="M4.2 4.2 11.8 11.8M11.8 4.2 4.2 11.8" stroke="var(--color-text-muted)" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function Radio({ selected }: { selected: boolean }): JSX.Element {
   return (
     <span
@@ -157,14 +143,16 @@ function Radio({ selected }: { selected: boolean }): JSX.Element {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 16,
-        height: 16,
+        width: 17,
+        height: 17,
         borderRadius: '50%',
-        border: selected ? '5px solid var(--color-primary)' : '1.5px solid var(--color-outline-variant)',
+        border: selected ? '1.8px solid var(--color-primary)' : '1.5px solid var(--color-outline-variant)',
         background: '#fff',
         flexShrink: 0,
       }}
-    />
+    >
+      {selected && <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--color-primary)' }} />}
+    </span>
   );
 }
 
@@ -186,96 +174,133 @@ function PresetCard({
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
-        gap: 9,
-        padding: 14,
+        padding: 18,
         borderRadius: 8,
-        border: selected ? '2px solid var(--color-primary)' : '1px solid var(--color-outline-variant)',
-        background: 'var(--color-surface)',
+        border: selected ? '1.8px solid var(--color-primary)' : '1px solid var(--color-outline-variant)',
+        background: selected ? '#f7fafd' : 'var(--color-surface)',
         flex: '1 1 0',
-        minWidth: 215,
-        minHeight: 360,
+        minWidth: 225,
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 20 }}>
+      <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, minHeight: 22 }}>
         <Radio selected={selected} />
         {detail.recommended ? (
           <span
             style={{
-              fontSize: 9,
+              fontSize: 9.5,
               fontWeight: 700,
-              letterSpacing: '0.09em',
+              letterSpacing: '0.08em',
               textTransform: 'uppercase',
               color: '#fff',
               background: 'var(--color-primary)',
-              borderRadius: 3,
-              padding: '3px 7px',
+              borderRadius: 4,
+              padding: '4px 8px',
             }}
           >
-            Recommended
+            {detail.tag}
           </span>
         ) : (
-          detail.tag && (
-            <span
-              style={{
-                fontSize: 9,
-                fontWeight: 600,
-                letterSpacing: '0.09em',
-                textTransform: 'uppercase',
-                color: 'var(--color-text-muted)',
-              }}
-            >
-              {detail.tag}
-            </span>
-          )
+          <span
+            style={{
+              fontSize: 9.5,
+              fontWeight: 500,
+              letterSpacing: '0.13em',
+              textTransform: 'uppercase',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            {detail.tag}
+          </span>
         )}
-      </div>
+      </span>
 
-      <h2 style={{ fontSize: 13, margin: 0, letterSpacing: '0.03em', textTransform: 'uppercase' }}>{detail.name}</h2>
-      <p style={{ fontSize: 11.5, lineHeight: 1.45, color: 'var(--color-text-muted)', margin: 0 }}>{detail.description}</p>
+      <h2 style={{ fontSize: 14.5, margin: '14px 0 8px', letterSpacing: '0.02em', textTransform: 'uppercase' }}>{detail.name}</h2>
+      <p style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--color-text-muted)', margin: 0 }}>{detail.description}</p>
 
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 7, flex: 1 }}>
+      <span aria-hidden style={{ display: 'block', height: 1, background: 'var(--color-outline-variant)', margin: '14px 0' }} />
+
+      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 11, flex: 1 }}>
         {detail.bullets.map((bullet) => (
-          <li key={bullet.text} style={{ display: 'flex', gap: 7, fontSize: 11.5, lineHeight: 1.4, color: 'var(--color-text)' }}>
-            {bullet.tone === 'check' ? <CheckMark /> : <CrossMark />}
+          <li key={bullet.text} style={{ display: 'flex', gap: 10, fontSize: 12.5, lineHeight: 1.45 }}>
+            <span style={{ color: 'var(--color-text-muted)', marginTop: 1 }}>
+              <Icon name={bullet.icon} />
+            </span>
             <span>{bullet.text}</span>
           </li>
         ))}
       </ul>
 
-      {detail.secondaryAction && (
+      {detail.configureNote && (
         <span
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 8,
+            gap: 9,
+            background: 'var(--color-surface-low)',
             border: '1px solid var(--color-outline-variant)',
             borderRadius: 6,
-            padding: '8px 10px',
-            fontSize: 11.5,
+            padding: '10px 12px',
+            margin: '14px 0 0',
+            fontSize: 12,
             color: 'var(--color-text)',
           }}
         >
-          {detail.secondaryAction}
-          <span aria-hidden>→</span>
+          <Icon name="arrow-right" size={14} />
+          {detail.configureNote}
         </span>
       )}
 
-      <p style={{ fontSize: 11, color: 'var(--color-text-muted)', margin: 0, paddingTop: 4, borderTop: '1px solid var(--color-outline-variant)' }}>
+      <span aria-hidden style={{ display: 'block', height: 1, background: 'var(--color-outline-variant)', margin: '14px 0' }} />
+
+      <span
+        style={{
+          display: 'flex',
+          gap: 9,
+          alignItems: 'flex-start',
+          fontSize: 11.5,
+          lineHeight: 1.4,
+          fontFamily: 'var(--font-mono)',
+          color: 'var(--color-text-muted)',
+        }}
+      >
+        <span style={{ marginTop: 1 }}>
+          <Icon name={detail.footerIcon} size={13} />
+        </span>
         {detail.bestFor}
-      </p>
+      </span>
     </button>
   );
 }
 
-function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX.Element {
-  const iconButton = (label: string, path: JSX.Element) => (
-    <span aria-label={label} role="img" style={{ color: 'var(--color-text-muted)', display: 'inline-flex' }}>
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-        {path}
-      </svg>
+function IconButton({ name, label }: { name: IconName; label: string }): JSX.Element {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 30,
+        height: 30,
+        borderRadius: 6,
+        border: '1px solid var(--color-outline-variant)',
+        background: 'var(--color-surface)',
+        color: 'var(--color-text-muted)',
+      }}
+    >
+      <Icon name={name} />
     </span>
   );
+}
+
+function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX.Element {
+  const orgInitials = (organisationName ?? '')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join('');
 
   return (
     <header
@@ -284,7 +309,8 @@ function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 16,
-        padding: '12px 24px',
+        padding: '0 22px',
+        minHeight: 68,
         borderBottom: '1px solid var(--color-outline-variant)',
         background: 'var(--color-surface)',
       }}
@@ -293,8 +319,8 @@ function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 8,
-          fontSize: 12,
+          gap: 10,
+          fontSize: 12.5,
           color: 'var(--color-text-muted)',
           whiteSpace: 'nowrap',
           minWidth: 0,
@@ -302,98 +328,73 @@ function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{organisationName}</span>
-        <span aria-hidden>›</span>
-        <span>Organisation Setup</span>
-        <span aria-hidden>›</span>
+        <Icon name="chevron-right" size={13} />
+        <span>Organization Setup</span>
+        <Icon name="chevron-right" size={13} />
         <span style={{ color: 'var(--color-text)', fontWeight: 600 }}>QA Process</span>
-        <span aria-hidden style={{ width: 1, height: 14, background: 'var(--color-outline-variant)', margin: '0 4px', flexShrink: 0 }} />
-        <span>Step 2 of 2</span>
-        <span aria-hidden>·</span>
-        <span>Final Step</span>
-      </span>
-
-      <span style={{ display: 'flex', alignItems: 'center', gap: 14, fontSize: 12, whiteSpace: 'nowrap', flexShrink: 0 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--color-text-muted)', fontSize: 11 }}>
-          {iconButton(
-            'Deterministic governance',
-            <>
-              <path d="M8.5 1.5 3 9h4l-.5 5.5L13 7H9l-.5-5.5Z" />
-            </>,
-          )}
-          Deterministic Governance: Projects inherit this model exactly
-        </span>
-        {iconButton(
-          'Notifications',
-          <>
-            <path d="M12 6a4 4 0 1 0-8 0c0 3.2-1.2 4.2-1.2 4.2h10.4S12 9.2 12 6Z" />
-            <path d="M9.2 12.8a1.4 1.4 0 0 1-2.4 0" />
-          </>,
-        )}
-        {iconButton(
-          'Help',
-          <>
-            <circle cx="8" cy="8" r="6" />
-            <path d="M6.2 6.2a1.9 1.9 0 0 1 3.7.6c0 1.3-1.9 1.9-1.9 1.9" />
-            <path d="M8 11.6h.01" />
-          </>,
-        )}
         <span
           style={{
-            display: 'flex',
+            display: 'inline-flex',
             alignItems: 'center',
             gap: 7,
+            marginLeft: 6,
+            background: 'var(--color-surface-low)',
             border: '1px solid var(--color-outline-variant)',
             borderRadius: 999,
-            padding: '4px 10px 4px 4px',
-            fontWeight: 500,
+            padding: '5px 12px',
+            fontFamily: 'var(--font-mono)',
+            fontSize: 11,
+            color: 'var(--color-text)',
           }}
         >
-          <span
-            aria-hidden
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              width: 20,
-              height: 20,
-              borderRadius: '50%',
-              background: 'var(--color-primary)',
-              color: '#fff',
-              fontSize: 9,
-              fontWeight: 700,
-            }}
-          >
-            {(organisationName ?? '')
-              .split(' ')
-              .filter(Boolean)
-              .slice(0, 2)
-              .map((part) => part[0]!.toUpperCase())
-              .join('')}
-          </span>
+          <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} />
+          Step 3 of 3 · Final Step
+        </span>
+      </span>
+
+      <span style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap', flexShrink: 0 }}>
+        <IconButton name="bell" label="Notifications" />
+        <IconButton name="help-circle" label="Help" />
+        <span aria-hidden style={{ width: 1, height: 22, background: 'var(--color-outline-variant)', margin: '0 4px' }} />
+        <span style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13 }}>
+          <Tile size={26}>{orgInitials}</Tile>
           {organisationName}
+          <span style={{ color: 'var(--color-text-muted)' }}>
+            <Icon name="chevron-down" size={14} />
+          </span>
         </span>
       </span>
     </header>
   );
 }
 
-function SummaryColumnBlock({ column, testId }: { column: SummaryColumn; testId: string }): JSX.Element {
+function SummaryBoxBlock({ box, testId }: { box: SummaryBox; testId: string }): JSX.Element {
   return (
-    <div data-testid={testId} style={{ flex: '1 1 0', minWidth: 160 }}>
+    <div
+      data-testid={testId}
+      style={{
+        flex: '1 1 0',
+        minWidth: 180,
+        border: '1px solid var(--color-outline-variant)',
+        borderRadius: 6,
+        padding: '12px 14px',
+        background: 'var(--color-surface)',
+      }}
+    >
       <p
         style={{
-          margin: '0 0 5px',
+          margin: '0 0 7px',
           fontSize: 9.5,
-          fontWeight: 700,
-          letterSpacing: '0.1em',
+          fontWeight: 600,
+          letterSpacing: '0.12em',
           textTransform: 'uppercase',
           color: 'var(--color-text-muted)',
         }}
       >
-        {column.label}
+        {box.label}
       </p>
-      <p style={{ margin: '0 0 2px', fontSize: 12.5, fontWeight: 600 }}>{column.value}</p>
-      <p style={{ margin: 0, fontSize: 11, color: 'var(--color-text-muted)' }}>{column.caption}</p>
+      <p style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700 }}>{box.value}</p>
+      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--color-text-muted)' }}>{box.caption}</p>
     </div>
   );
 }
@@ -454,19 +455,44 @@ function QaSetupContent(): JSX.Element {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-surface-low)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--color-surface)' }}>
       <AppSidebar activeKey="qa-operating-model" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         <QaSetupHeader organisationName={organisation?.name} />
 
-        <main style={{ flex: 1, padding: '18px 20px 20px' }}>
-          <div style={{ marginBottom: 14 }}>
-            <h1 style={{ fontSize: 19, margin: '0 0 4px' }}>Set up your QA process</h1>
-            <p style={{ fontSize: 12, color: 'var(--color-text-muted)', margin: 0, maxWidth: 900 }}>
-              Choose a starting QA process for your organization. You can customize supported settings later from QA Operating
-              Model.
-            </p>
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '26px 30px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, marginBottom: 22 }}>
+            <div style={{ minWidth: 0 }}>
+              <h1 style={{ fontSize: 23, margin: '0 0 7px' }}>Set up your QA process</h1>
+              <p style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', margin: 0, maxWidth: 690 }}>
+                Choose a starting QA process for your organization. You can customize supported settings later from QA Operating
+                Model.
+              </p>
+            </div>
+            <span
+              style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+                border: '1px solid var(--color-outline-variant)',
+                borderRadius: 6,
+                background: 'var(--color-surface)',
+                padding: '12px 14px',
+                fontSize: 12,
+                lineHeight: 1.45,
+                maxWidth: 370,
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ color: 'var(--color-primary)', marginTop: 1 }}>
+                <Icon name="shield" />
+              </span>
+              <span style={{ color: 'var(--color-text-muted)' }}>
+                <strong style={{ color: 'var(--color-text)' }}>Deterministic Governance:</strong> Projects inherit this model
+                safely.
+              </span>
+            </span>
           </div>
 
           {error && (
@@ -485,7 +511,7 @@ function QaSetupContent(): JSX.Element {
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'stretch', marginBottom: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'stretch', marginBottom: 20 }}>
             {PRESET_DETAILS.map((d) => (
               <PresetCard
                 key={d.presetOrigin}
@@ -501,69 +527,92 @@ function QaSetupContent(): JSX.Element {
             ))}
           </div>
 
+          <div style={{ border: '1px solid var(--color-outline-variant)', borderRadius: 8, padding: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5 }}>
+                <span style={{ color: 'var(--color-primary)' }}>
+                  <Icon name="shield-check" />
+                </span>
+                <span style={{ color: 'var(--color-text-muted)' }}>Selected QA Process:</span>
+                <strong>{detail.name}</strong>
+                {currentPresetOrigin === selected && (
+                  <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>(currently in effect)</span>
+                )}
+              </span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--color-text-muted)' }}>
+                <Icon name="info" size={14} />
+                You can customize supported QA settings later from QA Operating Model.
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, marginTop: 16 }}>
+              <SummaryBoxBlock box={detail.summary.templates} testId="qa-setup-summary-templates" />
+              <SummaryBoxBlock box={detail.summary.workflows} testId="qa-setup-summary-workflow" />
+              <SummaryBoxBlock box={detail.summary.policy} testId="qa-setup-summary-policy" />
+              <SummaryBoxBlock box={detail.summary.gates} testId="qa-setup-summary-gates" />
+            </div>
+          </div>
+
+          <div style={{ flex: 1, minHeight: 24 }} />
+
           <div
             style={{
-              border: '1px solid var(--color-outline-variant)',
-              borderRadius: 8,
-              background: 'var(--color-surface)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              flexWrap: 'wrap',
+              padding: '18px 0 22px',
+              borderTop: '1px solid var(--color-outline-variant)',
             }}
           >
-            <div
+            <button
+              onClick={() => router.back()}
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 8,
-                padding: '12px 16px',
+                gap: 9,
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-outline-variant)',
+                borderRadius: 6,
+                padding: '10px 18px',
+                fontSize: 13.5,
+                fontWeight: 600,
+                fontFamily: 'var(--font-ui)',
+                cursor: 'pointer',
               }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12.5 }}>
-                <CheckMark />
-                Selected QA Process: <strong>{detail.name}</strong>
-                {currentPresetOrigin === selected && <span style={{ color: 'var(--color-text-muted)' }}>(currently in effect)</span>}
-              </span>
-              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>
-                ⓘ You can customize supported settings later from QA Operating Model.
-              </span>
-            </div>
+              <Icon name="arrow-left" />
+              Back
+            </button>
 
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 20,
-                padding: '14px 16px',
-                borderTop: '1px solid var(--color-outline-variant)',
-              }}
-            >
-              <SummaryColumnBlock column={detail.summary.templates} testId="qa-setup-summary-templates" />
-              <SummaryColumnBlock column={detail.summary.workflows} testId="qa-setup-summary-workflow" />
-              <SummaryColumnBlock column={detail.summary.policy} testId="qa-setup-summary-policy" />
-              <SummaryColumnBlock column={detail.summary.gates} testId="qa-setup-summary-gates" />
-            </div>
-
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-                flexWrap: 'wrap',
-                padding: '12px 16px',
-                borderTop: '1px solid var(--color-outline-variant)',
-                background: 'var(--color-surface-low)',
-                borderRadius: '0 0 8px 8px',
-              }}
-            >
-              <Button variant="secondary" onClick={() => router.back()}>
-                ← Back
-              </Button>
-              <span style={{ fontSize: 11, color: 'var(--color-text-muted)' }}>Deterministic inheritance applies on confirm</span>
-              <Button onClick={() => void handleUsePreset()} disabled={submitting || customDraftStarted}>
-                {submitting ? 'Saving…' : selected === 'custom' ? 'Start Custom Setup →' : `Use ${detail.name} →`}
-              </Button>
-            </div>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: 11.5, fontFamily: 'var(--font-mono)', color: 'var(--color-text-muted)' }}>
+                Deterministic inheritance applied on confirm
+              </span>
+              <button
+                onClick={() => void handleUsePreset()}
+                disabled={submitting || customDraftStarted}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  background: 'var(--color-primary)',
+                  color: '#fff',
+                  border: 'none',
+                  borderRadius: 6,
+                  padding: '11px 20px',
+                  fontSize: 13.5,
+                  fontWeight: 600,
+                  fontFamily: 'var(--font-ui)',
+                  cursor: submitting || customDraftStarted ? 'default' : 'pointer',
+                  opacity: submitting || customDraftStarted ? 0.6 : 1,
+                }}
+              >
+                {submitting ? 'Saving…' : selected === 'custom' ? 'Start Custom Setup' : `Use ${detail.name}`}
+                <Icon name="arrow-right" />
+              </button>
+            </span>
           </div>
         </main>
       </div>
