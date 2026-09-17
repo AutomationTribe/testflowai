@@ -62,6 +62,7 @@ npm run test                        # both, from repo root
 # E2E — developer default is HEADED, at normal speed
 npm run test:e2e:normal             # headed, normal speed
 npm run test:e2e:slow               # headed, slower (slowMo) — good for watching/debugging
+npm run test:e2e:extraslow          # headed, slowest (slowMo) — deliberate step-by-step observation
 npm run test:e2e:fast               # headed, no slowMo — fastest headed run
 
 # E2E — by classification (headed by default too; add CI=true for headless)

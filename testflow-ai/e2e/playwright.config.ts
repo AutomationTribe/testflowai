@@ -26,12 +26,20 @@ const E2E_DATABASE_URL = 'postgres://testflow:testflow@localhost:5432/testflow_e
  * `--headed`. Speed presets (slow/normal/fast — see package.json scripts) control
  * `slowMo` via PW_SPEED so a developer can watch a run step-by-step or blast through it.
  */
-const SLOW_MO_MS: Record<string, number> = { slow: 750, normal: 200, fast: 0 };
+const SLOW_MO_MS: Record<string, number> = { extraslow: 4000, slow: 2000, normal: 200, fast: 0 };
 const slowMo = SLOW_MO_MS[process.env.PW_SPEED ?? 'normal'] ?? 0;
+
+// A journey with many steps (sign up -> subscribe -> QA Setup) accumulates slowMo
+// across every single action, so the per-test timeout must scale with it too —
+// otherwise a slow, deliberately-watchable run fails on its own timeout before a
+// human ever gets to see the later steps. Scaled generously (not just slowMo x
+// step count) since slowMo delays apply to many more granular actions than a
+// test author sees in its own source.
+const TEST_TIMEOUT_MS = 30_000 + slowMo * 30;
 
 export default defineConfig({
   testDir: './tests',
-  timeout: 30_000,
+  timeout: TEST_TIMEOUT_MS,
   expect: { timeout: 10_000 },
   // Journeys share one backend/database for the whole run (see prepare-db.js) —
   // sequential execution keeps trial-once-per-organisation and similar stateful

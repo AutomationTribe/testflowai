@@ -7,6 +7,7 @@
     "pretest": "node prepare-db.js",
     "test": "playwright test",
     "test:headed": "node prepare-db.js && playwright test --headed",
+    "test:extraslow": "node prepare-db.js && PW_SPEED=extraslow playwright test --headed",
     "test:slow": "node prepare-db.js && PW_SPEED=slow playwright test --headed",
     "test:normal": "node prepare-db.js && PW_SPEED=normal playwright test --headed",
     "test:fast": "node prepare-db.js && PW_SPEED=fast playwright test --headed",
