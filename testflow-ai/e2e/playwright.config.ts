@@ -39,6 +39,11 @@ const TEST_TIMEOUT_MS = 30_000 + slowMo * 30;
 
 export default defineConfig({
   testDir: './tests',
+  // Visual-regression specs (tests/visual/**) live under their own dedicated
+  // config (playwright.visual.config.ts) — excluded here so this file's existing
+  // functional suite, its CI job, and `npm run test:e2e` are completely
+  // unaffected by adding visual regression capability (see docs/technical/testing.md).
+  testIgnore: [/visual\//],
   timeout: TEST_TIMEOUT_MS,
   expect: { timeout: 10_000 },
   // Journeys share one backend/database for the whole run (see prepare-db.js) —

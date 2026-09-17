@@ -14,6 +14,8 @@
     "test:smoke": "node prepare-db.js && playwright test --grep @smoke",
     "test:critical": "node prepare-db.js && playwright test --grep @critical",
     "test:regression": "node prepare-db.js && playwright test --grep @regression",
+    "test:visual": "node prepare-db.js && playwright test --config=playwright.visual.config.ts",
+    "test:visual:update": "node prepare-db.js && playwright test --config=playwright.visual.config.ts --update-snapshots",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {

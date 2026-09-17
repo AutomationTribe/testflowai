@@ -96,6 +96,44 @@ DB-state-dependent (`login_attempts` table). Running it back-to-back across sepa
 aborted prior run. If it fails, re-run it in isolation before treating it as a real regression —
 see the `qa` agent's guidance on this.
 
+## Design agent workflow
+
+When an approved design (e.g. a Google Stitch export) exists for a screen, Claude invokes the
+`design` subagent (`.claude/agents/design.md`) at two points: a **handoff** before implementation
+(layout, components, states, interactions, and an explicit split between real product behaviour
+and decorative/sample content), and a **conformance review** after implementation, before QA. The
+user can invoke it manually by saying "Design". Conformance differences are classified `MATCH` /
+`MINOR DIFFERENCE` / `MATERIAL DIFFERENCE` / `PRODUCT CONFLICT` — the latter two must be reported
+before the feature is accepted, never silently resolved in either direction. See
+`docs/technical/design-handoff.md` for the underlying design-to-code conversion contract this
+agent's handoff format extends.
+
+## Visual regression testing
+
+A separate Playwright config, `e2e/playwright.visual.config.ts`, adds pixel-comparison visual
+regression on top of the existing functional E2E suite — deliberately isolated from it:
+
+- Specs live under `e2e/tests/visual/*.visual.spec.ts` and are excluded from the default
+  `playwright.config.ts` (`testIgnore: [/visual\//]`), so adding visual coverage never changes what
+  `npm run test:e2e` or CI's `e2e` job runs.
+- Fixed 1440×900 viewport, animations disabled, `maxDiffPixels: 150` (an **absolute** pixel count,
+  not a ratio — a 1% ratio tolerance at this viewport is ~13,000px, large enough that a verified
+  one-word heading change passed silently under it during setup; don't revert to a ratio without
+  re-verifying the same way).
+- Baselines are OS/font-rendering-sensitive and are **not** wired into CI — generating/reviewing a
+  baseline is a deliberate local action by whoever owns that screen's visual conformance.
+
+```bash
+npm run test:visual             # run visual suite against existing baselines
+npm run test:visual:update      # regenerate baselines (review the diff before committing)
+```
+
+A foundation example lives at `e2e/tests/visual/login.visual.spec.ts` (the Login screen — chosen
+because it has zero dynamic content, so it needs no masking). It does not establish a baseline for
+any other screen; adopting visual regression for a given screen is a deliberate per-screen decision
+— see the `design` agent for the masking/stable-region conventions to use when a screen does have
+dynamic content.
+
 ## Coverage boundary
 
 Avoid unnecessarily duplicating unit-test coverage at the integration/E2E layer. If a rule is

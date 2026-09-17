@@ -22,7 +22,9 @@
     "test:e2e:fast": "npm run test:fast --workspace e2e",
     "test:e2e:smoke": "npm run test:smoke --workspace e2e",
     "test:e2e:critical": "npm run test:critical --workspace e2e",
-    "test:e2e:regression": "npm run test:regression --workspace e2e"
+    "test:e2e:regression": "npm run test:regression --workspace e2e",
+    "test:visual": "npm run test:visual --workspace e2e",
+    "test:visual:update": "npm run test:visual:update --workspace e2e"
   },
   "dependencies": {
     "@neon/config": "^1.5.0",

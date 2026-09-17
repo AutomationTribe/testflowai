@@ -44,14 +44,20 @@ Rules for AI-assisted work on the TestFlow AI project.
     a happy-path check that the fix works). An implementation is not complete until its unit
     tests have been run and the results reported — "I added tests" is not sufficient; report
     pass/fail/count. See docs/technical/testing.md for the full testing strategy.
-20. The normal path from implementation to deployment is: Implementation → Unit Tests → QA agent
-    → Security agent → DevOps agent → Deployment → Smoke Verification. Claude should invoke the
-    QA agent after completing an implementation or fix, before considering the work complete, and
-    the Security agent before any deployment. If QA or Security reports a failure, explain exactly
-    what failed, the deployment risk, and a recommendation — then explicitly ask the user whether
-    to proceed anyway. Never silently skip this gate or auto-override a reported failure; the user
-    is always the final deployment decision-maker. See docs/technical/testing.md and
-    docs/technical/security.md.
+20. The normal path from requirements to deployment is: Requirements → Approved Design →
+    Design agent Handoff → Implementation + Unit Tests → Design agent Conformance Review → QA
+    agent → Security agent → Human Acceptance → DevOps agent → Deployment → Smoke Verification.
+    When an approved design (e.g. a Stitch screenshot) exists for a screen, Claude should invoke
+    the Design agent for a handoff before implementing it, and for a conformance review after
+    implementing it — before QA. Claude should invoke the QA agent after completing an
+    implementation or fix, before considering the work complete, and the Security agent before any
+    deployment. If Design, QA, or Security reports a failure — a MATERIAL DIFFERENCE/PRODUCT
+    CONFLICT, a failed test, or a security finding — explain exactly what failed, the risk, and a
+    recommendation, then explicitly ask the user whether to proceed anyway. Never silently skip a
+    gate, auto-override a reported failure, or let an agent silently resolve a
+    design/requirement conflict in either direction; the user is always the final decision-maker,
+    including final acceptance before deployment. See docs/technical/testing.md,
+    docs/technical/security.md, and docs/technical/design-handoff.md.
 21. Every TestFlow API must have a maintained OpenAPI contract at
     docs/technical/api/openapi.yaml, kept in sync with the actual implementation whenever an
     endpoint is added or changed (request/response shapes, auth requirements). Swagger UI is
