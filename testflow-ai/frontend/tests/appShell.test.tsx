@@ -26,4 +26,15 @@ describe('AppShell', () => {
     expect(screen.getByRole('button', { name: /collapse sidebar/i })).toBeInTheDocument();
     expect(screen.getByText('content')).toBeInTheDocument();
   });
+
+  it('uses the shared AppSidebar with "Dashboard" active — the same sidebar the QA Setup screen renders', () => {
+    render(
+      <AppShell>
+        <p>content</p>
+      </AppShell>,
+    );
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByText('QA Operating Model')).toBeInTheDocument();
+  });
 });

@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { AppSidebar } from '@/components/AppSidebar';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
@@ -25,23 +26,11 @@ import { useSession } from '@/lib/SessionProvider';
  * ultimately published is still always exactly what the backend materializes,
  * never trusted from this static copy alone.
  *
- * This screen builds its own header/sidebar shell (rather than reusing
- * AppShell.tsx) to match the approved screenshot's full navigation list exactly.
- * Every destination other than "QA Operating Model" (this screen) is rendered
- * but not wired to a real route — those modules don't exist yet — matching the
- * same "visible but inert" pattern AppShell.tsx already uses for its own nav.
+ * The sidebar is the shared AppSidebar (see components/AppSidebar.tsx) — the
+ * same component AppShell.tsx (/app) uses — so its color scheme and nav list
+ * can never drift out of sync between screens in one session. Only the header
+ * bar (breadcrumb, step indicator) is specific to this screen.
  */
-
-const NAV_ITEMS = [
-  { key: 'dashboard', label: 'Dashboard', icon: '▦' },
-  { key: 'requirements', label: 'Requirements', icon: '📄' },
-  { key: 'test-suites', label: 'Test Suites', icon: '🗂' },
-  { key: 'test-runs', label: 'Test Runs', icon: '▶' },
-  { key: 'defects', label: 'Defects', icon: '🐞' },
-  { key: 'reports', label: 'Reports', icon: '📊' },
-  { key: 'readiness', label: 'Readiness', icon: '✅' },
-  { key: 'qa-operating-model', label: 'QA Operating Model', icon: '⚙' },
-] as const;
 
 function initials(name: string | undefined): string {
   if (!name) return '';
@@ -279,137 +268,9 @@ function QaSetupHeader({ organisationName, userName }: { organisationName?: stri
   );
 }
 
-function QaSetupSidebar({
-  collapsed,
-  onToggleCollapsed,
-  userName,
-  organisationName,
-  onSignOut,
-}: {
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
-  userName?: string;
-  organisationName?: string;
-  onSignOut: () => void;
-}): JSX.Element {
-  return (
-    <nav
-      aria-label="Primary"
-      style={{
-        width: collapsed ? 'var(--sidebar-width-collapsed)' : 'var(--sidebar-width-expanded)',
-        background: 'var(--color-surface)',
-        borderRight: '1px solid var(--color-outline-variant)',
-        color: 'var(--color-text)',
-        display: 'flex',
-        flexDirection: 'column',
-        transition: 'width 150ms ease',
-        flexShrink: 0,
-      }}
-    >
-      <div style={{ padding: 'var(--space-4)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--color-primary)' }}>
-        <span
-          aria-hidden
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: 20,
-            height: 20,
-            borderRadius: 5,
-            background: 'var(--color-primary)',
-            color: '#fff',
-            fontSize: 12,
-          }}
-        >
-          ✓
-        </span>
-        {!collapsed && 'TestFlow'}
-      </div>
-
-      <ul style={{ listStyle: 'none', margin: '0 var(--space-2)', padding: 0, flex: 1 }}>
-        {NAV_ITEMS.map((item) => {
-          const active = item.key === 'qa-operating-model';
-          return (
-            <li key={item.key} style={{ marginBottom: 2 }}>
-              <div
-                title={collapsed ? item.label : undefined}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 'var(--space-2)',
-                  padding: 'var(--space-2) var(--space-3)',
-                  borderRadius: 'var(--radius-sm)',
-                  background: active ? 'var(--color-primary)' : 'transparent',
-                  color: active ? '#fff' : 'var(--color-text)',
-                  fontWeight: active ? 600 : 400,
-                  fontSize: 13,
-                  cursor: active ? 'default' : 'not-allowed',
-                }}
-              >
-                <span aria-hidden>{item.icon}</span>
-                {!collapsed && <span>{item.label}</span>}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div style={{ margin: '0 var(--space-2)', borderTop: '1px solid var(--color-outline-variant)', paddingTop: 'var(--space-2)' }}>
-        {(['settings', 'support'] as const).map((key) => (
-          <div
-            key={key}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 'var(--space-2)',
-              padding: 'var(--space-2) var(--space-3)',
-              fontSize: 13,
-              color: 'var(--color-text-muted)',
-              cursor: 'not-allowed',
-            }}
-          >
-            <span aria-hidden>{key === 'settings' ? '⚙' : '❓'}</span>
-            {!collapsed && <span>{key === 'settings' ? 'Settings' : 'Support'}</span>}
-          </div>
-        ))}
-      </div>
-
-      <button
-        onClick={onToggleCollapsed}
-        aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        style={{
-          background: 'none',
-          border: 'none',
-          borderTop: '1px solid var(--color-outline-variant)',
-          color: 'var(--color-text-muted)',
-          fontSize: 12,
-          padding: 'var(--space-3) var(--space-4)',
-          cursor: 'pointer',
-          textAlign: 'left',
-        }}
-      >
-        {collapsed ? '»' : '« Collapse'}
-      </button>
-
-      <div style={{ padding: 'var(--space-4)', borderTop: '1px solid var(--color-outline-variant)' }}>
-        {!collapsed && (
-          <div style={{ fontSize: 13, marginBottom: 'var(--space-2)' }}>
-            <div>{userName}</div>
-            <div style={{ color: 'var(--color-text-muted)' }}>{organisationName}</div>
-          </div>
-        )}
-        <button onClick={onSignOut} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', cursor: 'pointer', padding: 0, fontSize: 13 }}>
-          {collapsed ? '⏻' : 'Sign out'}
-        </button>
-      </div>
-    </nav>
-  );
-}
-
 function QaSetupContent(): JSX.Element {
   const router = useRouter();
-  const { organisation, user, logout } = useSession();
-  const [collapsed, setCollapsed] = useState(false);
+  const { organisation, user } = useSession();
   const [selected, setSelected] = useState<QaPresetOrigin>('standard');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -467,13 +328,7 @@ function QaSetupContent(): JSX.Element {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      <QaSetupSidebar
-        collapsed={collapsed}
-        onToggleCollapsed={() => setCollapsed((v) => !v)}
-        userName={user?.name}
-        organisationName={organisation?.name}
-        onSignOut={() => void logout()}
-      />
+      <AppSidebar activeKey="qa-operating-model" />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
         <QaSetupHeader organisationName={organisation?.name} userName={user?.name} />
