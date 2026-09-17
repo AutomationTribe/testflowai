@@ -26,7 +26,7 @@ const E2E_DATABASE_URL = 'postgres://testflow:testflow@localhost:5432/testflow_e
  * `--headed`. Speed presets (slow/normal/fast — see package.json scripts) control
  * `slowMo` via PW_SPEED so a developer can watch a run step-by-step or blast through it.
  */
-const SLOW_MO_MS: Record<string, number> = { extraslow: 4000, slow: 2000, normal: 200, fast: 0 };
+const SLOW_MO_MS: Record<string, number> = { extraslow: 8000, slow: 2000, normal: 200, fast: 0 };
 const slowMo = SLOW_MO_MS[process.env.PW_SPEED ?? 'normal'] ?? 0;
 
 // A journey with many steps (sign up -> subscribe -> QA Setup) accumulates slowMo
