@@ -189,8 +189,7 @@ function SuccessContent(): JSX.Element {
                 <Button variant="secondary" onClick={() => void toggleBillingSummary()}>
                   {showBillingSummary ? 'Hide Billing Summary' : 'View Billing Summary'}
                 </Button>
-                {/* QA Setup is a later slice — this links to the defined Slice 1 boundary, not QA Setup itself. */}
-                <Link href="/app">
+                <Link href="/qa-setup">
                   <Button>Continue to QA Setup →</Button>
                 </Link>
               </div>

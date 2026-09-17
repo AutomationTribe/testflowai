@@ -2,6 +2,7 @@ import { pool } from '../../db/pool.js';
 import { HttpError } from '../../lib/httpError.js';
 import { enqueueEmailJob, processPendingJobs } from '../../lib/jobs.js';
 import { hashPassword, verifyPassword } from '../../lib/password.js';
+import { autoPublishStandardQaOnSignup } from '../qaConfiguration/qaConfiguration.service.js';
 
 export interface AuthenticatedUser {
   id: string;
@@ -58,6 +59,12 @@ export async function signUp(input: {
        RETURNING id, organisation_id, email, name, role, password_hash, status`,
       [organisationId, input.email, input.name, input.role, passwordHash],
     );
+    const newUserId = userResult.rows[0]!.id;
+
+    // FR-QAOM-001: the organisation must never be observed without a published QA
+    // Operating Model — Standard QA auto-publishes atomically with the organisation
+    // and its first user, in the same transaction.
+    await autoPublishStandardQaOnSignup(client, organisationId, newUserId);
 
     await client.query('COMMIT');
 

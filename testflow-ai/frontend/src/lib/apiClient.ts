@@ -99,6 +99,37 @@ export interface SignUpInput {
   organisationName: string;
 }
 
+export type QaPresetOrigin = 'standard' | 'lightweight' | 'controlled' | 'custom';
+export type QaDocumentType = 'test_case' | 'test_report' | 'regression_report';
+export type QaWorkflowShape = 'no_approval' | 'single_approval' | 'review_approval';
+export type QaArtifactType = 'requirements' | 'test_cases' | 'test_report' | 'regression_report';
+
+export interface QaConfigurationPreset {
+  presetOrigin: QaPresetOrigin;
+  name: string;
+  description: string;
+  recommended: boolean;
+}
+
+export interface QaConfigurationSettingsSummary {
+  templatesNote: string;
+  workflowShapes: Partial<Record<QaDocumentType, QaWorkflowShape>>;
+  requiredArtifacts: QaArtifactType[];
+  enabledGatesCount: number;
+  totalGatesCount: number;
+}
+
+export interface QaConfigurationVersion {
+  id: string;
+  organisationId: string;
+  versionNumber: number;
+  status: 'draft' | 'published';
+  presetOrigin: QaPresetOrigin;
+  publishedBy: string | null;
+  publishedAt: string | null;
+  settings: QaConfigurationSettingsSummary;
+}
+
 function newIdempotencyKey(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -150,6 +181,24 @@ export const apiClient = {
     }>(`/v1/organisations/${organisationId}/billing-history`, { method: 'GET' }),
 
   workspace: () => request<{ status: string; message: string }>('/v1/workspace', { method: 'GET' }),
+
+  qaConfigurationPresets: (organisationId: string) =>
+    request<QaConfigurationPreset[]>(`/v1/organisations/${organisationId}/qa-configuration/presets`, { method: 'GET' }),
+
+  currentQaConfiguration: (organisationId: string) =>
+    request<QaConfigurationVersion>(`/v1/organisations/${organisationId}/qa-configuration/current`, { method: 'GET' }),
+
+  startQaConfigurationDraft: (organisationId: string, presetOrigin: QaPresetOrigin) =>
+    request<QaConfigurationVersion>(`/v1/organisations/${organisationId}/qa-configuration/draft`, {
+      method: 'POST',
+      body: JSON.stringify({ presetOrigin }),
+    }),
+
+  publishQaConfigurationDraft: (organisationId: string) =>
+    request<QaConfigurationVersion>(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`, {
+      method: 'POST',
+      headers: { 'Idempotency-Key': newIdempotencyKey() },
+    }),
 
   /**
    * E2E-only (Slice 1 E2E closure): stands in for Paystack's webhook confirmation

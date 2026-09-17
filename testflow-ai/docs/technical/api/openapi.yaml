@@ -4,12 +4,15 @@ info:
   version: '1.0'
   description: >
     Machine-readable contract for TestFlow's implemented API surface (Slice 1: Account
-    Access & Subscription). This file documents only endpoints that actually exist in
-    backend/src/modules — it is generated/maintained alongside the code, not aspirational.
-    Shared conventions (error envelope, pagination, tenant isolation) are defined in
-    docs/technical/api-spec.md; per-module business rules are documented in
-    docs/technical/api/*.md. This file is the machine-readable contract; those documents
-    remain the narrative source of truth — keep both in sync when an endpoint changes.
+    Access & Subscription; QA Operating Model Setup). This file documents only endpoints
+    that actually exist in backend/src/modules — it is generated/maintained alongside the
+    code, not aspirational. Shared conventions (error envelope, pagination, tenant
+    isolation) are defined in docs/technical/api-spec.md; per-module business rules are
+    documented in docs/technical/api/*.md (qa-configuration.md for the QAOM endpoints
+    below — note this slice implements only a subset of that document's full contract,
+    see its own module doc and the QA Setup slice report for what's deferred). This file
+    is the machine-readable contract; those documents remain the narrative source of
+    truth — keep both in sync when an endpoint changes.
 servers:
   - url: /v1
     description: All product API paths are prefixed /v1 (APID-001). /health is unversioned infra.
@@ -17,6 +20,7 @@ tags:
   - name: auth
   - name: me
   - name: subscription
+  - name: qa-configuration
   - name: workspace
   - name: webhooks
   - name: health
@@ -251,14 +255,142 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /organisations/{orgId}/qa-configuration/presets:
+    get:
+      tags: [qa-configuration]
+      summary: List the four approved starting QA process presets
+      description: >
+        FR-QAOM-003. Static, descriptive-only catalogue — never a runtime dependency
+        for any published configuration (DBD-013).
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/OrgId' }]
+      responses:
+        '200':
+          description: The four presets.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/QaConfigurationPreset' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /organisations/{orgId}/qa-configuration/current:
+    get:
+      tags: [qa-configuration]
+      summary: Get the organisation's current published QA Operating Model
+      description: >
+        FR-QAOM-009. Always exists once the organisation exists — Standard QA is
+        auto-published at organisation creation (FR-QAOM-001). Readable by any
+        organisation member.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/OrgId' }]
+      responses:
+        '200':
+          description: Current published configuration.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QaConfigurationVersion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /organisations/{orgId}/qa-configuration/draft:
+    post:
+      tags: [qa-configuration]
+      summary: Start a configuration draft from a preset (or an empty Custom draft)
+      description: >
+        FR-QAOM-002/004-008. Materializes the chosen preset's settings into the
+        draft immediately (DBD-013) — the draft never "references" a live preset
+        definition. `custom` starts from an empty draft (no child rows) — the full
+        per-setting editor is a later QA Operating Model configuration screen, not
+        built in this slice.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/OrgId' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [presetOrigin]
+              properties:
+                presetOrigin: { type: string, enum: [standard, lightweight, controlled, custom] }
+      responses:
+        '201':
+          description: Draft created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QaConfigurationVersion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409':
+          description: A configuration draft already exists for this organisation (one-draft-per-org).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+    get:
+      tags: [qa-configuration]
+      summary: Retrieve the organisation's currently open draft
+      description: FR-QAOM-008.
+      security: [{ sessionCookie: [] }]
+      parameters: [{ $ref: '#/components/parameters/OrgId' }]
+      responses:
+        '200':
+          description: The open draft.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QaConfigurationVersion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No draft is currently open — the client's signal to call POST .../draft instead.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+  /organisations/{orgId}/qa-configuration/draft/publish:
+    post:
+      tags: [qa-configuration]
+      summary: Publish the organisation's open draft as its new current QA Operating Model
+      description: >
+        FR-QAOM-008/009. Runs bounded validation (this slice: a workflow shape must
+        exist for every document type) and refuses to publish on failure —
+        `422 validation_error` with a structured `errors[]` array
+        (`{section, resource, code, message}`), same shape the draft would need to
+        fix. On success, the previous published version remains intact and
+        resolvable (FR-QAOM-012) — existing projects are never affected by a later
+        publish (no `projects` table exists yet in this slice to demonstrate the
+        pin itself).
+      security: [{ sessionCookie: [] }]
+      parameters:
+        - { $ref: '#/components/parameters/OrgId' }
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      responses:
+        '200':
+          description: Newly published configuration.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QaConfigurationVersion' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404':
+          description: No draft is currently open to publish.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '422':
+          description: The draft is incomplete and cannot be published (CONFIGURATION_INVALID).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfigurationValidationError' }
   /workspace:
     get:
       tags: [workspace]
-      summary: Server-enforced proof that an active trial/subscription reaches the QA Setup boundary
+      summary: Server-enforced proof that an active trial/subscription reaches normal application access
       description: >
-        Slice 1's concrete gate demonstration — QA Setup itself is implemented in a
-        later slice. Any real business endpoint added later should use the same
-        requireActiveSubscription gate this route demonstrates.
+        FR-SUB-002's concrete gate demonstration. Any real business endpoint added
+        later should use the same requireActiveSubscription gate this route
+        demonstrates.
       security: [{ sessionCookie: [] }]
       responses:
         '200':
@@ -373,6 +505,56 @@ components:
         status: { type: string }
         seatCount: { type: integer }
         trialEndsAt: { type: string, format: date-time, nullable: true }
+    QaConfigurationPreset:
+      type: object
+      properties:
+        presetOrigin: { type: string, enum: [standard, lightweight, controlled, custom] }
+        name: { type: string }
+        description: { type: string }
+        recommended: { type: boolean }
+    QaConfigurationSettingsSummary:
+      type: object
+      description: >
+        Computed strictly from the version's own persisted child rows — never
+        hardcoded per-preset copy. `templatesNote` is descriptive-only (module TPL
+        doesn't exist yet in this slice).
+      properties:
+        templatesNote: { type: string }
+        workflowShapes:
+          type: object
+          additionalProperties: { type: string, enum: [no_approval, single_approval, review_approval] }
+          description: 'Keyed by document type: test_case, test_report, regression_report.'
+        requiredArtifacts:
+          type: array
+          items: { type: string, enum: [requirements, test_cases, test_report, regression_report] }
+        enabledGatesCount: { type: integer }
+        totalGatesCount: { type: integer, example: 6 }
+    QaConfigurationVersion:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        organisationId: { type: string, format: uuid }
+        versionNumber: { type: integer }
+        status: { type: string, enum: [draft, published] }
+        presetOrigin: { type: string, enum: [standard, lightweight, controlled, custom] }
+        publishedBy: { type: string, format: uuid, nullable: true }
+        publishedAt: { type: string, format: date-time, nullable: true }
+        settings: { $ref: '#/components/schemas/QaConfigurationSettingsSummary' }
+    ConfigurationValidationError:
+      type: object
+      description: The QA Operating Model's structured validation shape (extends the shared envelope with `errors[]`).
+      properties:
+        error: { type: string, example: validation_error }
+        message: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              section: { type: string, example: workflows }
+              resource: { type: string, example: test_case }
+              code: { type: string, example: CONFIGURATION_INCOMPLETE }
+              message: { type: string }
     ErrorEnvelope:
       type: object
       description: Shared error envelope (APID-007) used by every endpoint.

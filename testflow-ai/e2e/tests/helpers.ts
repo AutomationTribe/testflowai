@@ -46,3 +46,14 @@ export async function signOut(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Sign Out' }).click();
   await page.waitForURL('**/login');
 }
+
+/** Signs up, activates the trial, and lands on the QA Setup screen (FR-QAOM-002) — the shared starting point for every QA Setup journey test. */
+export async function signUpAndReachQaSetup(page: Page, user: E2eUser = uniqueUser()): Promise<E2eUser> {
+  await signUp(page, user);
+  await page.goto('/subscription');
+  await page.getByRole('button', { name: 'Start Free Trial' }).click();
+  await page.waitForURL('**/subscription/success**');
+  await page.getByRole('button', { name: 'Continue to QA Setup' }).click();
+  await page.waitForURL('**/qa-setup');
+  return user;
+}

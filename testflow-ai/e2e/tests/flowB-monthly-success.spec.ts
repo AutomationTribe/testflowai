@@ -37,6 +37,8 @@ test('Flow B — Monthly checkout with 5 seats, simulated payment success', { ta
   await expect(page.getByText('monthly')).toBeVisible();
 
   await page.getByRole('button', { name: 'Continue to QA Setup' }).click();
+  await page.waitForURL('**/qa-setup');
+  await page.getByRole('button', { name: /Use Standard QA/ }).click();
   await page.waitForURL('**/app');
   await expect(page.getByText(/Plan:\s*monthly/i)).toBeVisible();
 });

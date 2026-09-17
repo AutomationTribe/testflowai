@@ -1,17 +1,31 @@
 /**
  * Shared error envelope (APID-007): { error, message, fields? }.
  * Every thrown HttpError maps to exactly one HTTP status + `error` value.
+ *
+ * `errors` is an additive, opt-in extension for the QA Operating Model's
+ * structured validation shape (docs/technical/api/qa-configuration.md's
+ * `CONFIGURATION_INVALID` response) — `{ section, resource, code, message }[]`,
+ * distinct from `fields`' flat string map. Omitted entirely for every other
+ * error, so no existing response shape changes.
  */
 export class HttpError extends Error {
   readonly status: number;
   readonly error: string;
   readonly fields?: Record<string, string>;
+  readonly errors?: Array<{ section: string; resource: string; code: string; message: string }>;
 
-  constructor(status: number, error: string, message: string, fields?: Record<string, string>) {
+  constructor(
+    status: number,
+    error: string,
+    message: string,
+    fields?: Record<string, string>,
+    errors?: Array<{ section: string; resource: string; code: string; message: string }>,
+  ) {
     super(message);
     this.status = status;
     this.error = error;
     this.fields = fields;
+    this.errors = errors;
   }
 
   static unauthorized(message = 'Authentication required.'): HttpError {
