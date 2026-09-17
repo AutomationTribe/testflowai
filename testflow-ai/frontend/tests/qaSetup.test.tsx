@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const push = vi.fn();
@@ -68,6 +68,36 @@ describe('QA Setup — Set up your QA process', () => {
     expect(await screen.findByRole('heading', { name: /set up your qa process/i })).toBeInTheDocument();
     expect(screen.getAllByText('Recommended').length).toBe(1);
     await waitFor(() => expect(screen.getByText(/currently in effect/i)).toBeInTheDocument());
+  });
+
+  it('does not clobber a manual card selection if GET .../qa-configuration/current resolves late (race condition regression)', async () => {
+    // Deliberately resolve the "current published config" fetch AFTER the user
+    // has already clicked a different card — this reproduces the real bug found
+    // during manual QA: the fetch would previously always win, silently
+    // reverting the user's click back to Standard QA.
+    let resolveCurrent: (value: typeof publishedStandard) => void = () => undefined;
+    currentQaConfiguration.mockReturnValue(new Promise((resolve) => (resolveCurrent = resolve)));
+
+    render(<QaSetupPage />);
+    await screen.findByRole('heading', { name: 'Standard QA' }); // page has rendered; fetch still pending
+
+    fireEvent.click(screen.getByRole('button', { name: /controlled qa/i }));
+    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Review + Approval');
+
+    // Now the slow fetch finally resolves — to Standard, a DIFFERENT preset than
+    // what the user already clicked. Flush the resulting state update fully.
+    await act(async () => {
+      resolveCurrent(publishedStandard);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // The user's Controlled QA selection must still be in effect — not reverted
+    // to Standard just because the fetch resolved afterwards.
+    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Review + Approval');
+    // "(currently in effect)" must NOT appear — the org's real published preset
+    // (standard) differs from what's selected on screen (controlled).
+    expect(screen.queryByText(/currently in effect/i)).not.toBeInTheDocument();
   });
 
   it('renders all four presets with their approved settings summaries', async () => {

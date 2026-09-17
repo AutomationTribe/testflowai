@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
@@ -415,6 +415,12 @@ function QaSetupContent(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [currentPresetOrigin, setCurrentPresetOrigin] = useState<QaPresetOrigin | null>(null);
   const [customDraftStarted, setCustomDraftStarted] = useState(false);
+  // Guards against a real race: if the initial GET .../qa-configuration/current
+  // resolves AFTER the user has already clicked a different card, the fetch must
+  // not silently overwrite their choice back to the published default. A ref (not
+  // state) so the .then() callback reads the latest value at resolution time
+  // rather than a stale closure over the initial `false`.
+  const userHasSelectedRef = useRef(false);
 
   useEffect(() => {
     if (!organisation) return;
@@ -422,7 +428,9 @@ function QaSetupContent(): JSX.Element {
       .currentQaConfiguration(organisation.id)
       .then((current) => {
         setCurrentPresetOrigin(current.presetOrigin);
-        setSelected(current.presetOrigin);
+        if (!userHasSelectedRef.current) {
+          setSelected(current.presetOrigin);
+        }
       })
       .catch(() => undefined);
   }, [organisation]);
@@ -503,6 +511,7 @@ function QaSetupContent(): JSX.Element {
                 detail={d}
                 selected={selected === d.presetOrigin}
                 onSelect={() => {
+                  userHasSelectedRef.current = true;
                   setSelected(d.presetOrigin);
                   setCustomDraftStarted(false);
                   setError(null);
