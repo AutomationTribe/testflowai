@@ -37,11 +37,12 @@ describe('AppSidebar', () => {
     expect(inactive).toHaveStyle({ fontWeight: '400' });
   });
 
-  it('shows the signed-in user and organisation, and signs out on click', () => {
+  it('shows the signed-in user with their real role, and signs out on click', () => {
     render(<AppSidebar activeKey="dashboard" />);
 
     expect(screen.getByText('Ada Admin')).toBeInTheDocument();
-    expect(screen.getByText('Acme QA')).toBeInTheDocument();
+    // The role shown is the session's real role, never an invented job title.
+    expect(screen.getByRole('button', { name: /admin · sign out/i })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /sign out/i }));
     expect(logout).toHaveBeenCalled();

@@ -22,7 +22,6 @@ describe('AppShell', () => {
     );
 
     expect(screen.getByText('Ada Admin')).toBeInTheDocument();
-    expect(screen.getByText('Acme QA')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /collapse sidebar/i })).toBeInTheDocument();
     expect(screen.getByText('content')).toBeInTheDocument();
   });

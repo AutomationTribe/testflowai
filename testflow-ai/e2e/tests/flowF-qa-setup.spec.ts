@@ -13,7 +13,7 @@ test('Flow F — switching to Lightweight QA publishes it and reaches the app bo
   await signUpAndReachQaSetup(page);
 
   await page.getByRole('button', { name: 'Lightweight QA' }).click();
-  await expect(page.getByTestId('qa-setup-summary-policy')).toContainText('Nothing required');
+  await expect(page.getByTestId('qa-setup-summary-policy')).toContainText('No Required Artifacts');
 
   await page.getByRole('button', { name: /Use Lightweight QA/ }).click();
   await page.waitForURL('**/app');
@@ -25,8 +25,8 @@ test('Flow F — switching to Controlled QA reflects its stronger governance set
 
   await page.getByRole('button', { name: 'Controlled QA' }).click();
   // Pre-commit summary bar updates instantly, before any request (FR-QAOM-002 "instant setup").
-  await expect(page.getByTestId('qa-setup-summary-workflow')).toContainText('Review + Approval');
-  await expect(page.getByTestId('qa-setup-summary-gates')).toContainText('3 of 6 active');
+  await expect(page.getByTestId('qa-setup-summary-workflow')).toContainText('Draft → Review → Approved');
+  await expect(page.getByTestId('qa-setup-summary-gates')).toContainText('3 of 6 Gates Active');
 
   await page.getByRole('button', { name: /Use Controlled QA/ }).click();
   await page.waitForURL('**/app');

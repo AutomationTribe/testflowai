@@ -82,7 +82,7 @@ describe('QA Setup — Set up your QA process', () => {
     await screen.findByRole('heading', { name: 'Standard QA' }); // page has rendered; fetch still pending
 
     fireEvent.click(screen.getByRole('button', { name: /controlled qa/i }));
-    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Review + Approval');
+    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Draft → Review → Approved');
 
     // Now the slow fetch finally resolves — to Standard, a DIFFERENT preset than
     // what the user already clicked. Flush the resulting state update fully.
@@ -94,7 +94,7 @@ describe('QA Setup — Set up your QA process', () => {
 
     // The user's Controlled QA selection must still be in effect — not reverted
     // to Standard just because the fetch resolved afterwards.
-    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Review + Approval');
+    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Draft → Review → Approved');
     // "(currently in effect)" must NOT appear — the org's real published preset
     // (standard) differs from what's selected on screen (controlled).
     expect(screen.queryByText(/currently in effect/i)).not.toBeInTheDocument();
@@ -117,12 +117,11 @@ describe('QA Setup — Set up your QA process', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /controlled qa/i }));
 
-    // Exact (not regex/substring) — the Controlled QA card's own bullet text also
-    // contains "Review + Approval" as a substring, so a substring match would be
-    // ambiguous once that card is visible; only the summary bar's Workflow value
-    // is exactly this string.
-    expect(screen.getByText('Review + Approval')).toBeInTheDocument();
-    expect(screen.getByText(/3 of 6 active/i)).toBeInTheDocument();
+    // Scoped by test id — the Controlled QA card's own bullets mention review and
+    // approval too, so a bare text query would be ambiguous once that card shows.
+    expect(screen.getByTestId('qa-setup-summary-workflow')).toHaveTextContent('Draft → Review → Approved');
+    expect(screen.getByTestId('qa-setup-summary-gates')).toHaveTextContent('3 of 6 Gates Active');
+    expect(screen.getByTestId('qa-setup-summary-policy')).toHaveTextContent('Test Report + Regression Required');
     expect(startQaConfigurationDraft).not.toHaveBeenCalled();
   });
 
