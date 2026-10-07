@@ -44,20 +44,27 @@ Rules for AI-assisted work on the TestFlow AI project.
     a happy-path check that the fix works). An implementation is not complete until its unit
     tests have been run and the results reported — "I added tests" is not sufficient; report
     pass/fail/count. See docs/technical/testing.md for the full testing strategy.
-20. The normal path from requirements to deployment is: Requirements → Approved Design →
-    Design agent Handoff → Implementation + Unit Tests → Design agent Conformance Review → QA
-    agent → Security agent → Human Acceptance → DevOps agent → Deployment → Smoke Verification.
-    When an approved design (e.g. a Stitch screenshot) exists for a screen, Claude should invoke
-    the Design agent for a handoff before implementing it, and for a conformance review after
-    implementing it — before QA. Claude should invoke the QA agent after completing an
-    implementation or fix, before considering the work complete, and the Security agent before any
-    deployment. If Design, QA, or Security reports a failure — a MATERIAL DIFFERENCE/PRODUCT
-    CONFLICT, a failed test, or a security finding — explain exactly what failed, the risk, and a
-    recommendation, then explicitly ask the user whether to proceed anyway. Never silently skip a
-    gate, auto-override a reported failure, or let an agent silently resolve a
+20. The normal path from requirements to deployment is: Feature Selection → Requirements
+    Checkpoint → Risk Classification → Definition of Ready → Approved Design → Design agent
+    Handoff → Backend Implementation + Unit Tests → Backend Review (reviewer agent) → Frontend
+    Implementation + Unit Tests → Frontend Review (reviewer agent) → Design agent Conformance
+    Review → QA agent → Security agent → Human Acceptance → Definition of Done → DevOps agent →
+    Deployment → Production Smoke Verification → Monitoring. Frontend/backend ordering may change
+    when technically appropriate, and not every change needs both. When an approved design (e.g. a
+    Stitch screenshot) exists for a screen, Claude should invoke the Design agent for a handoff
+    before implementing it, and for a conformance review after implementing it — before QA. Claude
+    should invoke the Reviewer agent after a Frontend or Backend agent implementation (the reviewer
+    must be independent of the implementer), the QA agent after completing an implementation or
+    fix, before considering the work complete, and the Security agent before any deployment. If
+    Design, Reviewer, QA, or Security reports a failure — a MATERIAL DIFFERENCE/PRODUCT CONFLICT, a
+    BLOCKED review, a failed test, or a security finding — explain exactly what failed, the risk,
+    and a recommendation, then explicitly ask the user whether to proceed anyway. Never silently
+    skip a gate, auto-override a reported failure, or let an agent silently resolve a
     design/requirement conflict in either direction; the user is always the final decision-maker,
     including final acceptance before deployment. See docs/technical/testing.md,
-    docs/technical/security.md, and docs/technical/design-handoff.md.
+    docs/technical/security.md, docs/technical/design-handoff.md, and
+    docs/technical/engineering-framework.md (Definition of Ready/Done, change-risk classification,
+    release workflow, full framework detail).
 21. Every TestFlow API must have a maintained OpenAPI contract at
     docs/technical/api/openapi.yaml, kept in sync with the actual implementation whenever an
     endpoint is added or changed (request/response shapes, auth requirements). Swagger UI is
@@ -69,4 +76,35 @@ Rules for AI-assisted work on the TestFlow AI project.
     the next three tasks. Never mark work "complete" there unless its tests were actually run
     in that session and passed; report untested work as untested. A Stop hook enforces this by
     blocking when the repo changed without this file being part of that change — do not weaken
-    or bypass that hook instead of actually updating the file.
+    or bypass that hook instead of actually updating the file. PROJECT_STATUS.md is the concise
+    handoff/state record — it does not replace product requirements, architecture docs, ADRs,
+    API specs, database docs, or product decisions; consult those alongside it before planning
+    new work.
+23. Frontend and Backend implementation agents (.claude/agents/frontend.md,
+    .claude/agents/backend.md) must never self-certify their own work as correct or complete —
+    that determination belongs to the Reviewer agent (.claude/agents/reviewer.md, independent of
+    the implementer), the Design agent for UI conformance, and the QA agent for functional
+    correctness. The Reviewer agent returns exactly one status: PASS, PASS WITH CHANGES, or
+    BLOCKED, and does not implement product code itself.
+24. Every implementation/change is classified LOW, MEDIUM, or HIGH risk before work begins, and a
+    Definition of Ready is checked before implementation starts and a Definition of Done before
+    it's considered complete — see docs/technical/engineering-framework.md for the full criteria.
+    Review/testing/security depth scales with the risk level and the project's criticality
+    profile; do not add unnecessary ceremony to genuinely low-risk work, and do not skip a gate a
+    high-risk change actually needs.
+25. TestFlow's project criticality profile (PROTOTYPE/MVP/PRODUCTION/HIGH-CRITICALITY) and code
+    readability profile (MID-LEVEL/SENIOR) are user decisions, not Claude's to choose — see
+    docs/technical/engineering-framework.md and docs/technical/coding-standards.md, both of which
+    currently record these as pending. Treat TestFlow as at least MVP rigor until the criticality
+    decision is recorded, and default to MID-LEVEL code until the readability decision is
+    recorded.
+26. New technology, a meaningful new dependency, or a significant/hard-to-reverse technical
+    decision requires evidence-based justification (not popularity/familiarity alone) and, where
+    significant, a recorded decision per docs/decisions/README.md (ADR/RFC) or the relevant
+    existing decision log (architecture-decisions.md, database-decisions.md, api-decisions.md,
+    product-decisions.md) — do not introduce microservices, Kubernetes, queues, caches, search
+    engines, additional databases, distributed-systems patterns, or additional runtimes without
+    one. See docs/technical/engineering-framework.md for dependency governance, accessibility,
+    observability, performance, threat-modeling, migration/backward-compatibility, feature-flag,
+    reliability, technical-debt, production-verification, and incident-practice guidance — all
+    adopted forward-only; existing work is not redone to conform to it.

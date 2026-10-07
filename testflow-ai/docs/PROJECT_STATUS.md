@@ -12,6 +12,74 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-07 — AI Software Delivery Framework adoption (forward-only)
+
+**Branch/commit:** `main` (pending this entry's own commit — see git status at time of this
+entry)
+
+**Completed work:**
+- Adopted the framework forward-only, per explicit instruction: no stage redone, no screen
+  redesigned, no product feature started, nothing deployed.
+- Created `.claude/agents/frontend.md`, `.claude/agents/backend.md`,
+  `.claude/agents/reviewer.md`. Preserved `design.md`, `qa.md`, `security.md`, `devops.md`
+  unchanged.
+- Created `docs/technical/engineering-framework.md` — Definition of Ready, Definition of Done,
+  change-risk classification (LOW/MEDIUM/HIGH), updated vertical-slice and release workflows,
+  output-review expectations, technology-decision/dependency-governance process, accessibility,
+  observability, performance, threat-modeling, migrations/backward-compatibility, feature flags,
+  reliability/SLO, production verification, and incident/postmortem guidance.
+- Created `docs/decisions/README.md` — lightweight ADR/RFC process, integrated with (not
+  replacing) the existing architecture/database/API/product decision logs.
+- Created `docs/technical/technical-debt.md` — a lightweight register of 5 real, existing gaps
+  found during review (no code changed to produce it): no connection timeout in `pool.ts`
+  (TD-001), visual regression not wired into CI (TD-002, already a known deliberate choice),
+  QA Operating Model Custom Setup has no full config screen (TD-003, already a known deferred
+  item), no general-purpose rate limiting beyond login lockout (TD-004), Swagger UI's
+  non-production default has no additional access control (TD-005).
+- Updated `docs/technical/coding-standards.md` with the code-readability-profile decision point
+  and the project's existing conventions.
+- Updated `CLAUDE.md`: rule 20 now reflects the full updated vertical-slice/release workflow
+  (Risk Classification → Definition of Ready → ... → Reviewer → ... → Definition of Done →
+  ... → Production Smoke Verification → Monitoring); added rules 23–26 (Frontend/Backend must
+  not self-certify; Reviewer is independent and returns PASS/PASS WITH CHANGES/BLOCKED; risk
+  classification + Definition of Ready/Done; the two pending user decisions below; technology/
+  dependency governance). Rules 1–22 preserved verbatim.
+- Updated `docs/technical/testing.md` with a short section on the Frontend/Backend/Reviewer
+  split, cross-referencing the engineering framework doc rather than duplicating it.
+- Two decisions explicitly **not** made by Claude, recorded as pending in both
+  `docs/technical/engineering-framework.md` and `docs/technical/coding-standards.md`:
+  - **USER DECISION REQUIRED — TestFlow Project Criticality**: PROTOTYPE / MVP / PRODUCTION /
+    HIGH-CRITICALITY.
+  - **USER DECISION REQUIRED — TestFlow Code Readability**: MID-LEVEL / SENIOR.
+
+**Tests actually run and results:**
+- No application test suite applies — no product/application code was changed in this task
+  (docs, agent definitions, and CLAUDE.md only).
+- Verification actually performed: all 7 agent files confirmed present (4 preserved + 3 new);
+  `.claude/settings.json` Stop hook re-validated with `jq -e` (still valid) and pipe-tested
+  (still correctly returns a block decision when PROJECT_STATUS.md isn't part of a change,
+  confirming the hook was not weakened); `git status --porcelain` confirmed no `backend/src` or
+  `frontend/src` files were modified.
+
+**Deployment/demo link:**
+- Frontend: https://testflow-frontend.onrender.com
+- Backend: https://testflow-backend-yhj7.onrender.com (health: `/health`)
+- (Unchanged — nothing deployed this session, per explicit instruction.)
+
+**Blockers:** None for this task. Two user decisions are outstanding (see above) and should be
+made before they materially affect how much rigor future work applies.
+
+**Next three tasks:**
+1. Obtain the two pending user decisions (Project Criticality, Code Readability) so agents stop
+   defaulting to conservative assumptions (MVP rigor / MID-LEVEL code).
+2. Continue QA Operating Model work (e.g. the Custom Setup full configuration screen — now also
+   tracked as TD-003) using the updated vertical-slice workflow.
+3. Decide whether to push the local `main` commits and redeploy, or keep accumulating locally.
+
+---
+
+## Prior entry
+
 ### 2026-10-07 — Signup + login E2E verification
 
 **Branch/commit:** `main` @ `949d3c7` (no code changes this session — test run only)

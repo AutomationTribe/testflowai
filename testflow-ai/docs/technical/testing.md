@@ -22,6 +22,16 @@ tests, covering:
 Work is not complete until its unit tests have been **run**, and the results **reported**
 (pass/fail/count) — not merely written.
 
+## Implementation agents and independent review
+
+Implementation itself is owned by the `frontend` (`.claude/agents/frontend.md`) and `backend`
+(`.claude/agents/backend.md`) agents, each of which writes and runs its own unit/integration
+tests but must never certify its own work complete or correct. The `reviewer` agent
+(`.claude/agents/reviewer.md`) performs that independent review (architecture, code,
+tests, dependencies, contradictions with approved decisions), ending in PASS / PASS WITH
+CHANGES / BLOCKED, before QA and Security run. See `docs/technical/engineering-framework.md`
+for the full updated vertical-slice and release workflows these agents sit inside.
+
 ## QA agent workflow
 
 After an implementation or fix is completed, Claude invokes the `qa` subagent
