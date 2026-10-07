@@ -64,3 +64,9 @@ Rules for AI-assisted work on the TestFlow AI project.
     served at `/docs` outside production by default and is never exposed in a production
     deployment unless explicitly enabled (`SWAGGER_UI_ENABLED=true`) — do not change this default
     without recording the decision.
+22. docs/PROJECT_STATUS.md must be updated after every coding task — date, branch/commit,
+    completed work, tests actually run and their results, deployment/demo link, blockers, and
+    the next three tasks. Never mark work "complete" there unless its tests were actually run
+    in that session and passed; report untested work as untested. A Stop hook enforces this by
+    blocking when the repo changed without this file being part of that change — do not weaken
+    or bypass that hook instead of actually updating the file.

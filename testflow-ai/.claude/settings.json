@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CHANGED=$(git status --porcelain 2>/dev/null | grep -v -E '\\.DS_Store$|tsconfig\\.tsbuildinfo$'); if [ -n \"$CHANGED\" ] && ! echo \"$CHANGED\" | grep -q \"testflow-ai/docs/PROJECT_STATUS.md\"; then printf '%s' '{\"decision\":\"block\",\"reason\":\"The repo has uncommitted changes but docs/PROJECT_STATUS.md was not updated (CLAUDE.md rule 22). Update it now \\u2014 date, branch/commit, completed work, tests actually run and their results, deployment/demo link, blockers, next three tasks \\u2014 then finish again. Never mark untested work as complete.\"}'; else printf '{}'; fi",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}
