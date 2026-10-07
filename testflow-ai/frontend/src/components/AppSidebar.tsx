@@ -1,18 +1,20 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { Icon, type IconName } from './Icon';
 import { useSession } from '@/lib/SessionProvider';
 
 /**
  * Shared primary navigation sidebar (visual reference: the approved designs).
- * Every destination other than the caller's own `activeKey` is rendered but not
- * wired to a real route — those modules don't exist yet. Both AppShell.tsx
+ * A destination is a real link only when it has an `href` (Dashboard, Projects);
+ * every other destination is rendered but not wired to a route — those modules don't exist yet. Both AppShell.tsx
  * (/app) and the QA Setup screen render this same component so the sidebar can
  * never drift between screens in one session.
  */
-export const NAV_ITEMS: ReadonlyArray<{ key: string; label: string; icon: IconName }> = [
-  { key: 'dashboard', label: 'Dashboard', icon: 'grid' },
+export const NAV_ITEMS: ReadonlyArray<{ key: string; label: string; icon: IconName; href?: string }> = [
+  { key: 'dashboard', label: 'Dashboard', icon: 'grid', href: '/app' },
+  { key: 'projects', label: 'Projects', icon: 'folder', href: '/projects' },
   { key: 'requirements', label: 'Requirements', icon: 'list' },
   { key: 'test-cases', label: 'Test Cases', icon: 'check-square' },
   { key: 'test-suites', label: 'Test Suites', icon: 'folder' },
@@ -73,11 +75,13 @@ export function AppSidebar({ activeKey }: { activeKey: string }): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useSession();
 
-  function navRow(item: { key: string; label: string; icon: IconName }): JSX.Element {
+  function navRow(item: { key: string; label: string; icon: IconName; href?: string }): JSX.Element {
     const active = item.key === activeKey;
-    return (
+    const linked = Boolean(item.href) && !active;
+    const row = (
       <div
         title={collapsed ? item.label : undefined}
+        aria-current={active ? 'page' : undefined}
         style={{
           position: 'relative',
           display: 'flex',
@@ -88,7 +92,7 @@ export function AppSidebar({ activeKey }: { activeKey: string }): JSX.Element {
           color: active ? 'var(--color-primary)' : 'var(--color-text)',
           fontWeight: active ? 600 : 450,
           fontSize: 13.5,
-          cursor: active ? 'default' : 'not-allowed',
+          cursor: active ? 'default' : linked ? 'pointer' : 'not-allowed',
         }}
       >
         {active && (
@@ -103,6 +107,13 @@ export function AppSidebar({ activeKey }: { activeKey: string }): JSX.Element {
           <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--color-primary)' }} />
         )}
       </div>
+    );
+
+    if (!linked) return row;
+    return (
+      <Link href={item.href!} style={{ display: 'block', color: 'inherit', textDecoration: 'none' }}>
+        {row}
+      </Link>
     );
   }
 

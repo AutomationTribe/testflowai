@@ -43,7 +43,14 @@ export type IconName =
   | 'shield-check'
   | 'info'
   | 'arrow-left'
-  | 'arrow-right';
+  | 'arrow-right'
+  // projects
+  | 'plus'
+  | 'search'
+  | 'close'
+  | 'filter'
+  | 'folder-off'
+  | 'external';
 
 const PATHS: Record<IconName, JSX.Element> = {
   grid: (
@@ -242,6 +249,38 @@ const PATHS: Record<IconName, JSX.Element> = {
   'arrow-right': (
     <>
       <path d="M3 8h10M9.5 4.5 13 8l-3.5 3.5" />
+    </>
+  ),
+  plus: (
+    <>
+      <path d="M8 3v10M3 8h10" />
+    </>
+  ),
+  search: (
+    <>
+      <circle cx="7" cy="7" r="4.5" />
+      <path d="m10.5 10.5 3 3" />
+    </>
+  ),
+  close: (
+    <>
+      <path d="m3.5 3.5 9 9M12.5 3.5l-9 9" />
+    </>
+  ),
+  filter: (
+    <>
+      <path d="M2.5 3h11L9.5 8v4.5l-3 1.2V8L2.5 3Z" />
+    </>
+  ),
+  'folder-off': (
+    <>
+      <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.2l1.3 1.6h5.5A1.5 1.5 0 0 1 14 6.1v6.4a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5Z" />
+      <path d="m2 2 12 12" />
+    </>
+  ),
+  external: (
+    <>
+      <path d="M6 3h7v7M13 3 5.5 10.5" />
     </>
   ),
 };

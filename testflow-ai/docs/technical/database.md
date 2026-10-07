@@ -37,6 +37,7 @@ The model contains **29 entities**, organized into eight modules: Tenancy & Iden
 | Name | Display name, chosen at sign-up | Required | Not required | Uniqueness policy is an open question (see §12) |
 | Created At | When the organisation was created | Required | — | Set at sign-up (FR-ORG-001) |
 | Trial Used | Whether this organisation has ever activated a trial | Required (boolean) | — | Once true, can never revert to false (PD-021) |
+| Next Project Number | Counter that backs the per-organisation project code | Required (integer, starts at 1) | — | Incremented atomically in the project-create transaction; never decreases (PD-066, DBD-025) |
 
 **Primary Identifier:** Organisation ID.
 
@@ -116,7 +117,10 @@ The model contains **29 entities**, organized into eight modules: Tenancy & Iden
 |---|---|---|---|---|
 | Project ID | Uniquely identifies the project | Required | Unique | Primary identifier |
 | Organisation ID | Owning organisation | Required | — | Never changes (tenant isolation) |
-| Name | Display name | Required | — | |
+| Project Code | Human-readable identifier, e.g. `PRJ-001` | Required | Unique per organisation | Server-assigned, per-organisation sequential, never reused or changed (PD-066, DBD-025) |
+| Name | Display name | Required | — | 1–120 characters, trimmed |
+| Description | Optional summary of the project | Optional | — | At most 500 characters; blank stored as none (PD-067) |
+| QA Configuration Version ID | The published organisation QA configuration version the project is pinned to | Required | — | Set once at creation to the current published version; belongs to the same organisation; never auto-updated (FR-QAOM-012, DBD-014, PD-068) |
 | Created By (User ID) | The project's creator | Required | — | Must be Admin, QA Manager, or QA Tester (FR-PRJ-001) |
 | Status | Active or Archived | Required | — | Per DBD-006 pattern |
 | Created At | Creation date | Required | — | |
@@ -1052,6 +1056,7 @@ Indexes are added for concrete, approved query patterns — not on every column.
 | `idx_defects_status`, `idx_defects_execution_result_id` | Defect boards; "show the defect(s) raised from this failure" | Standard lookup patterns. |
 | `idx_test_run_test_cases_test_case_id` | "Which test runs has this test case appeared in historically" | The unique constraint on `(test_run_id, test_case_id)` indexes test_run_id-first; this reverse index is needed for test-case-history views. |
 | `idx_test_suite_memberships_test_case_id` | "Which suites is this test case in" (DBD-002 many-to-many) | Same reasoning — the natural unique constraint doesn't serve reverse lookups. |
+| `idx_projects_org_created` | Project list: newest first, cursor-paginated within an organisation (FR-PRJ-004) | `(organisation_id, created_at DESC, id DESC)` matches the list's ORDER BY and cursor comparison. |
 | `idx_project_memberships_user_id` | "Which projects does this user have access to" | Same reverse-lookup reasoning. |
 | `idx_ai_generation_requirement_id`, `idx_ai_generation_status` | AI generation history per requirement (NFR-AI-006); failure/usage monitoring (NFR-OBS-002) | Direct support for approved traceability and monitoring requirements. |
 | `idx_audit_log_organisation_occurred` (composite `organisation_id, occurred_at DESC`) | "Show audit history for this organisation, most recent first" (PD-041 restricted view) | Composite and ordered, matching the actual approved access pattern (QA Manager/Admin browsing recent history). |

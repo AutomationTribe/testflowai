@@ -130,6 +130,53 @@ export interface QaConfigurationVersion {
   settings: QaConfigurationSettingsSummary;
 }
 
+export type ProjectStatus = 'active' | 'archived';
+
+export interface ProjectQaConfiguration {
+  versionId: string;
+  versionNumber: number;
+  presetOrigin: QaPresetOrigin;
+}
+
+export interface ProjectMember {
+  userId: string;
+  name: string;
+}
+
+export interface Project {
+  id: string;
+  organisationId: string;
+  projectCode: string;
+  name: string;
+  description: string | null;
+  status: ProjectStatus;
+  createdAt: string;
+  createdBy: { userId: string; name: string };
+  qaConfiguration: ProjectQaConfiguration;
+  members: ProjectMember[];
+}
+
+export interface ProjectListResponse {
+  items: Project[];
+  nextCursor: string | null;
+  counts: { total: number; active: number; archived: number };
+  qaConfigurations: ProjectQaConfiguration[];
+}
+
+export interface ListProjectsParams {
+  q?: string;
+  status?: ProjectStatus;
+  qaConfigurationVersionId?: string;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface CreateProjectInput {
+  name: string;
+  description?: string;
+  qaConfigurationVersionId?: string;
+}
+
 function newIdempotencyKey(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -198,6 +245,21 @@ export const apiClient = {
     request<QaConfigurationVersion>(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`, {
       method: 'POST',
       headers: { 'Idempotency-Key': newIdempotencyKey() },
+    }),
+
+  listProjects: (organisationId: string, params: ListProjectsParams = {}) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') query.set(key, String(value));
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return request<ProjectListResponse>(`/v1/organisations/${encodeURIComponent(organisationId)}/projects${suffix}`, { method: 'GET' });
+  },
+
+  createProject: (organisationId: string, input: CreateProjectInput) =>
+    request<Project>(`/v1/organisations/${encodeURIComponent(organisationId)}/projects`, {
+      method: 'POST',
+      body: JSON.stringify(input),
     }),
 
   /**

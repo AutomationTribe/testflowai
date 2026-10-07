@@ -318,3 +318,21 @@ The decisions below re-baseline the physical/logical database design against PD-
 **Consequences:** `qa_configuration_versions` and all QA Operating Model versioning tables are untouched — scope is not versioned. `test_runs` is untouched — Test Run remains an independent execution container, never conflated with scope. No new readiness-related table or column — `FR-QG-003`'s on-demand, Project-level, no-persisted-result design (DBD-021) is unaffected.
 
 **Status:** Approved
+
+
+---
+
+## DBD-025 — Projects Slice: Project Code Counter, Description, and Same-Organisation Configuration Pin
+
+**Decision:** Migration `0005_projects.sql` creates `projects` and `project_memberships` per `schema.sql`, with three deliberate additions:
+1. `projects.project_code text NOT NULL` (PD-066), unique per organisation, generated from a new `organisations.next_project_number integer NOT NULL DEFAULT 1` counter incremented atomically (`UPDATE ... RETURNING`) inside the same transaction as the project insert.
+2. `projects.description text NULL`, at most 500 characters (PD-067), plus CHECKs on name (1–120 characters, trimmed) and status.
+3. A **composite foreign key** `(qa_configuration_version_id, organisation_id)` referencing a new `UNIQUE (id, organisation_id)` on `qa_configuration_versions`, so the database itself rejects pinning a project to another organisation's configuration version (DBD-014 + tenant isolation), not only the application code.
+
+**Reason:** A counter row lock serialises code generation per organisation without a global sequence or gaps from rolled-back transactions; counting rows (`max()+1`) would race. The composite FK makes the most dangerous cross-tenant mistake impossible even if a future code path forgets the check.
+
+**Alternatives Considered:** `max(project_code)+1` (races under concurrent creates). A Postgres sequence per organisation (one sequence object per tenant; operationally heavy). Application-only same-organisation check (a missed code path would silently cross tenants).
+
+**Consequences:** Additive migration; rollback is dropping the two new tables, the new constraint, and the new column. `schema.sql` is updated to match. A published-status check on the pinned version is application-level (a row's status changes draft → published, so a static FK cannot express it). The "current published version" is read at the start of the create transaction; a publish committing between that read and the insert pins the just-superseded version, which is still a valid published version of the same organisation ("current at request start") — accepted, not blocked.
+
+**Status:** Approved

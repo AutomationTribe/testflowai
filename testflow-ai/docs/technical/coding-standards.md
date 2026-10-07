@@ -2,15 +2,10 @@
 
 ## Code readability profile
 
-**USER DECISION REQUIRED — TESTFLOW CODE READABILITY PROFILE** (`MID-LEVEL` or `SENIOR`) — not
-yet selected as of the 2026-10-07 engineering-framework adoption. See
-`docs/technical/engineering-framework.md` for what each profile means. The `frontend`, `backend`,
-and `reviewer` agents read this file to know which profile to apply; until a decision is
-recorded here, they default to **MID-LEVEL**.
+See `docs/technical/engineering-framework.md` for what each profile means. The `frontend`,
+`backend`, and `reviewer` agents read this file to know which profile to apply.
 
-Once selected, record it here:
-
-> Selected profile: _(pending user decision)_
+> Selected profile: **MID-LEVEL** (Product Owner decision, 2026-10-07)
 
 ### MID-LEVEL
 

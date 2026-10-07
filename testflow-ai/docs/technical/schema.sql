@@ -40,6 +40,7 @@ CREATE TABLE organisations (
     id                              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name                            text NOT NULL,
     trial_used                      boolean NOT NULL DEFAULT false, -- PD-021: once true, must never be reset to false (app-enforced)
+    next_project_number             integer NOT NULL DEFAULT 1, -- PD-066/DBD-025: per-organisation project code counter, incremented atomically in the project-create transaction
     preferred_scope_terminology     text, -- CHANGE-002/DBD-024/FR-QAOM-013: optional, descriptive-only label (e.g. 'Sprint', 'Phase'); NEVER read by any behavioural logic, only UI copy
     created_at                      timestamptz NOT NULL DEFAULT now()
 );
@@ -92,18 +93,23 @@ CREATE TABLE invitations (
 CREATE TABLE projects (
     id                          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     organisation_id             uuid NOT NULL,
+    project_code                text NOT NULL, -- PD-066/DBD-025: 'PRJ-' + zero-padded per-organisation sequence; server-assigned, never reused
     name                        text NOT NULL,
+    description                 text, -- PD-067: optional, at most 500 characters
     qa_configuration_version_id uuid NOT NULL, -- CHANGE-001/FR-QAOM-012/DBD-014: pinned at creation to the organisation's then-current published version; NEVER auto-updated when the organisation publishes a later version — explicit, efficiently retrievable, no "latest" lookup at request time
     created_by_user_id          uuid NOT NULL,
     status                      text NOT NULL DEFAULT 'active', -- 'active' | 'archived'
     created_at                  timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT fk_projects_organisation FOREIGN KEY (organisation_id)
         REFERENCES organisations (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_projects_qa_configuration_version FOREIGN KEY (qa_configuration_version_id)
-        REFERENCES qa_configuration_versions (id) ON DELETE RESTRICT,
+    CONSTRAINT fk_projects_qa_configuration_version FOREIGN KEY (qa_configuration_version_id, organisation_id)
+        REFERENCES qa_configuration_versions (id, organisation_id) ON DELETE RESTRICT, -- DBD-025: composite, so a project can never pin another organisation's version
     CONSTRAINT fk_projects_created_by FOREIGN KEY (created_by_user_id)
         REFERENCES users (id) ON DELETE RESTRICT,
-    CONSTRAINT ck_projects_status CHECK (status IN ('active', 'archived'))
+    CONSTRAINT uq_projects_org_code UNIQUE (organisation_id, project_code),
+    CONSTRAINT ck_projects_status CHECK (status IN ('active', 'archived')),
+    CONSTRAINT ck_projects_name CHECK (char_length(name) BETWEEN 1 AND 120 AND name = btrim(name)),
+    CONSTRAINT ck_projects_description CHECK (description IS NULL OR char_length(description) <= 500)
 );
 
 CREATE TABLE project_memberships (
@@ -122,6 +128,8 @@ CREATE TABLE project_memberships (
     CONSTRAINT uq_project_memberships_project_user UNIQUE (project_id, user_id)
 );
 COMMENT ON TABLE project_memberships IS 'Many-to-many User<->Project (PD-017: access grant, not a role assignment). Admin/QA Manager organisation-wide visibility (FR-PRJ-004) is NOT modeled as rows here — it is derived from users.role at query time; see database.md Design Review for this reconciliation.';
+
+CREATE INDEX idx_projects_org_created ON projects (organisation_id, created_at DESC, id DESC); -- project list: newest first, cursor-paginated within an organisation
 
 -- Reverse-lookup index: "which projects does this user have access to" (the unique
 -- constraint above indexes (project_id, user_id) — good for "who is on this project",
@@ -315,6 +323,7 @@ CREATE TABLE qa_configuration_versions (
     CONSTRAINT fk_qa_config_versions_published_by FOREIGN KEY (published_by_user_id)
         REFERENCES users (id) ON DELETE RESTRICT,
     CONSTRAINT uq_qa_config_versions_org_version UNIQUE (organisation_id, version_number),
+    CONSTRAINT uq_qa_config_versions_id_org UNIQUE (id, organisation_id), -- DBD-025: target of projects' composite same-organisation foreign key
     CONSTRAINT ck_qa_config_versions_status CHECK (status IN ('draft', 'published')),
     CONSTRAINT ck_qa_config_versions_preset_origin CHECK (preset_origin IN ('standard', 'lightweight', 'controlled', 'custom')),
     CONSTRAINT ck_qa_config_versions_published_fields CHECK (

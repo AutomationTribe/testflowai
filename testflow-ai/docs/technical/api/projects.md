@@ -6,17 +6,17 @@
 
 ## Create Project
 
-**Requirement IDs:** FR-PRJ-001.
-**Purpose:** Create a new project within the organisation.
+**Requirement IDs:** FR-PRJ-001, FR-QAOM-012, FR-POL-002; PD-066, PD-067, PD-068.
+**Purpose:** Create a new project within the organisation, pinned to the organisation's current published QA configuration version.
 **Actor/Permission:** Admin, QA Manager, QA Tester.
 **Method and Path:** `POST /organisations/{orgId}/projects`
-**Request:** Path: `orgId`. Body: `name`.
-**Successful Response:** `201 Created` — the project (`status: active`, creator granted a Project Membership).
-**Business Rules:** Blocked entirely if the organisation has no active trial/paid subscription (FR-SUB-002).
-**Error Conditions:** `403 forbidden` (mandatory-subscription block, or link-based role); `422 validation_error`.
-**Side Effects:** Creates Project and a Project Membership (creator, `isCreatorGrant: true`).
-**Audit Behaviour:** Audited.
-**Security Considerations:** Standard tenant isolation.
+**Request:** Path: `orgId`. Body: `name` (required, trimmed, 1–120 characters); `description` (optional, at most 500 characters, blank stored as null); `qaConfigurationVersionId` (optional uuid — if sent it must be the organisation's current published version, otherwise the request is rejected; omitted means "the current published version"). Organisation and creator always come from the session, never the body; `projectCode`, `status` and any other body fields are ignored.
+**Successful Response:** `201 Created` — the project: `id`, `organisationId`, `projectCode` (`PRJ-001`, per-organisation sequential), `name`, `description`, `status: active`, `createdAt`, `createdBy {userId, name}`, `qaConfiguration {versionId, versionNumber, presetOrigin}`, `members [{userId, name}]` (the creator, via a Project Membership with `isCreatorGrant: true`).
+**Business Rules:** Blocked entirely if the organisation has no active trial/paid subscription (FR-SUB-002). Pinned once to the current published version and never auto-updated (FR-QAOM-012). A version from another organisation, a draft, a superseded version, or an unknown id all return the same `422` (nothing about other tenants is revealed).
+**Error Conditions:** `401 unauthorized`; `403 subscription_required` (mandatory-subscription block); `404 not_found` (orgId is not the caller's organisation, or the organisation has no published QA configuration — a data-integrity fault FR-QAOM-001 should make impossible); `422 validation_error` (`fields.name`, `fields.description`, `fields.qaConfigurationVersionId`).
+**Side Effects:** Creates the Project and the creator's Project Membership, and advances the organisation's project-code counter, in one transaction.
+**Audit Behaviour:** Logged through the structured logger (`project_created`). Writing an Audit Log Entry is deferred — the audit module is not built yet (see `technical-debt.md` TD-006).
+**Security Considerations:** Standard tenant isolation; the pinned configuration is enforced to belong to the caller's organisation both in the service and by a composite foreign key (DBD-025).
 
 ---
 
@@ -26,13 +26,13 @@
 **Purpose:** List projects visible to the caller.
 **Actor/Permission:** Admin, QA Manager, QA Tester.
 **Method and Path:** `GET /organisations/{orgId}/projects`
-**Request:** Path: `orgId`. Query: pagination, `?q=` (name search).
-**Successful Response:** `200 OK` — list of projects. Admin/QA Manager see all organisation projects; QA Tester sees only projects they created or were added to (FR-PRJ-004) — this filtering happens server-side, not client-side.
-**Business Rules:** Visibility rule above is enforced regardless of any client-supplied filter.
-**Error Conditions:** None beyond standard auth.
+**Request:** Path: `orgId`. Query: `cursor`, `limit` (1–100, default 25) — cursor pagination (APID-002); `q` (case-insensitive match on name or project code; at most 120 characters); `status` (`active` | `archived`); `qaConfigurationVersionId` (uuid).
+**Successful Response:** `200 OK` — `{ items, nextCursor, counts, qaConfigurations }`. `items` are projects as above, newest first. `counts` (`total`, `active`, `archived`) cover the caller's visible projects honouring `q` and the QA configuration filter but not `status`. `qaConfigurations` lists the distinct QA configuration versions among the caller's visible projects (filter options). Admin/QA Manager see all organisation projects; a QA Tester sees only projects they hold a Project Membership on (the creator holds one from creation) — filtering happens server-side, in the query.
+**Business Rules:** Visibility rule above is enforced regardless of any client-supplied filter. Blocked with `403 subscription_required` when the organisation has no active trial/subscription (FR-SUB-002).
+**Error Conditions:** `401 unauthorized`; `403 subscription_required`; `404 not_found` (orgId is not the caller's organisation); `422 validation_error` (malformed cursor/limit/status/QA-configuration filter, or `q` over 120 characters).
 **Side Effects:** None.
 **Audit Behaviour:** Not audited.
-**Security Considerations:** The visibility rule (not just an access-control check, but a *filtering* rule) must be applied at the query level, not post-filtered in application code, to avoid ever constructing a response that briefly holds unauthorized data.
+**Security Considerations:** The visibility rule (not just an access-control check, but a *filtering* rule) is applied at the query level, not post-filtered in application code, and the same rule governs `counts` and `qaConfigurations` so metadata never reveals hidden projects.
 
 ---
 

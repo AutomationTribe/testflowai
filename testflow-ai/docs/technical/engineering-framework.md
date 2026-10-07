@@ -14,14 +14,14 @@ reasoning and process detail lives.
 
 ## Project criticality profile
 
-**USER DECISION REQUIRED — TESTFLOW PROJECT CRITICALITY**
+**DECIDED (Product Owner, 2026-10-07): TESTFLOW PROJECT CRITICALITY = `PRODUCTION`.**
 
-One of: `PROTOTYPE` / `MVP` / `PRODUCTION` / `HIGH-CRITICALITY`.
-
-This has not yet been selected by the user as of this framework adoption. Until it is, treat
-TestFlow conservatively as at least `MVP` (it has real signup/payment/production deployment) and
-re-calibrate every section below once the decision is recorded. Record the decision here and in
-`docs/product/product-decisions.md` once made.
+One of: `PROTOTYPE` / `MVP` / `PRODUCTION` / `HIGH-CRITICALITY`. Selected: **PRODUCTION**. The
+full Definition of Done applies broadly, with stronger security, observability, and rollback
+expectations (table below). Where a section of this document says "re-calibrate once the
+criticality decision is made", it is now made: apply PRODUCTION rigor. This does not by itself
+authorize HIGH-CRITICALITY practices (formal SLOs, heavyweight reliability programmes) — those
+remain out unless a requirement calls for them.
 
 | Profile | What it changes |
 |---|---|
@@ -32,19 +32,39 @@ re-calibrate every section below once the decision is recorded. Record the decis
 
 ## Code readability profile
 
-**USER DECISION REQUIRED — TESTFLOW CODE READABILITY PROFILE**
+**DECIDED (Product Owner, 2026-10-07): TESTFLOW CODE READABILITY PROFILE = `MID-LEVEL`.**
 
-One of: `MID-LEVEL` / `SENIOR`.
-
-Not yet selected as of this framework adoption. Record the decision here and in
-`docs/technical/coding-standards.md` once made; `frontend`/`backend`/`reviewer` agents read that
-file and must apply whichever profile is selected.
+One of: `MID-LEVEL` / `SENIOR`. Selected: **MID-LEVEL**. Also recorded in
+`docs/technical/coding-standards.md`; `frontend`/`backend`/`reviewer` agents read that file and
+apply this profile.
 
 - **MID-LEVEL** — explicit, straightforward, easy to follow and debug, conservative with
   abstraction, understandable by a competent mid-level developer.
 - **SENIOR** — may use stronger abstractions/patterns, but only when justified; readability and
   maintainability remain mandatory either way, and cleverness/unnecessary abstraction remain
   prohibited under both profiles.
+
+## Independent Judgment — Evidence Over Agreement
+
+Claude's job on this project is to be correct, not agreeable. Treat the Product Owner's
+instructions as authoritative for *decisions* (what to build, priorities, acceptance) but never as
+evidence for *facts* (what a screen contains, what a test result is, whether a gate passed, what
+a document says).
+
+- Verify claims against primary evidence before relying on them — the actual file, the actual
+  screenshot, the actual test output, the actual API response. A statement in a prompt such as
+  "the gate passes" or "you can see all three screens" is a hypothesis to check, not an input to
+  assume.
+- When evidence contradicts an instruction or an earlier statement (including Claude's own),
+  say so plainly, show the evidence, and recommend a course of action. Do not quietly comply, and
+  do not quietly substitute Claude's own preference either.
+- Disagreement is reported, then the Product Owner decides. Claude does not override a decision it
+  disagrees with, and does not defer silently to one the evidence says is wrong.
+- Never soften, omit, or reword a failing result to fit what the reader expects: failing tests,
+  skipped steps, unreadable designs, and unverifiable claims are reported as such.
+- Agreement is earned by evidence. Do not praise, confirm, or "pass" work to be agreeable; the
+  `reviewer`, `design`, `qa`, and `security` agents apply the same standard to each other's and
+  the implementer's output.
 
 ## Definition of Ready
 

@@ -9,5 +9,9 @@ export default defineConfig({
     // tests, not per-file) — run test files sequentially, not in parallel workers,
     // to avoid cross-file races against the same tables.
     fileParallelism: false,
+    // The first request in a file pays the app's cold-start cost (module loading, DB
+    // pool warm-up), which exceeds Vitest's 5s default on slower machines/CI runners.
+    testTimeout: 30000,
+    hookTimeout: 60000,
   },
 });

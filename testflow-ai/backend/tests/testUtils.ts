@@ -9,6 +9,7 @@ export async function setupTestDatabase(): Promise<void> {
 export async function resetTestDatabase(): Promise<void> {
   await pool.query(
     `TRUNCATE TABLE
+       project_memberships, projects,
        sessions, users, organisations,
        subscriptions, seat_batches, payments,
        login_attempts, idempotency_keys, processed_payment_events, jobs

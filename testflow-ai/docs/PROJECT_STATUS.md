@@ -12,6 +12,152 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-07 — Projects vertical slice: Create Project + Project List (awaiting Product Owner acceptance)
+
+**Branch/commit:** `main` — see the commit that contains this entry (not deployed).
+
+**Risk classification:** MEDIUM (new feature screens + additive migration; touches tenant isolation
+and object-level authorization). Definition of Ready: met after Product Owner decisions PD-066
+(project code), PD-067 (description), PD-068 (QA configuration pinning). PRODUCTION criticality /
+MID-LEVEL readability applied (PD-065).
+
+**Completed work:**
+- **Database:** migration `0005_projects.sql` — `projects`, `project_memberships`,
+  `organisations.next_project_number`, `uq_qa_config_versions_id_org`; composite FK so a project can
+  never pin another organisation's QA configuration version (DBD-025).
+- **API:** `POST` and `GET /v1/organisations/{orgId}/projects` (role-filtered list in SQL, cursor
+  pagination, search, status and QA-configuration filters, real counts, per-organisation
+  `PRJ-###` codes, creator membership, version pinning, subscription gate). OpenAPI,
+  `api/projects.md`, `schema.sql`, `database.md`, DBD-025, PD-066/067/068, traceability updated.
+- **Frontend:** `/projects` with the three approved screens (Empty State, List, Create Project);
+  sidebar gains a real Projects link; unbacked design elements deliberately omitted and recorded in
+  `docs/design/handoffs/projects.md`.
+- **Tests added:** backend `projects.test.ts` (50), frontend `projects.test.tsx` + `projectFormat`
+  + sidebar (new tests), E2E `flowG-projects.spec.ts` (5).
+- Also: `.gitignore` (`.DS_Store`, `*.tsbuildinfo`) and untracked those two files; Stitch design
+  registry + approved Create Project reference image; framework profile/principle recorded.
+
+**Tests actually run and results (final run, this session):**
+- Backend `vitest`: **117/117 passed** (10 files). `tsc --noEmit` and `eslint` clean.
+- Frontend `vitest`: **101/101 passed** (15 files). `tsc --noEmit` and `eslint` clean.
+- E2E Playwright (headless, flows A–G): **18/18 passed**.
+- Environment notes: the repo sits in iCloud-managed Documents, and `node_modules` was full of
+  evicted placeholder files; it was rebuilt with `npm ci`. Test commands only run with the shell
+  sandbox disabled. One E2E run earlier in the session failed before any test ran because the
+  backend process died after start-up (cause not found; not reproduced in later runs).
+- **Intermittent failures seen and handled (be explicit):** `projects.test.ts` flaked about 1 run in
+  4 (empty-body 404s / `socket hang up` from `supertest` opening a server per request); fixed in
+  that file with one long-lived server (0 failures in 12 runs after). One failure in
+  `workspace.test.ts` (existing file, same pattern) appeared once in a full run while another
+  agent was running servers and did not recur (6 isolated runs + the final full run passed). Logged as
+  TD-007; the other existing suites were not changed.
+
+**Reviewer result:** Backend — first review **BLOCKED** (connection-pool deadlock in `createProject`
+under ~10+ concurrent creates); fixed, re-reviewed **PASS WITH CHANGES** (docs only), those fixed.
+Frontend — **PASS WITH CHANGES** (one race in "Load more", error handling, accessibility); all
+actioned except hard-coded colours and a few NOTE items (left as-is).
+
+**Design Conformance result:** final **MINOR DIFFERENCES** (no MATERIAL difference beyond the
+documented omissions and the documented sidebar PRODUCT CONFLICT). Two MATERIAL style differences
+and one layout regression were found and fixed over four rounds. **Caveat:** Projects — List and
+Projects — Empty State were compared against their near-identical sibling screens (`project list`,
+`project empty state`) because the approved originals' images need a Google login; Create Project
+was compared against the approved original. Remaining minor: wider modal, `v1` vs `v1.0`, neutral
+member chips, native select chevrons, shell proportions, ~13px horizontal table scroll at 1280.
+
+**QA result:** **PASS WITH FINDINGS** — E2E 18/18; the only defects found were three locator bugs in
+the new E2E spec (fixed by QA without weakening assertions). Findings: malformed JSON body returns
+500 (pre-existing, TD-008); no UI-level QA Tester test, no E2E for search/filters/Load more.
+
+**Security result:** **PASS WITH WARNINGS** — no Critical/High. Fixed: NUL byte in name/description/
+search returned 500 (now 422, tested). Logged as debt: no rate limit/quota (TD-009), async auth
+middleware without error handling (TD-010, pre-existing), no Origin check (TD-011), `npm audit`
+runtime findings in existing deps (TD-012, none introduced), membership/org constraint for a future
+slice (TD-013).
+
+**Definition of Done:** met for implementation, tests, reviews, design conformance, QA, security,
+OpenAPI, migration, docs. **Not done / open:** Product Owner acceptance; durable reference images for
+Projects — List and Empty State (export to `docs/design/approved/projects/`); project creation is
+logged, not written to an Audit Log Entry (TD-006); no deployment (not requested).
+
+**Deployment/demo link:** unchanged; nothing deployed.
+
+**Blockers:** none. Needs Product Owner acceptance.
+
+**Next three tasks:**
+1. Product Owner acceptance of the Projects slice (and export the List/Empty State reference images).
+2. Fix TD-010 (async auth middleware error handling) and TD-008 (malformed JSON → 4xx).
+3. Next feature selection (e.g. FR-PRJ-002/003/005–007 project update/archive/membership).
+
+---
+
+## Previous entry (Stitch design registry, 2026-10-07)
+
+### 2026-10-07 — Projects slice: pre-coding gates (STOPPED at Definition of Ready)
+
+**Branch/commit:** `main` (uncommitted at time of this entry)
+
+**Completed work:**
+- Recorded Product Owner decisions: Project Criticality = PRODUCTION, Code Readability =
+  MID-LEVEL (engineering-framework.md, coding-standards.md, CLAUDE.md rule 25, PD-065).
+- Persisted the "Independent Judgment — Evidence Over Agreement" principle
+  (engineering-framework.md section + CLAUDE.md rule 28). The original wording was not in the
+  repo or this session, so it is Claude's articulation — Product Owner to confirm or amend.
+- Ran Requirements Checkpoint, Feature Entry Gate, risk classification (MEDIUM) and Definition
+  of Ready: `docs/product/checkpoints/projects-create-and-list.md`. **DoR not met.**
+- Saved the approved Create Project design at full resolution:
+  `docs/design/approved/projects/create-project.png`.
+- No backend/frontend code, migrations, or deployment — implementation not started.
+
+**Tests actually run and results:** None — docs only.
+
+**Deployment/demo link:** Unchanged; nothing deployed.
+
+**Blockers:** (1) Stitch screenshots for Projects — List and Projects — Empty State are not
+fetchable (Google sign-in redirect), so those designs cannot be viewed. (2) Product Owner
+decisions needed on Description, project code, and list-design elements without backing
+requirements (see checkpoint doc).
+
+**Next three tasks:**
+1. Product Owner supplies the two missing images and answers the four decisions.
+2. Design agent handoff for the three Projects screens.
+3. Start the backend slice (migration, endpoints, tests) once DoR passes.
+
+---
+
+## Previous entry (Stitch design registry)
+
+### 2026-10-07 — Stitch design registry (Projects screens)
+
+**Branch/commit:** `main` (uncommitted at time of this entry)
+
+**Completed work:**
+- Created `docs/design/stitch-registry.md`: canonical-name → Stitch project/screen ID registry,
+  with approval status/date and requirement association. Registered
+  `Projects — Empty State` (`585484247e73…`), `Projects — List` (`b2b302b72953…`) and the newly
+  approved `Projects — Create Project` (`40ac626b6df0…`).
+- Stitch MCP exposes no rename/update-title tool, so nothing was renamed or regenerated; the
+  three Stitch titles already equal their canonical names.
+- Added CLAUDE.md rule 27: designs need canonical names; approved designs are resolved from the
+  registry by exact screen ID, never by "newest screen".
+- Projects feature **not** implemented, per instruction.
+
+**Tests actually run and results:** None — docs only, no application code changed.
+
+**Deployment/demo link:** Unchanged; nothing deployed.
+
+**Blockers:** Lowercase duplicates `project list` / `project empty state` also exist in Stitch;
+their approval status needs the user's confirmation (listed as unregistered in the registry).
+
+**Next three tasks:**
+1. User confirms which Projects Stitch screens are canonical (see blocker).
+2. Design agent handoff for the three Projects screens (before any implementation).
+3. Requirements checkpoint / risk classification / Definition of Ready for FR-PRJ-001.
+
+---
+
+## Previous entry
+
 ### 2026-10-07 — AI Software Delivery Framework adoption (forward-only)
 
 **Branch/commit:** `main` (pending this entry's own commit — see git status at time of this

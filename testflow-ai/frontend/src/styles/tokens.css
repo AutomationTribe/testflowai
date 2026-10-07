@@ -53,3 +53,10 @@ button,
 input {
   font-family: inherit;
 }
+
+/* Text fields in dialogs: a clear navy focus border (used by the Create Project form). */
+.tf-field:focus {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -1px;
+  border-color: var(--color-primary);
+}

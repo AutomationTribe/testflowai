@@ -31,10 +31,10 @@ Legend: DB tables reference `docs/technical/schema.sql`. API operations referenc
 | FR-USR-005 | Remove Organisation Member (`users.md`) | `users` | UXF-002 | Pending | Pending |
 | FR-USR-006 | List Organisation Members (`users.md`) | `users` | UXF-002 | Pending | Pending |
 | FR-USR-007 | Add/Remove Project Member; Generate links (`projects.md`, `links.md`) | `project_memberships`, `access_links` | UXF-003, UXF-012 | Pending | Pending |
-| FR-PRJ-001 | Create Project (`projects.md`) | `projects` | UXF-003 | Pending | Pending |
+| FR-PRJ-001 | Create Project (`projects.md`) | `projects`, `project_memberships` | UXF-003 | Implemented (Projects slice, 2026-10-07 — pending Product Owner acceptance) | Backend + frontend unit/integration tests |
 | FR-PRJ-002 | View/Update Project (`projects.md`) | `projects` | UXF-003 | Pending | Pending |
 | FR-PRJ-003 | Archive Project (`projects.md`) | `projects` | UXF-003 | Pending | Pending |
-| FR-PRJ-004 | List Projects (`projects.md`) | `projects`, `project_memberships` | UXF-003 | Pending | Pending |
+| FR-PRJ-004 | List Projects (`projects.md`) | `projects`, `project_memberships` | UXF-003 | Implemented (Projects slice, 2026-10-07 — pending Product Owner acceptance) | Backend + frontend unit/integration tests |
 | FR-PRJ-005 | Add Project Member (`projects.md`) | `project_memberships` | UXF-003 | Pending | Pending |
 | FR-PRJ-006 | Remove Project Member (`projects.md`) | `project_memberships` | UXF-003 | Pending | Pending |
 | FR-PRJ-007 | Remove Project Member (`projects.md`) | `project_memberships` | UXF-003 | Pending | Pending |

@@ -8,6 +8,9 @@ import { env } from '../config/env.js';
  */
 export const pool = new Pool({
   connectionString: env.databaseUrl,
+  // Fail a request that cannot get a connection instead of waiting forever (defence in
+  // depth: a stuck pool would otherwise hang every route, including login).
+  connectionTimeoutMillis: 10_000,
 });
 
 export async function checkDatabaseConnection(): Promise<void> {

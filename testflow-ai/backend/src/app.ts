@@ -8,6 +8,7 @@ import { requestLogger } from './middleware/requestLogger.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { meRouter } from './modules/me/me.routes.js';
+import { projectsRouter } from './modules/projects/projects.routes.js';
 import { qaConfigurationRouter } from './modules/qaConfiguration/qaConfiguration.routes.js';
 import { subscriptionRouter } from './modules/subscription/subscription.routes.js';
 import { webhookRouter } from './modules/subscription/webhook.routes.js';
@@ -68,6 +69,7 @@ export function createApp(): Express {
   v1.use(meRouter);
   v1.use(subscriptionRouter);
   v1.use(qaConfigurationRouter);
+  v1.use(projectsRouter);
   v1.use(workspaceRouter);
   // E2E-only, double-gated (see testSupport.routes.ts) — never mounted in production.
   if (env.e2eFakePayments && !isProduction) {

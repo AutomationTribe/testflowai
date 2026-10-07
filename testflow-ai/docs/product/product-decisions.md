@@ -808,3 +808,60 @@ This log records product decisions explicitly approved during product definition
 **Product Impact:** Reporting (Test Report, Regression Report), Organisation QA Operating Model (descriptive setting only), Project Readiness (explicitly unaffected), Test Runs (explicitly unaffected), Quality Gates (unchanged).
 
 **Status:** Approved
+
+---
+
+## PD-065 — TestFlow Engineering Profile (Project Criticality and Code Readability)
+
+**Decision:** TestFlow's project criticality profile is **PRODUCTION**, and its code readability profile is **MID-LEVEL**. Decided by the Product Owner on 2026-10-07.
+
+**Reason:** TestFlow has real signup, payment, and production deployment; full Definition of Done, stronger security/observability/rollback expectations apply. Code is kept explicit and easy to debug for a competent mid-level developer.
+
+**Alternatives Considered:** MVP / HIGH-CRITICALITY criticality; SENIOR readability (not selected).
+
+**Product Impact:** Engineering process only (review/testing/security depth, code style); no product behaviour changes. See `docs/technical/engineering-framework.md` and `docs/technical/coding-standards.md`.
+
+**Status:** Approved
+
+
+---
+
+## PD-066 — Project Code: Per-Organisation Sequential Identifier
+
+**Decision:** Every project has a human-readable **project code** of the form `PRJ-` followed by a zero-padded sequence number (`PRJ-001`, `PRJ-002`, ... growing past three digits after 999). The sequence is **per organisation**, assigned by the server at creation (never client-supplied), unique within the organisation, never reused, and never changed. Approved by the Product Owner on 2026-10-07 after it appeared on the approved Projects screens with no backing requirement.
+
+**Reason:** The approved Projects — List and Create Project designs show a project code beside each project name. Without a defined rule it would have been an invented identifier; the Product Owner approved this rule so the code is real data.
+
+**Alternatives Considered:** Omit the code and report the design difference (the default before this decision). A configurable per-organisation prefix (not requested; adds a setting no requirement defines).
+
+**Product Impact:** Projects (data model, API, list/create UI). Does not affect permissions, QA configuration, or any other module.
+
+**Status:** Approved
+
+---
+
+## PD-067 — Project Description (Optional)
+
+**Decision:** A project may have an optional free-text **description** of at most 500 characters. A blank description is stored as no description. Approved by the Product Owner on 2026-10-07 after it appeared in the approved Create Project and Projects — List designs with no backing requirement.
+
+**Reason:** The approved designs include a Description field and column; FR-PRJ-001's "name and initial settings" did not define it.
+
+**Alternatives Considered:** Omit the field and report a design difference.
+
+**Product Impact:** Projects (data model, API, create form, list column).
+
+**Status:** Approved
+
+---
+
+## PD-068 — A New Project Is Pinned to the Organisation's Current Published QA Configuration Version
+
+**Decision:** The "QA Configuration" shown on Create Project is not a free choice. A new project is pinned, once, to the organisation's **current published** QA configuration version (FR-QAOM-012, DBD-014, PD-056/PD-057/PD-063). The create request may name that version explicitly, but naming any other version — another organisation's, a draft, a superseded version, or one that does not exist — is rejected with the same validation error. No UI or API selects an older or different version at MVP.
+
+**Reason:** FR-QAOM-012/DBD-014 define pinning to "the organisation's then-current published version"; no requirement allows picking among versions, and allowing it would break the immutable-version and tenant-isolation guarantees. The design's dropdown therefore lists exactly one option today.
+
+**Alternatives Considered:** Let the user pick any published version (rejected — not approved; would require a decision on whether older versions remain selectable). Omit the field from the API (rejected — the design shows the field and an explicit version id gives a testable cross-organisation rejection).
+
+**Product Impact:** Projects (API validation, create form).
+
+**Status:** Approved (clarifies FR-PRJ-001 + FR-QAOM-012; no new capability)

@@ -103,6 +103,124 @@ not before.
 
 ---
 
+## TD-006 — Project creation is logged, not written to an Audit Log Entry
+
+**Where:** `backend/src/modules/projects/projects.service.ts` (`createProject`).
+
+**What:** `docs/technical/api/projects.md` marks Create Project as audited, but the audit module
+(`audit_log_entries`, FR-AUD-001/004, which also depends on `access_links`) has not been built
+and is not migrated. Project creation is therefore recorded as a structured `project_created`
+log line only. It is not on FR-AUD-001's minimum "key actions" list.
+
+**Impact:** No queryable, immutable audit trail of who created which project.
+
+**When to address:** When the audit module is implemented (it must then also back-fill or
+accept that earlier creations are only in logs), or earlier if audit of project creation is
+made a hard requirement.
+
+---
+
+## TD-007 — Existing backend suites use `request(app)`, which can flake under many requests
+
+**Where:** `backend/tests/*.test.ts` other than `projects.test.ts`.
+
+**What:** `supertest`'s `request(app)` starts and closes a server on a random port for every call.
+With Node's keep-alive connection reuse, a file that makes hundreds of calls occasionally gets an
+empty-body `404`, a missing cookie, or `socket hang up`. `projects.test.ts` showed this at roughly
+1 run in 4 until it was switched to one long-lived server (0 failures in 12 runs afterwards). The
+older suites make far fewer calls per file and have not been seen to flake, but share the pattern.
+The mechanism is the most likely explanation, not a proven one.
+
+**When to address:** if any other suite starts flaking, or when next touching those files — share
+a small `startTestServer()` helper in `tests/testUtils.ts`.
+
+---
+
+## TD-008 — A malformed JSON request body returns 500 instead of a 4xx
+
+**Where:** shared error handling (`backend/src/app.ts` / `middleware/errorHandler.ts`).
+
+**What:** `POST` with a body like `{bad` returns `500 internal_error` on every JSON endpoint
+(also `POST /v1/auth/login`), because the body-parser error is not mapped. Found during QA of the
+Projects slice; pre-existing and not Projects-specific.
+
+**Impact:** a client error is reported as a server error (noisy logs/alerts, wrong status).
+
+**When to address:** next change to the shared error handler; map body-parser errors to a 400 or
+422 in the shared envelope and add a regression test.
+
+---
+
+## TD-009 — No rate limiting or per-tenant quota on state-changing routes
+
+**What:** There is no general-purpose rate limiter in the backend (only the login lockout), and no
+cap on how many projects a tenant can create (any member of an active organisation, including a
+QA Tester per PD-014, can create unlimited projects). Found in the Projects security review.
+
+**Impact:** Storage growth and counter churn for one tenant; it does not starve other tenants (the
+project-code counter locks only that organisation's row).
+
+**When to address:** when a global rate limiter is introduced, add a per-user limit on
+state-changing routes; a per-organisation project quota belongs with the plans/limits work.
+
+---
+
+## TD-010 — `requireAuth` / `requireActiveSubscription` are async with no error handling
+
+**Where:** `backend/src/middleware/auth.ts`, `backend/src/middleware/subscriptionGate.ts`.
+
+**What:** Express 4 does not catch a rejected promise from async middleware. A database error or a
+pool timeout inside `resolveSession` / `resolveSubscriptionAccess` leaves the request without a
+response and raises an unhandled rejection (which terminates the process on Node 15+; there is no
+process-level handler). `connectionTimeoutMillis` (added in the Projects slice) makes a pool
+timeout reachable as an error. Pre-existing; applies to every authenticated route.
+
+**Impact:** a transient DB outage can crash the API or hang requests (availability).
+
+**When to address:** soon — wrap both in try/catch calling `next(error)` (or add a small async
+route wrapper) and add a regression test.
+
+---
+
+## TD-011 — No Origin check on state-changing requests (CSRF defence in depth)
+
+**What:** Production sessions use a `SameSite=None; Secure; HttpOnly` cookie (documented,
+`docs/technical/security.md`) with no Origin/Referer allow-list or CSRF token. For the Projects
+create route this is not exploitable in practice (JSON content type forces a CORS preflight that
+fails for foreign origins; a form or `text/plain` post gives an empty body, which fails validation),
+but any future state-changing endpoint that accepts an empty body would be forgeable.
+
+**When to address:** add an Origin allow-list check on non-GET `/v1` routes before such an
+endpoint exists.
+
+---
+
+## TD-012 — Known `npm audit` findings in runtime dependencies
+
+**What:** `npm audit --omit=dev` reports 6 findings (2 moderate, 2 high, 2 critical) in packages
+this project already depended on: `next` (critical), `express`, `qs`, `proxy-addr` (critical,
+transitive via express), and `postcss`/`source-map-js` (via next). The full audit reports 25
+(5 moderate, 16 high, 4 critical); the other 19 are dev-only toolchain packages. None were
+introduced by the Projects slice (no package.json change). Not mapped advisory-by-advisory to the
+code paths in use.
+
+**When to address:** a dedicated dependency-hygiene task: review each advisory against how the
+package is used, upgrade `express`, `qs`, `proxy-addr` and `next`, re-run the full test suites.
+
+---
+
+## TD-013 — `project_memberships.user_id` is not constrained to the project's organisation
+
+**What:** The foreign key is `user_id → users(id)` only. Today the sole writer is the creator
+grant (same organisation by construction), so it is not exploitable. A future "add member" slice
+(FR-PRJ-005/006) could grant a user from another organisation and expose their name through the
+list's `members`.
+
+**When to address:** in that slice — add a composite FK (project's organisation = user's
+organisation) or enforce the check in the service, with a cross-tenant test.
+
+---
+
 ## How to use this register
 
 - Add a new entry when you knowingly accept debt to ship something (state the trade-off

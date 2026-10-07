@@ -28,6 +28,23 @@ describe('AppSidebar', () => {
     }
   });
 
+  it('lists Projects right after Dashboard, and links only Dashboard and Projects', () => {
+    render(<AppSidebar activeKey="projects" />);
+
+    const labels = NAV_ITEMS.map((item) => item.label);
+    expect(labels.slice(0, 2)).toEqual(['Dashboard', 'Projects']);
+    // Dashboard is a real link; the active item (Projects) is the current page, so it is not a link.
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/app');
+    expect(screen.queryByRole('link', { name: 'Projects' })).not.toBeInTheDocument();
+    // Destinations whose modules do not exist yet stay unlinked.
+    expect(screen.queryByRole('link', { name: 'Requirements' })).not.toBeInTheDocument();
+  });
+
+  it('links to Projects from any other screen', () => {
+    render(<AppSidebar activeKey="dashboard" />);
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
+  });
+
   it('marks only the given activeKey as active (bold/highlighted), matching whichever screen renders it', () => {
     render(<AppSidebar activeKey="qa-operating-model" />);
 
