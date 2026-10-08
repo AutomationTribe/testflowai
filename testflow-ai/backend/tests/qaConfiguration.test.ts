@@ -15,7 +15,8 @@ async function signUpAndGetCookie(overrides: Partial<Record<string, string>> = {
     ...overrides,
   };
   const res = await request(app).post('/v1/auth/signup').send(payload);
-  const cookie = res.headers['set-cookie']![0]!;
+  if (!res.headers['set-cookie']) throw new Error(`DIAG signup status=${res.status} body=${JSON.stringify(res.body)}`);
+  const cookie = res.headers['set-cookie'][0]!;
   const me = await request(app).get('/v1/me').set('Cookie', cookie);
   return { cookie, organisationId: me.body.organisation.id as string };
 }
