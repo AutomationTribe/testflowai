@@ -12,6 +12,28 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 — Product Owner acceptance: Projects slice
+
+**Accepted by the Product Owner (2026-10-08):** the Projects vertical slice — Create Project (FR-PRJ-001),
+visibility by role (FR-PRJ-004), QA configuration pinning (FR-QAOM-012), and the list's search, filters,
+counts and pagination (FR-PRJ-008). Traceability rows updated to "accepted". Acceptance covers what was
+delivered and verified (final results in the entries below: backend 117/117, frontend 111/111, E2E 27/27).
+
+**Not part of this acceptance / still open:** deployment (not requested — the Product Owner is the final authority
+for deployment); reference images for Projects - List / Empty State; the design-conformance caveat (List/Empty State
+were compared against sibling screens); technical debt TD-006/007/008/010.
+
+**Deployment/demo link:** unchanged; nothing deployed.
+
+**Next three tasks:**
+1. Decide whether to deploy the Projects slice (needs an explicit instruction; security review is already done).
+2. Fix TD-010 (async auth middleware error handling) and TD-008 (malformed JSON -> 4xx).
+3. Next feature selection (e.g. archive/update/membership, FR-PRJ-002/003/005-007).
+
+---
+
+## Previous entry (FR-PRJ-008 + list filters E2E, 2026-10-08)
+
 ### 2026-10-08 — FR-PRJ-008 added to the requirements; list filters verified end to end
 
 **Branch/commit:** `main` — see the commit that contains this entry (not deployed).
