@@ -43,6 +43,18 @@ on that stale checkout and are superseded.
 - Not run: backend/frontend/E2E suites (no product code changed); registration of the agents in a *new* session
   was not re-checked after the sync.
 
+**Follow-up (same day, after the sync):**
+- Committed only this file as `08f1ca6` (docs-only; local, **not pushed**; local `main` was 1 ahead of `origin/main` at that point; 2 ahead once this follow-up is committed).
+  `.claude/settings.json` was deliberately not staged and remains uncommitted and unchanged. The backup stash is retained.
+- Read-only status review of the Projects Create + List feature from the canonical docs (no code run, no tests run this
+  step): FR-PRJ-001, FR-PRJ-004, FR-PRJ-008 and FR-QAOM-012 are accepted by the Product Owner (2026-10-08) and not
+  deployed. Last recorded results (from earlier entries, not re-run here): backend 125/125, frontend 111/111, E2E 27/27.
+- Noted, not changed: `TASKS.md` still lists "Slice 2 ... then Project creation" as unapproved/unchecked, which is out of
+  date; updating it needs Product Owner approval. Open on the slice: deployment decision, approved List/Empty State
+  reference images (Google login), TD-006/007/009/011/012/013.
+- This update was made because the Stop hook blocked on the uncommitted `.claude/settings.json` change; the hook was not
+  modified or bypassed.
+
 **Deployment/demo link:** none; nothing deployed or pushed.
 
 **Blockers:** none. A git stash (`pre-sync PROJECT_STATUS local entry`) remains as an extra backup; it can be
