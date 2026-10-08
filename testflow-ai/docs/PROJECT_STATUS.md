@@ -39,6 +39,15 @@ passed.** Untested work is reported as untested, not as done.
 - Headed run confirmed to use the real window size (inner width 1440 vs 1280 before).
 - Backend unchanged this entry (last full run 117/117).
 
+**Added later the same day:** E2E scenario "a registered user logs in, sees the empty state, creates
+5 projects in one session and sees them all in the table" (in `flowG-projects.spec.ts`): signs up,
+starts the trial and signs out, then logs in through the real login screen, opens Projects from the
+sidebar, checks the empty state, creates 5 projects without logging out, and checks the table
+(5 rows + header, newest first, codes PRJ-005..PRJ-001, descriptions, Standard QA v1, Active, creator,
+"Showing 5 of 5 projects", tab count growing 1..5). Result: Projects spec **6/6 passed** headless
+(the new test ~15s). Visible-run presets (`PW_SPEED`): extraslow 8000ms, slow 2000ms, normal 200ms,
+fast 0 ms between actions — e.g. `npm run test:extraslow`.
+
 **Not done / caveats:** the designs show a single desktop viewport, so the narrow-width behaviour
 (collapsed sidebar, wrapping headers) is a sensible layout, not an approved design — Product Owner
 may want to review it. Desktop (>=900px) appearance is unchanged. Design-agent conformance was not

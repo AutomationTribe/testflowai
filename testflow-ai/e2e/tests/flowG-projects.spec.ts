@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { signUp, signUpAndReachQaSetup } from './helpers';
+import { login, signOut, signUp, signUpAndReachQaSetup, uniqueUser } from './helpers';
 
 /**
  * FLOW G — PROJECTS: Empty State → Create Project → Projects List (FR-PRJ-001,
@@ -97,4 +97,62 @@ test('Flow G — an organisation without an active trial/subscription cannot use
   await signUp(page);
   await page.goto('/projects');
   await page.waitForURL('**/subscription-required');
+});
+
+test('Flow G — a registered user logs in, sees the empty state, creates 5 projects in one session and sees them all in the table', { tag: ['@critical', '@regression'] }, async ({ page }) => {
+  // Many steps: let Playwright scale the timeout (it also grows with the slow-motion presets).
+  test.slow();
+
+  // An already-registered user: signed up earlier, subscribed (trial), then signed out.
+  const user = uniqueUser();
+  await signUp(page, user);
+  await page.goto('/subscription');
+  await page.getByRole('button', { name: 'Start Free Trial' }).click();
+  await page.waitForURL('**/subscription/success**');
+  await page.goto('/app');
+  await signOut(page);
+
+  // They come back and log in through the real login screen, then open Projects from the sidebar.
+  await login(page, user);
+  await page.waitForURL('**/app');
+  await page.getByRole('link', { name: 'Projects' }).click();
+  await page.waitForURL('**/projects');
+
+  // The empty state shows for an organisation with no projects.
+  await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeVisible();
+  await expect(page.getByText('0 TOTAL')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'New Project' })).toHaveCount(2);
+
+  // Create 5 projects back to back without ever logging out.
+  const names = ['Mobile Banking App', 'Website Redesign', 'API Platform', 'BI & Reporting', 'Legacy Banking Backend'];
+  for (const [index, name] of names.entries()) {
+    await page.getByRole('button', { name: 'New Project' }).first().click();
+    const dialog = page.getByRole('dialog', { name: 'Create Project' });
+    await dialog.getByLabel(/project name/i).fill(name);
+    await dialog.getByLabel(/description/i).fill(`Description for ${name}`);
+    await dialog.getByRole('button', { name: 'Create Project' }).click();
+
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('row', { name })).toBeVisible();
+    // Still the same signed-in session on the same page — never bounced to login.
+    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page.getByRole('button', { name: new RegExp(`All Projects \\(${index + 1}\\)`) })).toBeVisible();
+  }
+
+  // All 5 projects are in the table: header row + 5 rows, newest first, with real codes and data.
+  const table = page.getByRole('table', { name: 'Projects' });
+  await expect(table.getByRole('row')).toHaveCount(6);
+  const newestFirst = [...names].reverse();
+  for (const [position, name] of newestFirst.entries()) {
+    const row = table.getByRole('row').nth(position + 1);
+    const code = `PRJ-00${names.length - position}`;
+    await expect(row).toContainText(name);
+    await expect(row).toContainText(code);
+    await expect(row).toContainText(`Description for ${name}`);
+    await expect(row).toContainText('Standard QA v1');
+    await expect(row).toContainText('Active');
+    await expect(row).toContainText(user.name);
+  }
+  await expect(page.getByText('Showing 5 of 5 projects')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'No projects yet' })).toBeHidden();
 });
