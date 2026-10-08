@@ -75,6 +75,7 @@ Only filters with clear approved meaning are supported, and only on indexed fiel
 - Test runs: `status` (`open`/`closed`/`cancelled_archived`).
 - Defects: `status` (`open`/`pending`/`closed`/`removed`), `severity` (CHANGE-001, FR-DEF-007 — stable semantic value only, never a display label), `priorityOptionId` (CHANGE-001, FR-DEF-008).
 - Requirements: `status` (`active`/`archived`).
+- Projects (PD-069, FR-PRJ-008): `status` (`active`/`archived`), `qaConfigurationVersionId` (the pinned QA configuration version).
 - Reports/Regression Reports: `metaState` (CHANGE-001).
 
 **Dynamic/configurable-field filtering boundary (CHANGE-001, §34 of the task):** organisation-configured fields (`configurableFieldValues`, `templates.md`) are **not** filterable at MVP, beyond the two special-cased typed columns above (Test Case Priority, Defect Severity/Priority) which exist specifically because they're recognized concepts with real typed/indexed storage (DBD-010, DBD-020). This is a deliberate boundary, not an oversight — arbitrary server-side filtering over every organisation-defined field would require either a generic query-builder (out of scope) or per-field indexes that don't exist. No filter is provided for any other configurable-field content, or for any concept that doesn't exist in the approved model — adding one would be inventing scope.
@@ -85,7 +86,7 @@ Only filters with clear approved meaning are supported, and only on indexed fiel
 
 ## Search
 
-Simple case-insensitive substring match on a resource's `title`/`name` field only (`?q=...`), where listing that resource is already supported. No full-text search infrastructure is approved (per `architecture.md`'s explicit exclusion of a dedicated search engine).
+Simple case-insensitive substring match on a resource's `title`/`name` field only (`?q=...`), where listing that resource is already supported. One approved exception: the Projects list also matches the project code (PD-066, PD-069). No full-text search infrastructure is approved (per `architecture.md`'s explicit exclusion of a dedicated search engine).
 
 ## Error Format
 

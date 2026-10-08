@@ -869,9 +869,9 @@ This log records product decisions explicitly approved during product definition
 
 ---
 
-## PD-069 — Projects List: Filters, Counts, Code Search, Order and Pagination UI (PROPOSED)
+## PD-069 — Projects List: Filters, Counts, Code Search, Order and Pagination UI
 
-**Decision (proposed — awaiting Product Owner approval):** The Projects list supports, in addition to
+**Decision (approved by the Product Owner, 2026-10-08):** The Projects list supports, in addition to
 role-filtered visibility (FR-PRJ-004) and name search (`api-spec.md` Search):
 1. a **status filter** (`active` / `archived`) and status tabs showing real counts,
 2. a **QA-configuration filter** (the QA configuration versions in use by visible projects),
@@ -890,5 +890,4 @@ Product Owner asked for pagination and the design shows page controls).
 
 **Product Impact:** Projects list API (`GET .../projects` query params and response), Projects list UI.
 
-**Status:** Proposed — NOT approved. Until approved, `docs/technical/api/projects.md` labels these items
-"pending PD-069" and `docs/technical/api-spec.md`'s approved filter list is unchanged.
+**Status:** Approved (2026-10-08). Requirement: FR-PRJ-008. The approved filter list in `docs/technical/api-spec.md` (Filtering, Search) is updated accordingly.

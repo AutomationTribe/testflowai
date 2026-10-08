@@ -41,3 +41,10 @@ amend, or reject: (1) status filter + tabs + counts, (2) QA-configuration filter
 matching the project code, (4) default newest-first order, (5) pagination UI shape and page sizes.
 Until approved, `api/projects.md` marks these as "pending PD-069", and `api-spec.md`'s approved
 filter list is **not** changed.
+
+## Resolution (2026-10-08)
+
+The Product Owner approved adding these to the requirements. **PD-069 is Approved**, the behaviour is now
+requirement **FR-PRJ-008** (`functional-requirements.md`), the approved filter list in `api-spec.md` includes
+Projects (`status`, `qaConfigurationVersionId`) and the project-code search exception, and `api/projects.md` no longer
+marks any of it "pending". Implementation already matched; end-to-end coverage added (flows G and I).

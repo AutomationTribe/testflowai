@@ -12,6 +12,45 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 — FR-PRJ-008 added to the requirements; list filters verified end to end
+
+**Branch/commit:** `main` — see the commit that contains this entry (not deployed).
+
+**Completed work:**
+- **Requirements:** PD-069 is now **Approved** (Product Owner, 2026-10-08) and the behaviour is requirement
+  **FR-PRJ-008 — Project List: Search, Filter, and Pagination** (`functional-requirements.md`, with acceptance
+  criteria), listed in the FR index and the traceability matrix. `api-spec.md`'s approved filter list now includes
+  Projects (`status`, `qaConfigurationVersionId`) plus the project-code search exception; `api/projects.md` no longer
+  marks anything "pending". The implementation already matched the requirement; no product behaviour changed.
+- **Test support:** E2E-only, double-gated `POST /v1/test-support/set-project-status` (caller's own organisation
+  only) so the Archived tab/filter can be exercised before archiving (FR-PRJ-003) exists.
+- **New E2E (`flowI-projects-list-filters.spec.ts`, 3 tests):** (1) status tabs show real counts and the Archived
+  tab / status filter narrow the list; (2) search matches name (any case) or project code, "no match" state,
+  Clear filters restores; (3) the QA-configuration filter lists only projects pinned to the chosen version (own
+  fresh organisation, `NO_SESSION`, because publishing a second QA configuration changes the whole organisation).
+
+**Tests actually run and results:**
+- New spec: **3/3** at full speed, and **3/3 in `extraslow` mode** (headed, 8s per action, 3.6 min).
+- Full E2E suite (flows A-I, headless): **27/27 passed**.
+- Backend `tsc`/`eslint` clean; frontend and backend unit suites were last run before this change (111/111 and
+  117/117) — this change touched docs, one test-support route and E2E only.
+
+**Not done / open:** reference images for Projects - List / Empty State; acceptance of the Projects slice;
+TD-006/007/008/010.
+
+**Deployment/demo link:** unchanged; nothing deployed.
+
+**Blockers:** none.
+
+**Next three tasks:**
+1. Product Owner acceptance of the Projects slice.
+2. Fix TD-010 (async auth middleware error handling) and TD-008 (malformed JSON -> 4xx).
+3. Next feature selection (e.g. archive/update/membership, FR-PRJ-002/003/005-007).
+
+---
+
+## Previous entry (dedicated E2E tester + list pagination, 2026-10-08)
+
 ### 2026-10-08 — Dedicated E2E tester, Projects list pagination, requirements-coverage review
 
 **Branch/commit:** `main` — see the commit that contains this entry (not deployed).

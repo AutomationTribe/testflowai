@@ -38,6 +38,7 @@ Legend: DB tables reference `docs/technical/schema.sql`. API operations referenc
 | FR-PRJ-005 | Add Project Member (`projects.md`) | `project_memberships` | UXF-003 | Pending | Pending |
 | FR-PRJ-006 | Remove Project Member (`projects.md`) | `project_memberships` | UXF-003 | Pending | Pending |
 | FR-PRJ-007 | Remove Project Member (`projects.md`) | `project_memberships` | UXF-003 | Pending | Pending |
+| FR-PRJ-008 | Project list search, filter, pagination (`projects.md`) | `projects`, `project_memberships`, `qa_configuration_versions` | UXF-003 | Implemented (2026-10-08 — pending Product Owner acceptance) | Backend integration + frontend unit + E2E (flows G/I) |
 | FR-REQ-001 | Create/List Requirement (`requirements.md`) | `requirements` | UXF-004 | Pending | Pending |
 | FR-REQ-002 | Edit Requirement (`requirements.md`) | `requirements`, `test_cases` | UXF-004 | Pending | Pending |
 | FR-REQ-003 | Create Test Case (optional link) (`test-cases.md`) | `test_cases` | UXF-004, UXF-006 | Design direction validated | Pending |

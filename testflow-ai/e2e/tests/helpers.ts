@@ -72,12 +72,31 @@ export async function resetTesterProjects(page: Page): Promise<void> {
   if (res.status() !== 204) throw new Error(`reset-projects failed with ${res.status()}`);
 }
 
-/** Creates projects directly through the API (fast data setup for the signed-in user — not what is under test). */
-export async function createProjectsViaApi(page: Page, names: string[]): Promise<void> {
+/** Creates projects directly through the API (fast data setup for the signed-in user — not what is under test). Returns them in creation order. */
+export async function createProjectsViaApi(page: Page, names: string[]): Promise<Array<{ id: string; name: string }>> {
   const me = await (await page.request.get(`${BACKEND_URL}/v1/me`)).json();
   const orgId = me.organisation.id as string;
+  const created: Array<{ id: string; name: string }> = [];
   for (const name of names) {
     const res = await page.request.post(`${BACKEND_URL}/v1/organisations/${orgId}/projects`, { data: { name } });
     if (res.status() !== 201) throw new Error(`create project "${name}" failed with ${res.status()}`);
+    created.push({ id: (await res.json()).id as string, name });
   }
+  return created;
+}
+
+/** E2E-only: puts one of the signed-in user's projects into Archived/Active (archiving itself is a later feature). */
+export async function setProjectStatusViaApi(page: Page, projectId: string, status: 'active' | 'archived'): Promise<void> {
+  const res = await page.request.post(`${BACKEND_URL}/v1/test-support/set-project-status`, { data: { projectId, status } });
+  if (res.status() !== 204) throw new Error(`set-project-status failed with ${res.status()}`);
+}
+
+/** Publishes a new QA configuration version (via the real QA configuration API) for the signed-in user's organisation. */
+export async function publishQaConfigurationViaApi(page: Page, presetOrigin: 'lightweight' | 'controlled'): Promise<void> {
+  const me = await (await page.request.get(`${BACKEND_URL}/v1/me`)).json();
+  const base = `${BACKEND_URL}/v1/organisations/${me.organisation.id as string}/qa-configuration`;
+  const draft = await page.request.post(`${base}/draft`, { data: { presetOrigin } });
+  if (draft.status() !== 201) throw new Error(`start draft failed with ${draft.status()}`);
+  const published = await page.request.post(`${base}/draft/publish`, { headers: { 'Idempotency-Key': randomUUID() } });
+  if (published.status() !== 200) throw new Error(`publish failed with ${published.status()}`);
 }

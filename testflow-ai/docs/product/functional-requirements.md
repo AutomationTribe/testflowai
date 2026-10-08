@@ -63,6 +63,7 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 | FR-PRJ-005 | Add User to Project | PRJ | MVP |
 | FR-PRJ-006 | Remove User from Project | PRJ | MVP |
 | FR-PRJ-007 | Removed Project Creator — Admin/QA Manager Access Retained **[Updated]** | PRJ | MVP |
+| FR-PRJ-008 | Project List — Search, Filter, and Pagination **[New — PD-069]** | PRJ | MVP |
 | FR-REQ-001 | Native Requirement Authoring | REQ | MVP |
 | FR-REQ-002 | Editing a Linked Requirement Triggers Re-Review **[Updated]** | REQ | MVP |
 | FR-REQ-003 | Optional Requirement–Test-Case Link | REQ | MVP |
@@ -666,6 +667,30 @@ Requirements corresponding to product decisions carry a `(PD-xxx)` reference. Re
 **Error/Edge Conditions:** N/A.
 **Priority:** MVP
 **Dependencies:** FR-USR-004, FR-PRJ-004
+
+### FR-PRJ-008 — Project List — Search, Filter, and Pagination **[New — PD-069]**
+**Requirement:** The system shall let a user narrow and page through the project list they are allowed to see (FR-PRJ-004): search by project name or project code; filter by project status (Active / Archived) and by the QA configuration version a project is pinned to; see how many of their visible projects are Active and Archived; and move through the list one page at a time, choosing 10, 25, or 50 projects per page.
+**Purpose:** Lets people find a project quickly as the number of projects grows, without ever widening what they are allowed to see.
+**Actors:** Admin, QA Manager, QA Tester.
+**Preconditions:** Active trial or subscription (FR-SUB-002).
+**Main Behaviour:**
+- The list is ordered newest first.
+- Search is a case-insensitive "contains" match on the project name or the project code (PD-066), at most 120 characters.
+- The status filter (and the status tabs) show All, Active, or Archived projects, each with a count; the QA configuration filter lists the QA configuration versions used by the projects the user can see.
+- Search and filters combine (all must match); the counts honour the search text and the QA configuration filter, but not the status filter, so the tabs always show the split.
+- The list is shown a page at a time (default 10; 10, 25, or 50 per page) with Previous and Next, "Showing a–b of N projects" and "Page X of Y". Changing the search, a filter, or the page size returns to page 1.
+- Counts, filter options, and every page are computed only over the projects the user is allowed to see (FR-PRJ-004); a filter, search, or cursor can never reveal a project the user cannot already see.
+**Business Rules:** PD-014, PD-017, PD-066, PD-069; APID-002 (cursor-based pagination), `api-spec.md` Search.
+**Acceptance Criteria:**
+1. Given 12 visible projects and 10 per page, When the list opens, Then page 1 shows the 10 newest, "Showing 1–10 of 12 projects" and "Page 1 of 2"; When the user goes to the next page, Then it shows the remaining 2 and Next is unavailable; When they go back, Then page 1 is shown again.
+2. Given the user changes rows per page to 25, Then the list returns to page 1 and shows up to 25 projects.
+3. Given projects named "Needle Project" and others, When the user searches "needle" (any case) or a project's code, Then only matching projects are listed, on page 1.
+4. Given 2 Active and 1 Archived visible project, Then the tabs read All (3), Active (2), Archived (1), and choosing Archived (or the status filter) lists only the archived project.
+5. Given projects pinned to two different QA configuration versions, When the user filters by one version, Then only projects pinned to it are listed.
+6. Given a QA Tester who can see only some projects, Then the counts, filter options, and pages reflect only those projects.
+**Error/Edge Conditions:** A search over 120 characters, an unknown status, a malformed cursor, or a limit outside 1–100 is rejected as invalid. When nothing matches, the list says no projects match and offers to clear the filters. An organisation with no visible projects at all shows the empty state instead.
+**Priority:** MVP
+**Dependencies:** FR-PRJ-004, FR-PRJ-001; PD-066 (project code). Archiving (FR-PRJ-003) is what makes a project Archived; until it is built, no project is Archived.
 
 ---
 

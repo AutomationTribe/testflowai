@@ -79,3 +79,25 @@ testSupportRouter.post('/test-support/reset-projects', requireAuth, async (req, 
     next(error);
   }
 });
+
+/**
+ * E2E-only (same double gate). Sets a project's status in the CALLER'S OWN organisation, so the
+ * list's Archived tab/filter can be exercised before archiving (FR-PRJ-003) exists as a feature.
+ */
+testSupportRouter.post('/test-support/set-project-status', requireAuth, async (req, res, next) => {
+  try {
+    const { projectId, status } = req.body ?? {};
+    if (typeof projectId !== 'string' || (status !== 'active' && status !== 'archived')) {
+      throw HttpError.validation('Invalid set-project-status request.');
+    }
+    const result = await pool.query('UPDATE projects SET status = $1 WHERE id = $2 AND organisation_id = $3', [
+      status,
+      projectId,
+      req.currentUser!.organisationId,
+    ]);
+    if (result.rowCount === 0) throw HttpError.notFound();
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+});
