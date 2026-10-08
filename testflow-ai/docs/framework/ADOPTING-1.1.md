@@ -1,5 +1,11 @@
 # Adopting Framework 1.1
 
+> **Framework note (2026-10-08):** the canonical framework policy is now `docs/framework/POLICY.md`
+> (AI Software Delivery Framework 1.1.0, pinned in `docs/framework/ADOPTION_RECORD.md`). This document is
+> retained as the in-repo history of the 1.0 -> 1.1 change. The pinned version and adoption record are in
+> `docs/framework/ADOPTION_RECORD.md` and `docs/framework/FRAMEWORK_VERSION`.
+> Where it differs from the canonical policy, the canonical policy applies, except for project decisions.
+
 Forward-only and non-disruptive: **nothing here asks a project to redo completed work, change
 application code, or interrupt a task in progress.** Policy lives in
 `docs/technical/engineering-framework.md`; this file says how to adopt it and carries the reusable

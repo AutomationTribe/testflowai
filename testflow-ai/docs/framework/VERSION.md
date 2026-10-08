@@ -1,5 +1,11 @@
 # AI Software Delivery Framework — Version and Adoption Record
 
+> **Framework note (2026-10-08):** the canonical framework policy is now `docs/framework/POLICY.md`
+> (AI Software Delivery Framework 1.1.0, pinned in `docs/framework/ADOPTION_RECORD.md`). This document is
+> retained as the in-repo history of the 1.0 -> 1.1 change. The pinned version and adoption record are in
+> `docs/framework/ADOPTION_RECORD.md` and `docs/framework/FRAMEWORK_VERSION`.
+> Where it differs from the canonical policy, the canonical policy applies, except for project decisions.
+
 The framework's policy lives in `docs/technical/engineering-framework.md` (single source of truth),
 its enforceable rules in `CLAUDE.md`, and its agents in `.claude/agents/`. This file records **which
 version this project follows**, what changed between versions, and this project's adoption status.

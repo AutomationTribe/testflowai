@@ -12,6 +12,61 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 - Adopted the canonical AI Software Delivery Framework v1.1.0 (framework-only change)
+
+**Branch/commit:** `main` - see the commit containing this entry (not deployed). No product functionality,
+application code, schema, tests or product configuration were changed.
+
+**Completed work:**
+- Installed framework **1.1.0** from the independent repository at the exact tag `v1.1.0` (tag object
+  `8c3daf4...`, commit `31dd835e4854418a67b0e13b020b0a7b79c84cd2`; checkout under `~/dev`, outside iCloud).
+  Pre-adoption check: clean working tree, no implementation in progress, last commit was framework-only.
+- Added `docs/framework/POLICY.md`, `VERSIONING.md`, `FRAMEWORK_VERSION` (canonical, unedited), plus
+  `PROJECT_PROFILE.md` (PRODUCTION / MID-LEVEL preserved; document map; run commands) and
+  `ADOPTION_RECORD.md` (pinned version/tag/SHA, reconciliation, compatibility exceptions, upgrade history).
+- Replaced all 10 `.claude/agents/*.md` with the canonical agents; each keeps its TestFlow-specific guidance in
+  a delimited "PROJECT-SPECIFIC ADDENDUM" section below the canonical text (canonical text above the marker is
+  byte-identical to v1.1.0). Nothing project-specific was dropped (rule references, test commands, Stitch
+  registry, fake-payment guard, Paystack/Render/Neon context, known flaky test). Prior versions: commit `20b02d6`.
+- `CLAUDE.md`: all project rules and numbering preserved; rules 20, 24, 25, 26, 28, 30 now point at
+  `docs/framework/POLICY.md`; rule 31 added (pinned version and the no-edit-canonical convention).
+- `docs/technical/engineering-framework.md`, `docs/framework/VERSION.md`, `docs/framework/ADOPTING-1.1.md`
+  retained with a pointer banner (they hold the profile decisions and history).
+- `.claude/settings.json` Stop hook: added `-uall` to `git status --porcelain`. Found while testing: without
+  it, a newly created, untracked directory collapses to one path and a status-log update inside it was not
+  recognised. Behaviour otherwise unchanged.
+
+**Review results:** n/a (framework-only change; no product code reviewed).
+
+**Tests actually run and results:** `python3 <v1.1.0 checkout>/scripts/validate.py --project .` -> 97 passed,
+0 failed (agent frontmatter, reviewer agents without write tools, references resolve, version files present,
+no unfilled profile placeholders). Agent-file canonical prefixes compared byte-for-byte with v1.1.0: 10/10
+identical. Settings JSON parses. Stop hook exercised in a temporary git repo: clean -> `{}`; changes without
+status log -> block; status log inside a new directory -> `{}`. Fresh sessions in this project
+(`claude -p --agent <name>`): the agents are discovered, and backend-reviewer, frontend-reviewer, reviewer,
+database-architect and security each reported no Write/Edit tool (self-report, not an adversarial test). **No backend/frontend/E2E suites were run** - no product code
+changed.
+
+**Compatibility exceptions:** see `docs/framework/ADOPTION_RECORD.md` (addendum-below-marker convention;
+retained earlier policy document). No control weakened or removed.
+
+**Not verified / limits:** review gates and the workflow are process rules, not tooling; reviewers are
+read-only by tool allowlist but keep `Bash`; a live session was not used to confirm the Stop hook is invoked;
+the addendum content was written from the previous agents by hand and has not been exercised by running each
+agent on a task.
+
+**Deployment/demo link:** none. Nothing deployed.
+
+**Blockers:** none.
+
+**Next three tasks:** (1) Product Owner chooses the next feature; (2) run the first slice end to end under the
+adopted framework, including a first real database-architect / backend-reviewer / frontend-reviewer pass;
+(3) verify in a live session that the Stop hook blocks as expected.
+
+---
+
+## Previous entry (summary kept below)
+
 ### 2026-10-08 — AI Software Delivery Framework upgraded to 1.1 (framework-only change)
 
 **Branch/commit:** `main` — see the commit that contains this entry (not deployed). No product functionality,

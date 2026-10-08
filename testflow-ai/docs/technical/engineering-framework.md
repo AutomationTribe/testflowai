@@ -1,5 +1,10 @@
 # TestFlow AI — Engineering Framework
 
+> **Framework note (2026-10-08):** the canonical framework policy is now `docs/framework/POLICY.md`
+> (AI Software Delivery Framework 1.1.0, pinned in `docs/framework/ADOPTION_RECORD.md`). This document is
+> retained as TestFlow's earlier policy record and the home of the Product Owner's profile decisions below.
+> Where it differs from the canonical policy, the canonical policy applies, except for project decisions.
+
 This document is the project's AI Software Delivery Framework adoption, applied **forward-only**
 (adopted 2026-10-07). It governs how future work is planned, built, reviewed, and released. It
 does not retroactively redo completed work, redesign approved screens, or rewrite working code —

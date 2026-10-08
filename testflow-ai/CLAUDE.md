@@ -46,7 +46,7 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     tests have been run and the results reported — "I added tests" is not sufficient; report
     pass/fail/count. See docs/technical/testing.md for the full testing strategy.
 20. The normal path from requirements to deployment is the 20-step vertical slice in
-    docs/technical/engineering-framework.md ("Engineering workflow", framework 1.1): Feature Selection →
+    docs/framework/POLICY.md ("Engineering workflow"; framework 1.1.0, pinned in docs/framework/FRAMEWORK_VERSION): Feature Selection →
     Requirements Checkpoint → Risk Classification → Definition of Ready → Approved UI/UX Design (when
     applicable) → Design Handoff (design agent) → Database Architect Review (database-architect, when
     database structures are introduced or materially changed — before any code) → Backend Implementation +
@@ -64,8 +64,9 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     reported failure, or let an agent silently resolve a design/requirement conflict in either direction;
     the user is always the final decision-maker, including final acceptance before deployment. See
     docs/technical/testing.md, docs/technical/security.md, docs/technical/design-handoff.md, and
-    docs/technical/engineering-framework.md (Definition of Ready/Done, change-risk classification,
-    review standards, release workflow, full framework detail).
+    docs/framework/POLICY.md (Definition of Ready/Done, change-risk classification, review standards,
+    release workflow, full framework detail; the project's earlier policy record and profile decisions remain
+    in docs/technical/engineering-framework.md).
 21. Every TestFlow API must have a maintained OpenAPI contract at
     docs/technical/api/openapi.yaml, kept in sync with the actual implementation whenever an
     endpoint is added or changed (request/response shapes, auth requirements). Swagger UI is
@@ -90,13 +91,14 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     CHANGES or BLOCKED) and never modify implementation code.
 24. Every implementation/change is classified LOW, MEDIUM, or HIGH risk before work begins, and a
     Definition of Ready is checked before implementation starts and a Definition of Done before
-    it's considered complete — see docs/technical/engineering-framework.md for the full criteria.
+    it's considered complete — see docs/framework/POLICY.md for the full criteria.
     Review/testing/security depth scales with the risk level and the project's criticality
     profile; do not add unnecessary ceremony to genuinely low-risk work, and do not skip a gate a
     high-risk change actually needs.
 25. TestFlow's project criticality profile (PROTOTYPE/MVP/PRODUCTION/HIGH-CRITICALITY) and code
     readability profile (MID-LEVEL/SENIOR) are user decisions, not Claude's to choose — see
-    docs/technical/engineering-framework.md and docs/technical/coding-standards.md. Decided by the
+    docs/framework/PROJECT_PROFILE.md, docs/technical/engineering-framework.md and
+    docs/technical/coding-standards.md. Decided by the
     Product Owner on 2026-10-07: project criticality = PRODUCTION; code readability = MID-LEVEL.
     Apply PRODUCTION rigor and MID-LEVEL code.
 26. New technology, a meaningful new dependency, or a significant/hard-to-reverse technical
@@ -105,7 +107,7 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     existing decision log (architecture-decisions.md, database-decisions.md, api-decisions.md,
     product-decisions.md) — do not introduce microservices, Kubernetes, queues, caches, search
     engines, additional databases, distributed-systems patterns, or additional runtimes without
-    one. See docs/technical/engineering-framework.md for dependency governance, accessibility,
+    one. See docs/framework/POLICY.md for dependency governance, accessibility,
     observability, performance, threat-modeling, migration/backward-compatibility, feature-flag,
     reliability, technical-debt, production-verification, and incident-practice guidance — all
     adopted forward-only; existing work is not redone to conform to it.
@@ -120,7 +122,7 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     stated; when evidence contradicts an instruction or an earlier statement, say so plainly with
     the evidence and a recommendation, then let the Product Owner decide — never silently comply,
     never silently substitute Claude's own preference, never soften a failing result. See
-    docs/technical/engineering-framework.md.
+    docs/framework/POLICY.md (the seven-point definition).
 29. E2E (Playwright) tests start already signed in as the DEDICATED TESTER (`e2e/testerUser.ts`, created
     once per run by `e2e/global-setup.ts`, session saved as the default `storageState`). Do not create a
     new account in a test unless it is explicitly about creating or entering an account (sign-up, trial,
@@ -128,7 +130,7 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     opt out with `test.use(NO_SESSION)` (see `e2e/tests/helpers.ts`) and say why. Tests that need a known
     data state reset the dedicated tester's data through the E2E-only `reset-projects` endpoint, never by
     adding another sign-up. Never use the dedicated tester in a test that signs out of the shared session.
-30. Review standards (docs/technical/engineering-framework.md, "Review standards"): every specialist
+30. Review standards (docs/framework/POLICY.md, "Review standards"): every specialist
     review uses the Standard Review Report with HIGH / MEDIUM / LOW findings. HIGH blocks progression and
     commit; MEDIUM must be resolved before commit unless the authorised human explicitly accepts it as an
     exception (recorded in docs/PROJECT_STATUS.md); LOW may be fixed or logged as technical debt. A PASS
@@ -136,3 +138,10 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     implementation is committed, and corrections are re-reviewed by the same specialist role. Reviewers do
     not certify tests they did not execute, and do not inflate severity. Review gates are process rules —
     do not claim they are enforced automatically (only the PROJECT_STATUS Stop hook is).
+31. AI Software Delivery Framework version 1.1.0 is installed from the independent repository
+    (tag v1.1.0; pinned version, tag and commit SHA in docs/framework/ADOPTION_RECORD.md). Canonical files
+    (docs/framework/POLICY.md, VERSIONING.md, FRAMEWORK_VERSION, and each .claude/agents/ file above its
+    "PROJECT-SPECIFIC ADDENDUM" marker) are not edited in this project; project-specific agent guidance goes
+    in the addendum below the marker, project configuration in docs/framework/PROJECT_PROFILE.md, and any
+    deliberate deviation in the compatibility-exceptions table of ADOPTION_RECORD.md. Upgrades follow
+    docs/framework/VERSIONING.md, forward-only.
