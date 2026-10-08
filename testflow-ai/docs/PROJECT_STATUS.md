@@ -12,6 +12,55 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 — Responsive layout fix (all screens) + E2E window-size fix
+
+**Branch/commit:** `main` — see the commit that contains this entry (not deployed).
+
+**Problem reported:** in a visible (headed) Playwright run the pages did not fill the browser window.
+
+**Root cause (verified by measurement, not assumed):** two separate things.
+1. *Test config:* `e2e/playwright.config.ts` used the "Desktop Chrome" device preset, which pins the
+   page to 1280x720 even inside a larger visible window. The app itself already filled any window
+   from 900px to 2560px wide (measured: every screen's header/main reached the window's right edge,
+   no horizontal scroll). Fixed: headed runs now use the real window size (page is 1440px wide on the
+   1440px screen); CI/headless keeps the fixed 1280x720 for determinism.
+2. *App layout below ~900px:* a real gap — authenticated screens overflowed horizontally on tablet/
+   phone widths (fixed 268px sidebar; non-wrapping headers/rows). Fixed:
+   - `AppSidebar` auto-collapses to its existing icon-only rail below 900px (and follows the window
+     across the breakpoint; the manual toggle still works).
+   - `MinimalHeader` (auth/subscription screens), the QA Setup header and its "Deterministic
+     Governance" note, and the Projects status-filter row now wrap instead of overflowing.
+
+**Tests actually run and results (this session):**
+- Frontend `vitest`: **105/105** (adds 4 sidebar auto-collapse tests); `tsc --noEmit` and `eslint` clean.
+- E2E Playwright (headless, flows A-H): **21/21 passed**. New `flowH-responsive-layout.spec.ts`:
+  7 screens x 7 widths (375-2560px) must fill the window with no horizontal scroll; sidebar
+  collapses on a narrow window and is open on a wide one.
+- Headed run confirmed to use the real window size (inner width 1440 vs 1280 before).
+- Backend unchanged this entry (last full run 117/117).
+
+**Not done / caveats:** the designs show a single desktop viewport, so the narrow-width behaviour
+(collapsed sidebar, wrapping headers) is a sensible layout, not an approved design — Product Owner
+may want to review it. Desktop (>=900px) appearance is unchanged. Design-agent conformance was not
+re-run for this change.
+
+**Environment change:** the working copy moved out of iCloud-synced `~/Documents` to
+`~/dev/testflowai` (evicted placeholder files had been stalling every tool). Never use iCloud-synced
+folders for this repo.
+
+**Deployment/demo link:** unchanged; nothing deployed.
+
+**Blockers:** none.
+
+**Next three tasks:**
+1. Product Owner acceptance of the Projects slice (see previous entry) and review of the narrow-width layout.
+2. Export the Projects — List / Empty State reference images; fix TD-010 and TD-008.
+3. Next feature selection.
+
+---
+
+## Previous entry (Projects slice, 2026-10-07)
+
 ### 2026-10-07 — Projects vertical slice: Create Project + Project List (awaiting Product Owner acceptance)
 
 **Branch/commit:** `main` — see the commit that contains this entry (not deployed).

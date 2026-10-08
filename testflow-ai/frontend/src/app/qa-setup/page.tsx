@@ -308,8 +308,9 @@ function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: 16,
-        padding: '0 22px',
+        flexWrap: 'wrap',
+        gap: 8,
+        padding: '8px 22px',
         minHeight: 68,
         borderBottom: '1px solid var(--color-outline-variant)',
         background: 'var(--color-surface)',
@@ -322,9 +323,8 @@ function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX
           gap: 10,
           fontSize: 12.5,
           color: 'var(--color-text-muted)',
-          whiteSpace: 'nowrap',
+          flexWrap: 'wrap',
           minWidth: 0,
-          overflow: 'hidden',
         }}
       >
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{organisationName}</span>
@@ -352,7 +352,7 @@ function QaSetupHeader({ organisationName }: { organisationName?: string }): JSX
         </span>
       </span>
 
-      <span style={{ display: 'flex', alignItems: 'center', gap: 10, whiteSpace: 'nowrap', flexShrink: 0 }}>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <IconButton name="bell" label="Notifications" />
         <IconButton name="help-circle" label="Help" />
         <span aria-hidden style={{ width: 1, height: 22, background: 'var(--color-outline-variant)', margin: '0 4px' }} />
@@ -462,7 +462,7 @@ function QaSetupContent(): JSX.Element {
         <QaSetupHeader organisationName={organisation?.name} />
 
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '26px 30px 0' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, marginBottom: 22 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 24, marginBottom: 22 }}>
             <div style={{ minWidth: 0 }}>
               <h1 style={{ fontSize: 23, margin: '0 0 7px' }}>Set up your QA process</h1>
               <p style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--color-text-muted)', margin: 0, maxWidth: 690 }}>
@@ -482,7 +482,7 @@ function QaSetupContent(): JSX.Element {
                 fontSize: 12,
                 lineHeight: 1.45,
                 maxWidth: 370,
-                flexShrink: 0,
+                minWidth: 0,
               }}
             >
               <span style={{ color: 'var(--color-primary)', marginTop: 1 }}>

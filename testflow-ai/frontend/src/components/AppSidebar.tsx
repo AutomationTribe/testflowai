@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Icon, type IconName } from './Icon';
 import { useSession } from '@/lib/SessionProvider';
 
@@ -71,9 +71,22 @@ export function Tile({ children, size = 30 }: { children: string; size?: number 
   );
 }
 
+/** Below this window width the sidebar collapses itself to its icon-only rail so content has room. */
+export const SIDEBAR_AUTO_COLLAPSE_BELOW_PX = 900;
+
 export function AppSidebar({ activeKey }: { activeKey: string }): JSX.Element {
   const [collapsed, setCollapsed] = useState(false);
   const { user, logout } = useSession();
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== 'function') return;
+    const narrow = window.matchMedia(`(max-width: ${SIDEBAR_AUTO_COLLAPSE_BELOW_PX - 1}px)`);
+    setCollapsed(narrow.matches);
+    // Follow the window as it is resized across the breakpoint; the manual toggle still works in between.
+    const onChange = (event: MediaQueryListEvent): void => setCollapsed(event.matches);
+    narrow.addEventListener('change', onChange);
+    return () => narrow.removeEventListener('change', onChange);
+  }, []);
 
   function navRow(item: { key: string; label: string; icon: IconName; href?: string }): JSX.Element {
     const active = item.key === activeKey;

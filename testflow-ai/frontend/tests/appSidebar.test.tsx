@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const logout = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/lib/SessionProvider', () => ({
@@ -76,6 +76,62 @@ describe('AppSidebar', () => {
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /expand sidebar/i }));
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+});
+
+describe('AppSidebar — responsive auto-collapse', () => {
+  type Listener = (event: { matches: boolean }) => void;
+
+  function mockMatchMedia(matches: boolean): { change: (nextMatches: boolean) => void } {
+    const listeners = new Set<Listener>();
+    window.matchMedia = vi.fn().mockImplementation(() => ({
+      matches,
+      addEventListener: (_type: string, listener: Listener) => listeners.add(listener),
+      removeEventListener: (_type: string, listener: Listener) => listeners.delete(listener),
+    })) as unknown as typeof window.matchMedia;
+    return { change: (nextMatches) => listeners.forEach((listener) => listener({ matches: nextMatches })) };
+  }
+
+  afterEach(() => {
+    // jsdom has no matchMedia; remove the mock so other tests see the plain environment.
+    delete (window as { matchMedia?: unknown }).matchMedia;
+  });
+
+  it('starts collapsed to the icon rail on a narrow window', () => {
+    mockMatchMedia(true);
+    render(<AppSidebar activeKey="projects" />);
+
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /expand sidebar/i })).toBeInTheDocument();
+  });
+
+  it('starts expanded on a wide window', () => {
+    mockMatchMedia(false);
+    render(<AppSidebar activeKey="projects" />);
+
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /collapse sidebar/i })).toBeInTheDocument();
+  });
+
+  it('collapses when the window is resized below the breakpoint, and re-expands above it', () => {
+    const media = mockMatchMedia(false);
+    render(<AppSidebar activeKey="projects" />);
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+
+    act(() => media.change(true));
+    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument();
+
+    act(() => media.change(false));
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+
+  it('can still be opened by hand on a narrow window', () => {
+    mockMatchMedia(true);
+    render(<AppSidebar activeKey="projects" />);
+
+    fireEvent.click(screen.getByRole('button', { name: /expand sidebar/i }));
+
     expect(screen.getByText('Dashboard')).toBeInTheDocument();
   });
 });

@@ -57,12 +57,24 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
     headless: !!process.env.CI,
-    launchOptions: { slowMo },
+    // Headed (developer) runs use the real browser window size so what you watch is what a user
+    // sees at that window size; the device descriptor below would otherwise pin the page to
+    // 1280x720 inside a bigger window. CI/headless keeps the fixed 1280x720 for determinism.
+    launchOptions: { slowMo, args: process.env.CI ? [] : ['--start-maximized'] },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      // Playwright rejects `deviceScaleFactor` together with a null viewport, so the real-window
+      // (headed) mode drops that one option from the Desktop Chrome descriptor.
+      use: process.env.CI
+        ? { ...devices['Desktop Chrome'] }
+        : (({ deviceScaleFactor: _scale, ...desktop }) => ({ ...desktop, viewport: null }))(devices['Desktop Chrome']),
+    },
+  ],
   webServer: [
     {
       command: 'npm run dev',

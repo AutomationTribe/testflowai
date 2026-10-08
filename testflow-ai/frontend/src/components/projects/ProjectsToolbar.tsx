@@ -52,7 +52,7 @@ export function ProjectsToolbar(props: ProjectsToolbarProps): JSX.Element {
         background: 'var(--color-surface)',
       }}
     >
-      <div role="group" aria-label="Project status" style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+      <div role="group" aria-label="Project status" style={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
         {TABS.map((tab) => {
           const selected = statusFilter === tab.key;
           return (

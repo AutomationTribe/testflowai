@@ -63,6 +63,8 @@ export function MinimalHeader({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 'var(--space-2) var(--space-4)',
         padding: 'var(--space-3) var(--space-6)',
         borderTop: '3px solid var(--color-primary)',
         borderBottom: '1px solid var(--color-outline-variant)',
@@ -97,7 +99,16 @@ export function MinimalHeader({
           </>
         )}
       </span>
-      <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', fontSize: 13, color: 'var(--color-text-muted)' }}>
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 'var(--space-2) var(--space-4)',
+          fontSize: 13,
+          color: 'var(--color-text-muted)',
+        }}
+      >
         {!compact && <span>Documentation</span>}
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span aria-hidden style={{ width: 6, height: 6, borderRadius: '50%', background: '#2e8b57', display: 'inline-block' }} />
