@@ -39,8 +39,8 @@ needed.
 | Canonical name | Image in the repo | Note |
 |---|---|---|
 | Projects — Create Project | `approved/projects/create-project.png` (2560×2048) | downloaded from the Stitch screenshot link; byte-identical on re-fetch |
-| Projects — List | not saved | the Stitch screenshot link requires a Google login; viewed in the Product Owner's logged-in Chrome (see `handoffs/projects.md`). Export it to `approved/projects/list.png` to make it a durable reference. |
-| Projects — Empty State | not saved | same as above → `approved/projects/empty-state.png` |
+| Projects — List | `approved/projects/list.png` (2560×2048) — **sibling screen** `project list` (`ec89d852…`) | the approved original's screenshot link requires a Google login; this sibling is the design guide the screen was built against (see `approved/projects/README.md`). Replace with the original's export if it becomes available. |
+| Projects — Empty State | `approved/projects/empty-state.png` (2560×2048) — **sibling screen** `project empty state` (`a91c29d7…`) | same as above |
 
 Standing instruction (Product Owner, 2026-10-07): going forward every approved screen's
 full-size image is saved under `docs/design/approved/<area>/` and listed here.

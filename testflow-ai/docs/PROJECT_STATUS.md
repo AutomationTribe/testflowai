@@ -12,6 +12,42 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 — Fixed TD-008 and TD-010; saved the Projects reference images
+
+**Branch/commit:** `main` — see the commit that contains this entry (not deployed). Work paused here at the Product
+Owner's request, who wants to update the workflow.
+
+**Completed work:**
+- **TD-008 fixed:** an unreadable request body (malformed JSON, over the size limit, bad charset/encoding) now returns the
+  approved `422 validation_error` in the shared envelope instead of `500 internal_error` (no parser internals leaked).
+- **TD-010 fixed:** `requireAuth` and `requireActiveSubscription` now pass a failing database lookup to `next(error)`;
+  before, Express 4 left the request hanging and raised an unhandled rejection (which ends the Node process).
+- Tests: `errorHandling.test.ts` (5) and `asyncMiddlewareErrors.test.ts` (3). **Verified they catch the original bugs:**
+  run against the old middleware, 5 of the 8 fail (the other 3 assert behaviour that was already correct).
+- **Reference images saved** in `docs/design/approved/projects/`: `create-project.png` (the approved original),
+  `list.png` and `empty-state.png` — the **sibling** screens (`project list`, `project empty state`) the screens were built
+  and checked against, because the approved originals' images need a Google login. `README.md` there and
+  `stitch-registry.md` say so plainly.
+
+**Tests actually run and results (from `~/dev/testflowai`):**
+- Backend `vitest`: **125/125** (12 files); `tsc --noEmit` and `eslint` clean.
+- E2E Playwright (headless, flows A-I): **27/27 passed** — run after the auth-middleware change.
+- Frontend unchanged this entry (last run 111/111).
+
+**Not done / open:** the approved originals of Projects - List / Empty State still cannot be fetched; deployment not
+requested; TD-006/007/009/011/012/013 remain.
+
+**Deployment/demo link:** unchanged; nothing deployed.
+
+**Next three tasks:**
+1. Product Owner workflow update (paused for it).
+2. Decide whether to deploy the accepted Projects slice (needs an explicit instruction).
+3. Next feature selection (e.g. archive/update/membership, FR-PRJ-002/003/005-007).
+
+---
+
+## Previous entry (Product Owner acceptance of the Projects slice, 2026-10-08)
+
 ### 2026-10-08 — Product Owner acceptance: Projects slice
 
 **Accepted by the Product Owner (2026-10-08):** the Projects vertical slice — Create Project (FR-PRJ-001),

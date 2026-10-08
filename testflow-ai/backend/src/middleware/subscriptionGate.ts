@@ -9,17 +9,22 @@ import { resolveSubscriptionAccess } from '../modules/subscription/subscription.
  * convenience only; this is the actual enforcement point.
  */
 export async function requireActiveSubscription(req: Request, _res: Response, next: NextFunction): Promise<void> {
-  const organisationId = req.currentUser?.organisationId;
-  if (!organisationId) {
-    next(HttpError.unauthorized());
-    return;
-  }
+  try {
+    const organisationId = req.currentUser?.organisationId;
+    if (!organisationId) {
+      next(HttpError.unauthorized());
+      return;
+    }
 
-  const access = await resolveSubscriptionAccess(organisationId);
-  if (!access.hasAccess) {
-    next(HttpError.subscriptionRequired());
-    return;
-  }
+    const access = await resolveSubscriptionAccess(organisationId);
+    if (!access.hasAccess) {
+      next(HttpError.subscriptionRequired());
+      return;
+    }
 
-  next();
+    next();
+  } catch (error) {
+    // See requireAuth: async middleware must pass failures to next() or the request hangs.
+    next(error);
+  }
 }

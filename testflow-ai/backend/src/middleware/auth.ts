@@ -22,19 +22,25 @@ export function readCookie(req: Request, name: string): string | undefined {
  * browser-held cookie's own expiry stays in step with the server-side sliding TTL.
  */
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const token = readCookie(req, SESSION_COOKIE_NAME);
-  if (!token) {
-    next(HttpError.unauthorized());
-    return;
-  }
+  try {
+    const token = readCookie(req, SESSION_COOKIE_NAME);
+    if (!token) {
+      next(HttpError.unauthorized());
+      return;
+    }
 
-  const user = await resolveSession(token);
-  if (!user) {
-    next(HttpError.unauthorized());
-    return;
-  }
+    const user = await resolveSession(token);
+    if (!user) {
+      next(HttpError.unauthorized());
+      return;
+    }
 
-  req.currentUser = user;
-  setSessionCookie(res, token, new Date(Date.now() + SESSION_INACTIVITY_TIMEOUT_MS));
-  next();
+    req.currentUser = user;
+    setSessionCookie(res, token, new Date(Date.now() + SESSION_INACTIVITY_TIMEOUT_MS));
+    next();
+  } catch (error) {
+    // Express 4 does not catch a rejected promise from async middleware: without this, a database
+    // error would leave the request hanging and raise an unhandled rejection (which ends the process).
+    next(error);
+  }
 }

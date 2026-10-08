@@ -136,7 +136,7 @@ a small `startTestServer()` helper in `tests/testUtils.ts`.
 
 ---
 
-## TD-008 — A malformed JSON request body returns 500 instead of a 4xx
+## TD-008 — A malformed JSON request body returns 500 instead of a 4xx — RESOLVED 2026-10-08
 
 **Where:** shared error handling (`backend/src/app.ts` / `middleware/errorHandler.ts`).
 
@@ -146,8 +146,9 @@ Projects slice; pre-existing and not Projects-specific.
 
 **Impact:** a client error is reported as a server error (noisy logs/alerts, wrong status).
 
-**When to address:** next change to the shared error handler; map body-parser errors to a 400 or
-422 in the shared envelope and add a regression test.
+**Resolved:** `middleware/errorHandler.ts` maps body-parser errors (bad JSON, body too large, unreadable
+charset/encoding) to the approved "malformed/invalid request body" response — `422 validation_error` in the shared
+envelope; regression tests in `tests/errorHandling.test.ts` (fail on the old code).
 
 ---
 
@@ -165,7 +166,7 @@ state-changing routes; a per-organisation project quota belongs with the plans/l
 
 ---
 
-## TD-010 — `requireAuth` / `requireActiveSubscription` are async with no error handling
+## TD-010 — `requireAuth` / `requireActiveSubscription` are async with no error handling — RESOLVED 2026-10-08
 
 **Where:** `backend/src/middleware/auth.ts`, `backend/src/middleware/subscriptionGate.ts`.
 
@@ -177,8 +178,8 @@ timeout reachable as an error. Pre-existing; applies to every authenticated rout
 
 **Impact:** a transient DB outage can crash the API or hang requests (availability).
 
-**When to address:** soon — wrap both in try/catch calling `next(error)` (or add a small async
-route wrapper) and add a regression test.
+**Resolved:** both middlewares now wrap their body in try/catch and call `next(error)`; regression tests in
+`tests/asyncMiddlewareErrors.test.ts` (fail on the old code).
 
 ---
 
