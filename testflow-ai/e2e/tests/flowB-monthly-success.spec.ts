@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { signUp } from './helpers';
+import { NO_SESSION, signUp } from './helpers';
+
+// This flow is about creating/entering an account (or onboarding state), so it deliberately does NOT use the dedicated tester.
+test.use(NO_SESSION);
 
 /**
  * FLOW B — PAID SUBSCRIPTION (FR-SUB-004, NFR-REL-003).

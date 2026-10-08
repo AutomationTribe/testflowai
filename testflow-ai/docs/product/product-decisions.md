@@ -865,3 +865,30 @@ This log records product decisions explicitly approved during product definition
 **Product Impact:** Projects (API validation, create form).
 
 **Status:** Approved (clarifies FR-PRJ-001 + FR-QAOM-012; no new capability)
+
+
+---
+
+## PD-069 — Projects List: Filters, Counts, Code Search, Order and Pagination UI (PROPOSED)
+
+**Decision (proposed — awaiting Product Owner approval):** The Projects list supports, in addition to
+role-filtered visibility (FR-PRJ-004) and name search (`api-spec.md` Search):
+1. a **status filter** (`active` / `archived`) and status tabs showing real counts,
+2. a **QA-configuration filter** (the QA configuration versions in use by visible projects),
+3. search that also matches the **project code** (PD-066),
+4. a default order of **newest first**,
+5. **pagination** on the approved cursor API (APID-002): Previous/Next, "Showing a–b of N", "Page X of Y",
+   and a rows-per-page choice of **10 / 25 / 50** (default 10).
+
+**Reason:** These appear in the approved Projects designs and are supported by real data, but none is
+covered by an approved requirement (see `docs/product/checkpoints/projects-list-requirements-coverage.md`).
+Pagination was explicitly requested by the Product Owner on 2026-10-08.
+
+**Alternatives Considered:** Remove the filters/tabs/counts and keep only name search and paging (smallest
+surface, but departs from the approved designs); keep "Load more" instead of page controls (simpler, but the
+Product Owner asked for pagination and the design shows page controls).
+
+**Product Impact:** Projects list API (`GET .../projects` query params and response), Projects list UI.
+
+**Status:** Proposed — NOT approved. Until approved, `docs/technical/api/projects.md` labels these items
+"pending PD-069" and `docs/technical/api-spec.md`'s approved filter list is unchanged.

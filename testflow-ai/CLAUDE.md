@@ -119,3 +119,10 @@ Rules for AI-assisted work on the TestFlow AI project.
     the evidence and a recommendation, then let the Product Owner decide — never silently comply,
     never silently substitute Claude's own preference, never soften a failing result. See
     docs/technical/engineering-framework.md.
+29. E2E (Playwright) tests start already signed in as the DEDICATED TESTER (`e2e/testerUser.ts`, created
+    once per run by `e2e/global-setup.ts`, session saved as the default `storageState`). Do not create a
+    new account in a test unless it is explicitly about creating or entering an account (sign-up, trial,
+    payment, login, QA-setup onboarding) or needs a signed-out/unsubscribed browser — those files/blocks
+    opt out with `test.use(NO_SESSION)` (see `e2e/tests/helpers.ts`) and say why. Tests that need a known
+    data state reset the dedicated tester's data through the E2E-only `reset-projects` endpoint, never by
+    adding another sign-up. Never use the dedicated tester in a test that signs out of the shared session.

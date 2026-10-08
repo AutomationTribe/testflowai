@@ -163,7 +163,7 @@ describe('Projects page', () => {
       expect(await screen.findByRole('button', { name: /all projects \(5\)/i })).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByRole('button', { name: /active \(4\)/i })).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /archived \(1\)/i })).toBeInTheDocument();
-      expect(screen.getByText('Showing 1 of 5 projects')).toBeInTheDocument();
+      expect(screen.getByText('Showing 1–1 of 5 projects')).toBeInTheDocument();
     });
 
     it('marks archived projects with an Archived badge', async () => {
@@ -244,31 +244,6 @@ describe('Projects page', () => {
       await waitFor(() => expect(screen.getByRole('table')).toBeInTheDocument());
     });
 
-    it('loads the next page and appends it', async () => {
-      listProjects.mockResolvedValueOnce({
-        items: [project({ id: 'p2', name: 'Newer', projectCode: 'PRJ-002' })],
-        nextCursor: 'cursor-1',
-        counts: { total: 2, active: 2, archived: 0 },
-        qaConfigurations: [standardV1],
-      });
-      await renderPage();
-      await screen.findByText('Newer');
-      expect(screen.getByText('Showing 1 of 2 projects')).toBeInTheDocument();
-
-      listProjects.mockResolvedValueOnce({
-        items: [project({ id: 'p1', name: 'Older' })],
-        nextCursor: null,
-        counts: { total: 2, active: 2, archived: 0 },
-        qaConfigurations: [standardV1],
-      });
-      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-
-      expect(await screen.findByText('Older')).toBeInTheDocument();
-      expect(screen.getByText('Newer')).toBeInTheDocument();
-      expect(listProjects).toHaveBeenLastCalledWith('org-1', expect.objectContaining({ cursor: 'cursor-1' }));
-      expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
-    });
-
     it('shows an error state with a retry when the list cannot be loaded', async () => {
       listProjects.mockRejectedValueOnce(new ApiError(500, 'internal_error', 'Boom'));
       await renderPage();
@@ -281,43 +256,178 @@ describe('Projects page', () => {
     });
   });
 
-  describe('Projects — List: stale responses and failures', () => {
+  describe('Projects — List: pagination', () => {
     function deferred<T>() {
       let resolve!: (value: T) => void;
       const promise = new Promise<T>((res) => (resolve = res));
       return { promise, resolve };
     }
 
-    it('ignores a slow "Load more" response that finishes after the filter changed', async () => {
-      listProjects.mockResolvedValueOnce({
-        items: [project({ id: 'p2', name: 'Newer', projectCode: 'PRJ-002' })],
-        nextCursor: 'cursor-1',
-        counts: { total: 2, active: 2, archived: 0 },
+    /** A page of `count` projects named "<prefix> 1..count". */
+    function page(prefix: string, count: number, total: number, nextCursor: string | null) {
+      return {
+        items: Array.from({ length: count }, (_, index) => project({ id: `${prefix}-${index}`, name: `${prefix} ${index + 1}`, projectCode: `PRJ-${index + 1}` })),
+        nextCursor,
+        counts: { total, active: total, archived: 0 },
         qaConfigurations: [standardV1],
-      });
+      };
+    }
+
+    it('shows the first page of 10 with "Page 1 of 3", Previous disabled and Next enabled', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
       await renderPage();
-      await screen.findByText('Newer');
 
-      const slowPage = deferred<ReturnType<typeof populatedResponse>>();
-      listProjects.mockReturnValueOnce(slowPage.promise); // Load more, still in flight
-      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-
-      listProjects.mockResolvedValueOnce({
-        items: [project({ id: 'a1', name: 'Archived one', status: 'archived' })],
-        nextCursor: null,
-        counts: { total: 2, active: 1, archived: 1 },
-        qaConfigurations: [standardV1],
-      });
-      fireEvent.click(screen.getByRole('button', { name: /archived/i }));
-      await screen.findByText('Archived one');
-
-      // The old filter's next page arrives late and must not be merged into the archived list.
-      await act(async () => slowPage.resolve(populatedResponse([project({ id: 'p1', name: 'Stale older page' })])));
-
-      expect(screen.queryByText('Stale older page')).not.toBeInTheDocument();
-      expect(screen.getByText('Archived one')).toBeInTheDocument();
-      expect(screen.queryByText('Newer')).not.toBeInTheDocument();
+      expect(await screen.findByText('Showing 1–10 of 25 projects')).toBeInTheDocument();
+      expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeEnabled();
+      expect(listProjects).toHaveBeenCalledWith('org-1', expect.objectContaining({ limit: 10, cursor: undefined }));
     });
+
+    it('Next loads the following page with the server cursor, and Previous returns to the first page', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+
+      listProjects.mockResolvedValueOnce(page('B', 10, 25, 'c2'));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+
+      expect(await screen.findByText('B 1')).toBeInTheDocument();
+      // Pages replace each other — rows are not appended.
+      expect(screen.queryByText('A 1')).not.toBeInTheDocument();
+      expect(listProjects).toHaveBeenLastCalledWith('org-1', expect.objectContaining({ limit: 10, cursor: 'c1' }));
+      expect(screen.getByText('Showing 11–20 of 25 projects')).toBeInTheDocument();
+      expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeEnabled();
+
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      fireEvent.click(screen.getByRole('button', { name: 'Previous page' }));
+
+      expect(await screen.findByText('A 1')).toBeInTheDocument();
+      expect(listProjects).toHaveBeenLastCalledWith('org-1', expect.objectContaining({ cursor: undefined }));
+      expect(screen.getByText('Page 1 of 3')).toBeInTheDocument();
+    });
+
+    it('on the last page Next is disabled and the range is correct', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+      listProjects.mockResolvedValueOnce(page('B', 10, 25, 'c2'));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      await screen.findByText('B 1');
+      listProjects.mockResolvedValueOnce(page('C', 5, 25, null));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+
+      expect(await screen.findByText('C 1')).toBeInTheDocument();
+      expect(screen.getByText('Showing 21–25 of 25 projects')).toBeInTheDocument();
+      expect(screen.getByText('Page 3 of 3')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled();
+    });
+
+    it('changing rows per page restarts at page 1 with the new page size', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+      listProjects.mockResolvedValueOnce(page('B', 10, 25, 'c2'));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      await screen.findByText('B 1');
+
+      listProjects.mockResolvedValueOnce(page('Z', 25, 25, null));
+      fireEvent.change(screen.getByLabelText('Rows per page'), { target: { value: '25' } });
+
+      expect(await screen.findByText('Z 1')).toBeInTheDocument();
+      expect(listProjects).toHaveBeenLastCalledWith('org-1', expect.objectContaining({ limit: 25, cursor: undefined }));
+      expect(screen.getByText('Showing 1–25 of 25 projects')).toBeInTheDocument();
+      expect(screen.getByText('Page 1 of 1')).toBeInTheDocument();
+    });
+
+    it('a filter change returns to page 1 instead of asking for page 2 of the new filter', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+      listProjects.mockResolvedValueOnce(page('B', 10, 25, 'c2'));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      await screen.findByText('B 1');
+
+      listProjects.mockResolvedValueOnce(page('F', 3, 3, null));
+      fireEvent.click(screen.getByRole('button', { name: /archived/i }));
+
+      expect(await screen.findByText('F 1')).toBeInTheDocument();
+      expect(listProjects).toHaveBeenLastCalledWith('org-1', expect.objectContaining({ status: 'archived', cursor: undefined }));
+      expect(screen.getByText('Page 1 of 1')).toBeInTheDocument();
+    });
+
+    it('pauses Previous/Next while a page is loading, and ignores a slow page that a filter change replaced', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+
+      const slowNext = deferred<ReturnType<typeof page>>();
+      listProjects.mockReturnValueOnce(slowNext.promise);
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Next page' })).toBeDisabled());
+
+      listProjects.mockResolvedValueOnce(page('F', 2, 2, null));
+      fireEvent.click(screen.getByRole('button', { name: /archived/i }));
+      await screen.findByText('F 1');
+
+      await act(async () => slowNext.resolve(page('B', 10, 25, 'c2')));
+
+      expect(screen.queryByText('B 1')).not.toBeInTheDocument();
+      expect(screen.getByText('F 1')).toBeInTheDocument();
+    });
+
+    it('shows an error with Try again when a page cannot be loaded, and retrying loads that same page', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+
+      listProjects.mockRejectedValueOnce(new ApiError(500, 'internal_error', 'Page failed'));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      expect(await screen.findByText('Page failed')).toBeInTheDocument();
+      expect(screen.queryByText('A 1')).not.toBeInTheDocument();
+
+      listProjects.mockResolvedValueOnce(page('B', 10, 25, 'c2'));
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByText('B 1')).toBeInTheDocument();
+      expect(listProjects).toHaveBeenLastCalledWith('org-1', expect.objectContaining({ cursor: 'c1' }));
+    });
+
+    it('keeps the page the user moved to when the search debounce timer fires with unchanged search text', async () => {
+      listProjects.mockResolvedValueOnce(page('A', 10, 25, 'c1'));
+      await renderPage();
+      await screen.findByText('A 1');
+
+      listProjects.mockResolvedValueOnce(page('B', 10, 25, 'c2'));
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }));
+      await screen.findByText('B 1');
+      // Let well over the 300ms debounce elapse with no typing.
+      await new Promise((resolve) => setTimeout(resolve, 450));
+
+      expect(screen.getByText('B 1')).toBeInTheDocument();
+      expect(screen.getByText('Page 2 of 3')).toBeInTheDocument();
+      expect(listProjects).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not fire a second, redundant request after the page first loads', async () => {
+      vi.useFakeTimers();
+      listProjects.mockResolvedValue(page('A', 3, 3, null));
+      render(<ProjectsPage />);
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+
+      expect(listProjects).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Projects — List: stale responses and failures', () => {
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((res) => (resolve = res));
+      return { promise, resolve };
+    }
 
     it('ignores a slow response for an earlier filter when a newer filter has already answered', async () => {
       listProjects.mockResolvedValueOnce(populatedResponse());
@@ -355,23 +465,6 @@ describe('Projects page', () => {
       expect(await screen.findByText('Archived one')).toBeInTheDocument();
     });
 
-    it('keeps the rows already shown and reports the error when only "Load more" fails', async () => {
-      listProjects.mockResolvedValueOnce({
-        items: [project({ id: 'p2', name: 'Newer', projectCode: 'PRJ-002' })],
-        nextCursor: 'cursor-1',
-        counts: { total: 2, active: 2, archived: 0 },
-        qaConfigurations: [standardV1],
-      });
-      await renderPage();
-      await screen.findByText('Newer');
-
-      listProjects.mockRejectedValueOnce(new ApiError(500, 'internal_error', 'Could not fetch the next page'));
-      fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
-
-      expect(await screen.findByRole('alert')).toHaveTextContent('Could not fetch the next page');
-      expect(screen.getByText('Newer')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Load more' })).toBeEnabled();
-    });
   });
 
   describe('Projects — List: accessibility', () => {
@@ -386,7 +479,7 @@ describe('Projects page', () => {
       expect(within(table).getByTitle('A long description')).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /all projects/i })).toHaveAttribute('aria-pressed', 'true');
       expect(screen.getByRole('button', { name: /^active/i })).toHaveAttribute('aria-pressed', 'false');
-      expect(screen.getByText(/showing 1 of 1 project/i)).toHaveAttribute('aria-live', 'polite');
+      expect(screen.getByText(/showing 1–1 of 1 project/i)).toHaveAttribute('aria-live', 'polite');
     });
   });
 

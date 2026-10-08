@@ -150,3 +150,23 @@ Avoid unnecessarily duplicating unit-test coverage at the integration/E2E layer.
 already thoroughly proven at the unit level (a pure validation function, a calculation), the
 API/E2E test for that same change should verify the *integration* — the right status code, the
 right UI state — not re-prove the underlying logic a second time.
+
+## E2E default user: the dedicated tester
+
+Playwright tests (`e2e/`) start signed in as one dedicated tester account, so most tests do not sign
+up first (CLAUDE.md rule 29).
+
+- `e2e/testerUser.ts` — the account's credentials (throwaway, for the disposable `testflow_e2e` database).
+- `e2e/global-setup.ts` — after the servers are up and the database is rebuilt, signs the tester up (or logs
+  in if it exists), starts the trial, and saves the session to `e2e/.auth/tester.json` (git-ignored).
+- `playwright.config.ts` — uses that file as the default `storageState`.
+- Opt out with `test.use(NO_SESSION)` (from `tests/helpers.ts`) only for tests about creating or entering an
+  account or needing a signed-out/unsubscribed browser: flows A–F (sign-up, trial, payment, login, QA-setup
+  onboarding) and the "no subscription" and "registered user logs in" Projects tests. Say why in a comment.
+- Need a clean data state? Call `resetTesterProjects(page)` (E2E-only endpoint `POST /v1/test-support/reset-projects`,
+  double-gated like the payment simulator: `E2E_FAKE_PAYMENTS=true` and never production) and create bulk data with
+  `createProjectsViaApi(page, names)`.
+- Do not sign the shared tester out inside a test that uses the saved session — that would end the session for
+  every later test. Tests that log in or out use `NO_SESSION` and their own session.
+- Visible-run speed presets (`PW_SPEED`): `extraslow` 8000 ms, `slow` 2000 ms, `normal` 200 ms, `fast` 0 ms
+  between actions.

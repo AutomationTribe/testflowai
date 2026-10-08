@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Page } from '@playwright/test';
+import { BACKEND_URL } from '../testerUser';
 
 export interface E2eUser {
   name: string;
@@ -56,4 +57,27 @@ export async function signUpAndReachQaSetup(page: Page, user: E2eUser = uniqueUs
   await page.getByRole('button', { name: 'Continue to QA Setup' }).click();
   await page.waitForURL('**/qa-setup');
   return user;
+}
+
+/**
+ * Opt a file or describe block OUT of the default signed-in dedicated tester:
+ * `test.use(NO_SESSION)`. Use it ONLY for tests that are about creating or entering an account
+ * (sign-up, trial, payment, login, QA-setup onboarding) or that need a signed-out browser.
+ */
+export const NO_SESSION = { storageState: { cookies: [], origins: [] } };
+
+/** Puts the signed-in dedicated tester's organisation back to "no projects, next code PRJ-001" (E2E-only endpoint). */
+export async function resetTesterProjects(page: Page): Promise<void> {
+  const res = await page.request.post(`${BACKEND_URL}/v1/test-support/reset-projects`);
+  if (res.status() !== 204) throw new Error(`reset-projects failed with ${res.status()}`);
+}
+
+/** Creates projects directly through the API (fast data setup for the signed-in user — not what is under test). */
+export async function createProjectsViaApi(page: Page, names: string[]): Promise<void> {
+  const me = await (await page.request.get(`${BACKEND_URL}/v1/me`)).json();
+  const orgId = me.organisation.id as string;
+  for (const name of names) {
+    const res = await page.request.post(`${BACKEND_URL}/v1/organisations/${orgId}/projects`, { data: { name } });
+    if (res.status() !== 201) throw new Error(`create project "${name}" failed with ${res.status()}`);
+  }
 }

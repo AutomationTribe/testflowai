@@ -8,6 +8,7 @@ import { Icon } from '@/components/Icon';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { CreateProjectModal, NEW_PROJECT_BUTTON_ID } from '@/components/projects/CreateProjectModal';
 import { ProjectsEmptyState } from '@/components/projects/ProjectsEmptyState';
+import { DEFAULT_PAGE_SIZE, ProjectsPagination } from '@/components/projects/ProjectsPagination';
 import { ProjectsTable } from '@/components/projects/ProjectsTable';
 import { ProjectsToolbar, type StatusFilter } from '@/components/projects/ProjectsToolbar';
 import { ProjectsTopBar } from '@/components/projects/ProjectsTopBar';
@@ -29,70 +30,103 @@ function ProjectsContent(): JSX.Element {
   const [data, setData] = useState<ProjectListResponse | null>(null);
   // Set when the list for the CURRENT filters could not be loaded; the previous (stale) rows are hidden meanwhile.
   const [listError, setListError] = useState<string | null>(null);
-  // Set when only "Load more" failed; the rows already shown are still valid.
-  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [pageIndex, setPageIndex] = useState(0);
+  // cursors[i] is the cursor that loads page i (page 0 has none). A cursor only ever comes from the
+  // previous page's `nextCursor` (APID-002), so we keep the ones already used to allow "Previous".
+  const [cursors, setCursors] = useState<Array<string | undefined>>([undefined]);
+  const [pageLoading, setPageLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const latestRequest = useRef(0);
+  const appliedSearch = useRef('');
+
+  /** Back to the first page. Called together with every change that makes the current page meaningless. */
+  const resetPaging = useCallback((): void => {
+    setPageIndex(0);
+    // Keep the same array when already at the start, so an unchanged state does not trigger a reload.
+    setCursors((previous) => (previous.length === 1 && previous[0] === undefined ? previous : [undefined]));
+  }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(searchText.trim()), SEARCH_DEBOUNCE_MS);
+    const timer = setTimeout(() => {
+      const next = searchText.trim();
+      // Only a real change of the search text restarts paging — otherwise this timer (which also
+      // fires once after the page first loads) would throw away a page the user already navigated to.
+      if (next === appliedSearch.current) return;
+      appliedSearch.current = next;
+      // Same tick: the new search text and "page 1" are applied together, so only ONE request is made.
+      setDebouncedSearch(next);
+      resetPaging();
+    }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
-  }, [searchText]);
+  }, [searchText, resetPaging]);
 
   const hasActiveFilters = statusFilter !== 'all' || debouncedSearch !== '' || qaConfigurationFilter !== '';
 
   useEffect(() => {
     if (!organisationId) return;
     const requestId = ++latestRequest.current;
+    setPageLoading(true);
     apiClient
       .listProjects(organisationId, {
         q: debouncedSearch || undefined,
         status: statusFilter === 'all' ? undefined : statusFilter,
         qaConfigurationVersionId: qaConfigurationFilter || undefined,
+        limit: pageSize,
+        cursor: cursors[pageIndex],
       })
       .then((response) => {
-        // Ignore a slow response that a newer filter change has already replaced.
+        // Ignore a slow response that a newer page/filter change has already replaced.
         if (requestId !== latestRequest.current) return;
         setData(response);
         setListError(null);
-        setLoadMoreError(null);
+        setPageLoading(false);
       })
       .catch((error: unknown) => {
         if (requestId !== latestRequest.current) return;
         setListError(error instanceof Error ? error.message : 'Could not load projects.');
+        setPageLoading(false);
       });
-  }, [organisationId, debouncedSearch, statusFilter, qaConfigurationFilter, reloadKey]);
+  }, [organisationId, debouncedSearch, statusFilter, qaConfigurationFilter, reloadKey, pageSize, pageIndex, cursors]);
 
   const clearFilters = useCallback((): void => {
     setStatusFilter('all');
     setSearchText('');
     setDebouncedSearch('');
+    appliedSearch.current = '';
     setQaConfigurationFilter('');
-  }, []);
+    resetPaging();
+  }, [resetPaging]);
 
-  async function loadMore(): Promise<void> {
-    if (!organisationId || !data?.nextCursor || loadingMore) return;
-    // Remember which list this page belongs to. If the filters change (or the list reloads)
-    // while the request is in flight, `latestRequest` moves on and this result is discarded.
-    const requestId = latestRequest.current;
-    setLoadingMore(true);
-    setLoadMoreError(null);
-    try {
-      const next = await apiClient.listProjects(organisationId, {
-        q: debouncedSearch || undefined,
-        status: statusFilter === 'all' ? undefined : statusFilter,
-        qaConfigurationVersionId: qaConfigurationFilter || undefined,
-        cursor: data.nextCursor,
-      });
-      if (requestId !== latestRequest.current) return;
-      setData((previous) => (previous ? { ...next, items: [...previous.items, ...next.items] } : previous));
-    } catch (error) {
-      if (requestId !== latestRequest.current) return;
-      setLoadMoreError(error instanceof Error ? error.message : 'Could not load more projects.');
-    } finally {
-      setLoadingMore(false);
-    }
+  function changeStatusFilter(value: StatusFilter): void {
+    setStatusFilter(value);
+    resetPaging();
+  }
+
+  function changeQaConfigurationFilter(value: string): void {
+    setQaConfigurationFilter(value);
+    resetPaging();
+  }
+
+  function changePageSize(value: number): void {
+    setPageSize(value);
+    resetPaging();
+  }
+
+  function goToNextPage(): void {
+    if (!data?.nextCursor || pageLoading) return;
+    const nextCursor = data.nextCursor;
+    setCursors((previous) => {
+      const kept = previous.slice(0, pageIndex + 1);
+      kept[pageIndex + 1] = nextCursor;
+      return kept;
+    });
+    setPageIndex(pageIndex + 1);
+  }
+
+  function goToPreviousPage(): void {
+    if (pageIndex === 0 || pageLoading) return;
+    setPageIndex(pageIndex - 1);
   }
 
   function handleCreated(): void {
@@ -172,11 +206,11 @@ function ProjectsContent(): JSX.Element {
             <>
               <ProjectsToolbar
                 statusFilter={statusFilter}
-                onStatusFilterChange={setStatusFilter}
+                onStatusFilterChange={changeStatusFilter}
                 searchText={searchText}
                 onSearchTextChange={setSearchText}
                 qaConfigurationFilter={qaConfigurationFilter}
-                onQaConfigurationFilterChange={setQaConfigurationFilter}
+                onQaConfigurationFilterChange={changeQaConfigurationFilter}
                 qaConfigurations={data.qaConfigurations}
                 counts={data.counts}
                 hasActiveFilters={hasActiveFilters}
@@ -212,35 +246,21 @@ function ProjectsContent(): JSX.Element {
                     <div style={{ overflowX: 'auto' }}>
                       <ProjectsTable projects={data.items} />
                     </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 16px',
-                        background: 'var(--color-surface-low)',
-                        fontSize: 12.5,
-                        color: 'var(--color-text-muted)',
-                      }}
-                    >
-                      <span aria-live="polite">
-                        Showing {data.items.length} of {visibleTotal} {visibleTotal === 1 ? 'project' : 'projects'}
-                      </span>
-                      {data.nextCursor && (
-                        <Button variant="secondary" onClick={() => void loadMore()} disabled={loadingMore}>
-                          {loadingMore ? 'Loading…' : 'Load more'}
-                        </Button>
-                      )}
-                    </div>
+                    <ProjectsPagination
+                      pageIndex={pageIndex}
+                      pageSize={pageSize}
+                      rowsOnPage={data.items.length}
+                      total={visibleTotal}
+                      hasNext={data.nextCursor !== null}
+                      busy={pageLoading}
+                      onPrevious={goToPreviousPage}
+                      onNext={goToNextPage}
+                      onPageSizeChange={changePageSize}
+                    />
                   </>
                 )}
               </div>
 
-              {loadMoreError && (
-                <p role="alert" style={{ marginTop: 12, color: '#a4262c', fontSize: 13 }}>
-                  {loadMoreError}
-                </p>
-              )}
             </>
           )}
         </main>

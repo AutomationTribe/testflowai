@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { TESTER_STORAGE_STATE } from './storageStatePath';
 
 /**
  * E2E foundation for Slice 1 (Account & Subscription). Runs against dedicated
@@ -39,6 +40,9 @@ const TEST_TIMEOUT_MS = 30_000 + slowMo * 30;
 
 export default defineConfig({
   testDir: './tests',
+  // Creates the dedicated tester once and saves their session — every test starts signed in as them
+  // unless it explicitly opts out (see tests/helpers.ts NO_SESSION).
+  globalSetup: './global-setup.ts',
   // Visual-regression specs (tests/visual/**) live under their own dedicated
   // config (playwright.visual.config.ts) — excluded here so this file's existing
   // functional suite, its CI job, and `npm run test:e2e` are completely
@@ -56,6 +60,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['list'], ['github']] : [['list']],
   use: {
     baseURL: `http://localhost:${FRONTEND_PORT}`,
+    storageState: TESTER_STORAGE_STATE,
     headless: !!process.env.CI,
     // Headed (developer) runs use the real browser window size so what you watch is what a user
     // sees at that window size; the device descriptor below would otherwise pin the page to

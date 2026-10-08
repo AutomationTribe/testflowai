@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { signUpAndReachQaSetup } from './helpers';
+import { NO_SESSION, signUpAndReachQaSetup } from './helpers';
+
+// This flow is about creating/entering an account (or onboarding state), so it deliberately does NOT use the dedicated tester.
+test.use(NO_SESSION);
 
 /**
  * FLOW F — QA OPERATING MODEL SETUP (FR-QAOM-001/002/003/007/008/009/012).

@@ -12,6 +12,50 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 — Dedicated E2E tester, Projects list pagination, requirements-coverage review
+
+**Branch/commit:** `main` — see the commit that contains this entry (not deployed).
+
+**Completed work:**
+- **Dedicated tester for E2E (CLAUDE.md rule 29):** `e2e/testerUser.ts` + `e2e/global-setup.ts` create the
+  tester (org + trial) once per run and save the session as the default `storageState`; tests start signed in.
+  Flows A-F (sign-up, trial, payment, login, QA-setup onboarding) and two Projects tests opt out with
+  `test.use(NO_SESSION)` and say why. New helpers `resetTesterProjects` / `createProjectsViaApi`; new
+  E2E-only, double-gated endpoint `POST /v1/test-support/reset-projects` (caller's own org only). Result: the
+  Projects tests no longer sign up (about 1-2s each instead of ~5s).
+- **Projects list pagination:** replaced "Load more" with Previous/Next, "Showing a-b of N projects",
+  "Page X of Y" and Rows per page (10/25/50, default 10) on the approved cursor API (APID-002); the page keeps
+  its cursors so Previous works; filter/search/page-size changes return to page 1. A new test caught and fixed a
+  real bug (the search-debounce timer reset paging 300ms after load even when nothing was typed).
+- **Requirements coverage review** (`docs/product/checkpoints/projects-list-requirements-coverage.md`): name
+  search (api-spec "Search") and cursor pagination (APID-002) are covered at API level; the status filter/tabs/counts,
+  QA-configuration filter, project-code search, default order and the pagination UI shape (page sizes) are NOT
+  covered by any approved requirement. Proposed as **PD-069 — NOT approved**; `api/projects.md` marks them
+  "pending PD-069". **Product Owner decision needed.**
+
+**Tests actually run and results (this session, from `~/dev/testflowai`):**
+- Frontend `vitest`: **111/111**; `tsc --noEmit` and `eslint` clean (includes 9 new pagination tests).
+- Backend `vitest`: **117/117**; `tsc` and `eslint` clean (the test-support route has no unit test; E2E exercises it).
+- E2E Playwright (headless, flows A-H): **24/24 passed**, incl. new pagination (12 projects, 10/page, Next/Previous,
+  rows per page) and search-returns-to-page-1 scenarios; the sidebar-collapse test passes (E2E and 4 unit tests).
+- Design conformance was not re-run for the pagination footer (it moves the list closer to the design, which shows
+  rows-per-page and page controls).
+
+**Not done / open:** PD-069 approval; reference images for Projects - List / Empty State; TD-006/007/008/010.
+
+**Deployment/demo link:** unchanged; nothing deployed.
+
+**Blockers:** none.
+
+**Next three tasks:**
+1. Product Owner decision on PD-069 (filters/counts/code search/page sizes) and acceptance of the Projects slice.
+2. Fix TD-010 (async auth middleware error handling) and TD-008 (malformed JSON -> 4xx).
+3. Next feature selection.
+
+---
+
+## Previous entry (responsive layout, 2026-10-08)
+
 ### 2026-10-08 — Responsive layout fix (all screens) + E2E window-size fix
 
 **Branch/commit:** `main` — see the commit that contains this entry (not deployed).
