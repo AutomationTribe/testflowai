@@ -3,7 +3,7 @@
 ## Code readability profile
 
 See `docs/technical/engineering-framework.md` for what each profile means. The `frontend`,
-`backend`, and `reviewer` agents read this file to know which profile to apply.
+`backend`, `backend-reviewer`, `frontend-reviewer`, `database-architect` and `reviewer` agents read this file to know which profile to apply.
 
 > Selected profile: **MID-LEVEL** (Product Owner decision, 2026-10-07)
 

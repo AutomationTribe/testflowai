@@ -4,15 +4,19 @@
 
 ## Deployment gate
 
-The normal path from requirements to a live deployment (CLAUDE.md rule 20):
+The normal path from requirements to a live deployment is defined once in
+`docs/technical/engineering-framework.md` ("Engineering workflow", framework 1.1; CLAUDE.md rule 20).
+The part that leads into deployment:
 
 ```
-Requirements → Approved Design → Design Agent Handoff → Implementation + Unit Tests
-  → Design Agent Conformance Review → QA agent → Security agent → Human Acceptance
-  → DevOps agent → Deployment → Smoke Verification
+... → Implementation + Developer Tests → specialist reviews (database-architect / backend-reviewer /
+frontend-reviewer incl. design conformance; reviewer if cross-cutting) → QA agent → Security agent
+→ Definition of Done → Commit/Push → Human Acceptance → DevOps agent (after authorization)
+→ Deployment → Production Smoke Verification → Monitoring
 ```
 
-- **`design` agent** (`.claude/agents/design.md`) — when an approved design exists for the screen — produces an implementation handoff beforehand, and a visual-conformance review afterward (`MATCH` / `MINOR DIFFERENCE` / `MATERIAL DIFFERENCE` / `PRODUCT CONFLICT`).
+- **`design` agent** (`.claude/agents/design.md`) — when an approved design exists for the screen — produces an implementation handoff beforehand. Conformance with the approved design is verified by the **`frontend-reviewer`** before commit (`MATCH` / `MINOR` / `MATERIAL` / `PRODUCT CONFLICT`); it is not a separate gate.
+- **Specialist reviewers** (`database-architect`, `backend-reviewer`, `frontend-reviewer`, and the general `reviewer` for cross-cutting concerns) independently review before commit; HIGH findings block, MEDIUM must be resolved or explicitly excepted by the human (see "Review standards").
 - **Unit tests** run and are reported as part of the implementation itself (CLAUDE.md rule 19).
 - **`qa` agent** (`.claude/agents/qa.md`) independently verifies the change — API/UI tests, regression coverage, critical-journey checks — ending in `QA STATUS: PASS | FAIL`.
 - **`security` agent** (`.claude/agents/security.md`) reviews the change for security issues before anything is deployed, ending in `SECURITY STATUS: PASS | PASS WITH WARNINGS | FAIL`.

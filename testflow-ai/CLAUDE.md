@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-Rules for AI-assisted work on the TestFlow AI project.
+Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1**
+(`docs/framework/VERSION.md`).
 
 1. This is a large AI-assisted software project.
 2. Product requirements are the source of truth for what the system should do.
@@ -44,27 +45,27 @@ Rules for AI-assisted work on the TestFlow AI project.
     a happy-path check that the fix works). An implementation is not complete until its unit
     tests have been run and the results reported — "I added tests" is not sufficient; report
     pass/fail/count. See docs/technical/testing.md for the full testing strategy.
-20. The normal path from requirements to deployment is: Feature Selection → Requirements
-    Checkpoint → Risk Classification → Definition of Ready → Approved Design → Design agent
-    Handoff → Backend Implementation + Unit Tests → Backend Review (reviewer agent) → Frontend
-    Implementation + Unit Tests → Frontend Review (reviewer agent) → Design agent Conformance
-    Review → QA agent → Security agent → Human Acceptance → Definition of Done → DevOps agent →
-    Deployment → Production Smoke Verification → Monitoring. Frontend/backend ordering may change
-    when technically appropriate, and not every change needs both. When an approved design (e.g. a
-    Stitch screenshot) exists for a screen, Claude should invoke the Design agent for a handoff
-    before implementing it, and for a conformance review after implementing it — before QA. Claude
-    should invoke the Reviewer agent after a Frontend or Backend agent implementation (the reviewer
-    must be independent of the implementer), the QA agent after completing an implementation or
-    fix, before considering the work complete, and the Security agent before any deployment. If
-    Design, Reviewer, QA, or Security reports a failure — a MATERIAL DIFFERENCE/PRODUCT CONFLICT, a
-    BLOCKED review, a failed test, or a security finding — explain exactly what failed, the risk,
-    and a recommendation, then explicitly ask the user whether to proceed anyway. Never silently
-    skip a gate, auto-override a reported failure, or let an agent silently resolve a
-    design/requirement conflict in either direction; the user is always the final decision-maker,
-    including final acceptance before deployment. See docs/technical/testing.md,
-    docs/technical/security.md, docs/technical/design-handoff.md, and
+20. The normal path from requirements to deployment is the 20-step vertical slice in
+    docs/technical/engineering-framework.md ("Engineering workflow", framework 1.1): Feature Selection →
+    Requirements Checkpoint → Risk Classification → Definition of Ready → Approved UI/UX Design (when
+    applicable) → Design Handoff (design agent) → Database Architect Review (database-architect, when
+    database structures are introduced or materially changed — before any code) → Backend Implementation +
+    Developer Tests → Backend Engineer Reviewer (backend-reviewer) → Frontend Implementation + Developer
+    Tests → Frontend Engineer Reviewer, including Design Conformance (frontend-reviewer) →
+    Cross-Cutting/Integration Review (reviewer, when necessary) → Independent QA (qa) → Security Review
+    (security, risk-based) → Definition of Done → Commit/Push per repository policy → Human/Product Owner
+    Acceptance → DevOps/Deployment after authorization → Production Smoke Verification → Monitoring.
+    Do not invoke agents for layers a task does not touch. There is no separate design-conformance gate:
+    conformance with the approved designs is verified by the frontend-reviewer. When an approved design
+    exists, invoke the design agent for the handoff before implementing. If a reviewer, QA or Security
+    reports a failure — a HIGH finding, a BLOCKED review, a MATERIAL difference/PRODUCT CONFLICT, a failed
+    test, or a security finding — explain exactly what failed, the risk, and a recommendation, then
+    explicitly ask the user whether to proceed anyway. Never silently skip a gate, auto-override a
+    reported failure, or let an agent silently resolve a design/requirement conflict in either direction;
+    the user is always the final decision-maker, including final acceptance before deployment. See
+    docs/technical/testing.md, docs/technical/security.md, docs/technical/design-handoff.md, and
     docs/technical/engineering-framework.md (Definition of Ready/Done, change-risk classification,
-    release workflow, full framework detail).
+    review standards, release workflow, full framework detail).
 21. Every TestFlow API must have a maintained OpenAPI contract at
     docs/technical/api/openapi.yaml, kept in sync with the actual implementation whenever an
     endpoint is added or changed (request/response shapes, auth requirements). Swagger UI is
@@ -80,12 +81,13 @@ Rules for AI-assisted work on the TestFlow AI project.
     handoff/state record — it does not replace product requirements, architecture docs, ADRs,
     API specs, database docs, or product decisions; consult those alongside it before planning
     new work.
-23. Frontend and Backend implementation agents (.claude/agents/frontend.md,
-    .claude/agents/backend.md) must never self-certify their own work as correct or complete —
-    that determination belongs to the Reviewer agent (.claude/agents/reviewer.md, independent of
-    the implementer), the Design agent for UI conformance, and the QA agent for functional
-    correctness. The Reviewer agent returns exactly one status: PASS, PASS WITH CHANGES, or
-    BLOCKED, and does not implement product code itself.
+23. Frontend and Backend implementation agents (.claude/agents/frontend.md, .claude/agents/backend.md)
+    must never self-certify their own work as correct or complete — that determination belongs to the
+    independent specialist reviewers: the backend-reviewer for backend work, the frontend-reviewer for
+    frontend work (engineering review AND design conformance), the database-architect for database design
+    (before implementation), the general reviewer for cross-cutting/integration concerns only, and the QA
+    agent for functional correctness. Reviewers return a Standard Review Report (Verdict: PASS, PASS WITH
+    CHANGES or BLOCKED) and never modify implementation code.
 24. Every implementation/change is classified LOW, MEDIUM, or HIGH risk before work begins, and a
     Definition of Ready is checked before implementation starts and a Definition of Done before
     it's considered complete — see docs/technical/engineering-framework.md for the full criteria.
@@ -126,3 +128,11 @@ Rules for AI-assisted work on the TestFlow AI project.
     opt out with `test.use(NO_SESSION)` (see `e2e/tests/helpers.ts`) and say why. Tests that need a known
     data state reset the dedicated tester's data through the E2E-only `reset-projects` endpoint, never by
     adding another sign-up. Never use the dedicated tester in a test that signs out of the shared session.
+30. Review standards (docs/technical/engineering-framework.md, "Review standards"): every specialist
+    review uses the Standard Review Report with HIGH / MEDIUM / LOW findings. HIGH blocks progression and
+    commit; MEDIUM must be resolved before commit unless the authorised human explicitly accepts it as an
+    exception (recorded in docs/PROJECT_STATUS.md); LOW may be fixed or logged as technical debt. A PASS
+    WITH CHANGES verdict does not by itself authorise a commit. All mandatory reviews happen before the
+    implementation is committed, and corrections are re-reviewed by the same specialist role. Reviewers do
+    not certify tests they did not execute, and do not inflate severity. Review gates are process rules —
+    do not claim they are enforced automatically (only the PROJECT_STATUS Stop hook is).

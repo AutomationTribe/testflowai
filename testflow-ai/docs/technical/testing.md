@@ -26,11 +26,14 @@ Work is not complete until its unit tests have been **run**, and the results **r
 
 Implementation itself is owned by the `frontend` (`.claude/agents/frontend.md`) and `backend`
 (`.claude/agents/backend.md`) agents, each of which writes and runs its own unit/integration
-tests but must never certify its own work complete or correct. The `reviewer` agent
-(`.claude/agents/reviewer.md`) performs that independent review (architecture, code,
-tests, dependencies, contradictions with approved decisions), ending in PASS / PASS WITH
-CHANGES / BLOCKED, before QA and Security run. See `docs/technical/engineering-framework.md`
-for the full updated vertical-slice and release workflows these agents sit inside.
+tests but must never certify its own work complete or correct. Independent review is by the
+specialist reviewers, **before commit**: the `backend-reviewer` for backend work, the
+`frontend-reviewer` for frontend work (engineering review plus design conformance against the
+approved designs), the `database-architect` for database design (before implementation), and the
+general `reviewer` for cross-cutting concerns. Each returns the Standard Review Report (PASS / PASS
+WITH CHANGES / BLOCKED, with HIGH/MEDIUM/LOW findings); a reviewer must not certify tests it did not
+execute. These all run before QA and Security. See `docs/technical/engineering-framework.md`
+("Engineering workflow", "Review standards") for the full workflow these agents sit inside.
 
 ## QA agent workflow
 
@@ -106,17 +109,18 @@ DB-state-dependent (`login_attempts` table). Running it back-to-back across sepa
 aborted prior run. If it fails, re-run it in isolation before treating it as a real regression —
 see the `qa` agent's guidance on this.
 
-## Design agent workflow
+## Design agent workflow (handoff) and design conformance
 
 When an approved design (e.g. a Google Stitch export) exists for a screen, Claude invokes the
-`design` subagent (`.claude/agents/design.md`) at two points: a **handoff** before implementation
-(layout, components, states, interactions, and an explicit split between real product behaviour
-and decorative/sample content), and a **conformance review** after implementation, before QA. The
-user can invoke it manually by saying "Design". Conformance differences are classified `MATCH` /
-`MINOR DIFFERENCE` / `MATERIAL DIFFERENCE` / `PRODUCT CONFLICT` — the latter two must be reported
-before the feature is accepted, never silently resolved in either direction. See
-`docs/technical/design-handoff.md` for the underlying design-to-code conversion contract this
-agent's handoff format extends.
+`design` subagent (`.claude/agents/design.md`) for a **handoff** before implementation (layout,
+components, states, interactions, and an explicit split between real product behaviour and
+decorative/sample content); the user can also invoke it by saying "Design" for consultation or
+interpretation. **Design conformance is verified by the `frontend-reviewer`** as part of its
+pre-commit review — it is not a separate gate — using the method documented in `design.md`
+(screenshot comparison; differences classified `MATCH` / `MINOR` / `MATERIAL` / `PRODUCT CONFLICT`;
+MATERIAL and PRODUCT CONFLICT must be reported before the feature is accepted, never silently
+resolved in either direction). See `docs/technical/design-handoff.md` for the underlying
+design-to-code conversion contract the handoff format extends.
 
 ## Visual regression testing
 

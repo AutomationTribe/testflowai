@@ -100,7 +100,7 @@ A converted component MUST be **purely presentational**:
 
 ## Verifying the result looks right
 
-Design conformance is checked by **screenshotting the running page and comparing
+Design conformance — verified by the `frontend-reviewer` before commit — is checked by **screenshotting the running page and comparing
 it to the reference**, not by reading the code. A throwaway Playwright spec that
 navigates to the screen and calls `page.screenshot()` is the fastest way; delete
 it afterwards.
@@ -110,4 +110,4 @@ it afterwards.
 Conversion does not remove any of the existing rules: approved requirements still
 win over a design where the two conflict (report the conflict rather than
 implementing something unsupported), unit tests are still mandatory (rule 19),
-and the QA → Security → DevOps gate still applies before deployment (rule 20).
+and the specialist reviews → QA → Security → human acceptance → DevOps gates still apply (rule 20).

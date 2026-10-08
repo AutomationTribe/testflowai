@@ -12,6 +12,86 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 — AI Software Delivery Framework upgraded to 1.1 (framework-only change)
+
+**Branch/commit:** `main` — see the commit that contains this entry (not deployed). No product functionality,
+application code, schema, tests or configuration were changed.
+
+**Framework changes completed:**
+- **Three new specialist agents** (`.claude/agents/`): `database-architect` (reviews proposed schema/migration
+  designs *before* implementation, only when database structures are introduced or materially changed),
+  `backend-reviewer` (independent review of Backend Engineer output before commit), `frontend-reviewer`
+  (independent review of Frontend Engineer output before commit; owns **both** the engineering review and the
+  **design conformance** review, MATCH / MINOR / MATERIAL / PRODUCT CONFLICT). None may modify implementation
+  code; all use the Standard Review Report.
+- **Design conformance** moved from a separate mandatory gate into the `frontend-reviewer`. The `design` agent
+  is retained for consultation, interpretation and handoff; its conformance *method* stays in `design.md` as the
+  single authoritative description the reviewer follows.
+- **Workflow** restated as the 20-step vertical slice (layers a task does not touch are skipped), with
+  review-and-correction loops per layer and "all mandatory reviews before commit"; the general `reviewer` is now
+  cross-cutting/integration only.
+- **Review standards** defined once in `engineering-framework.md`: Standard Review Report, severity rules
+  (HIGH blocks progression and commit; MEDIUM must be resolved before commit unless the authorised human
+  explicitly accepts an exception; LOW fixed or logged as debt), PASS WITH CHANGES does not by itself authorise
+  commit, reviewers must not certify tests they did not execute, senior-level expertise reviewed against the
+  project's readability profile. **Independent Judgment — Evidence Over Agreement** expanded to the seven points.
+- **Versioning and adoption:** `docs/framework/VERSION.md` (version rule, history, this project's adoption
+  record) and `docs/framework/ADOPTING-1.1.md` (forward-only adoption guide, new-project bootstrap, rollback,
+  and the reusable migration prompt).
+- **Judgment call to confirm:** the repository had **no recorded framework version**. I named the 2026-10-07
+  baseline **1.0** retroactively and this change **1.1** (a minor: it reassigns the conformance gate and adds
+  agents without removing any control). If your other projects already use a different numbering, tell me and
+  I will align `VERSION.md` rather than leave two conventions.
+- Not present in this repository (so not created or edited): a "Master Bootstrap", a separate agent registry
+  file, a prompt library. The agent registry is the table in `engineering-framework.md`; the new-project
+  bootstrap and the prompt live in `docs/framework/ADOPTING-1.1.md`.
+
+**Files created:** `.claude/agents/database-architect.md`, `backend-reviewer.md`, `frontend-reviewer.md`;
+`docs/framework/VERSION.md`, `docs/framework/ADOPTING-1.1.md`.
+**Files modified:** `CLAUDE.md` (version line; rules 20 and 23 reworded; rule 30 added), `docs/technical/
+engineering-framework.md`, `docs/technical/testing.md`, `docs/technical/deployment.md`,
+`docs/technical/design-handoff.md`, `docs/technical/coding-standards.md`, `.claude/agents/design.md`,
+`backend.md`, `frontend.md`, `reviewer.md`, `docs/PROJECT_STATUS.md`. Unchanged on purpose: `qa.md`,
+`security.md`, `devops.md`, `.claude/settings.json` (and its Stop hook).
+
+**Verification actually performed:**
+- A scripted check (42 checks, all passed): all 3 agent files exist; frontmatter valid (name = filename,
+  description, tools, model) for all 10 agents; invocation rules, independence and "must not modify code" present;
+  standard report shape, severities, verdicts and recommendations present; design conformance owned by
+  `frontend-reviewer` and no stale separate-gate wording left in any policy/agent/process document; QA and
+  Security untouched and still in the workflow; human acceptance and deployment gates present; CLAUDE.md rule 20
+  lists the workflow steps in the framework's order; 20 numbered steps present; migration guide contains the
+  forward-only / no-interruption / no-app-code-change language; version record complete; both
+  `.claude/settings.json` files parse and were not modified.
+- **Behaviour checks:** `database-architect` and `backend-reviewer` were each run (through general-purpose agents
+  following their definition files) on a deliberately flawed toy input. Both produced the Standard Review Report,
+  rated severities per the rules, found real defects (DB architect: a destructive DROP of an approved column,
+  missing tenant foreign keys, `serial` keys against DBD-007, no index; backend reviewer: SQL injection, tenant
+  taken from the request body, leaked connection, wrong error envelope, no tests, no OpenAPI update) with no
+  invented ones, and listed what they had not verified.
+
+**Not verified / limits (be explicit):**
+- Named invocation (`subagent_type: database-architect`) is **not** available in this session — the agent list is
+  fixed at session start (the pre-existing project agents are not listed either). It should work in a new session
+  opened in `~/dev/testflowai`; I could not confirm that.
+- `frontend-reviewer` was not behaviour-tested (it needs a running app and the design reference); only its
+  definition was structurally checked.
+- The new gates are **process rules** (CLAUDE.md + agent instructions). Nothing blocks a commit automatically;
+  the only automated enforcement remains the existing `PROJECT_STATUS.md` Stop hook.
+- The three agents each restate the severity one-liner next to the report skeleton so they are self-contained;
+  the rules are *defined* only in `engineering-framework.md`, and a wording change there needs mirroring in them.
+
+**Remaining issues:** none blocking. Deployment/demo link unchanged; nothing deployed.
+
+**Next three tasks:**
+1. Product Owner review of this framework upgrade (and confirm the 1.0/1.1 numbering).
+2. Open a new session in `~/dev/testflowai` to confirm the new agents are invocable by name.
+3. Next feature selection — the first task to use the 1.1 workflow (e.g. archive/update/membership, FR-PRJ-002/003/005-007).
+
+---
+
+## Previous entry (TD-008/TD-010 fixes and reference images, 2026-10-08)
+
 ### 2026-10-08 — Fixed TD-008 and TD-010; saved the Projects reference images
 
 **Branch/commit:** `main` — see the commit that contains this entry (not deployed). Work paused here at the Product
