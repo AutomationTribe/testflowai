@@ -55,6 +55,34 @@ on that stale checkout and are superseded.
 - This update was made because the Stop hook blocked on the uncommitted `.claude/settings.json` change; the hook was not
   modified or bypassed.
 
+**Follow-up 2 (same day):**
+- Committed the previous follow-up as `fbe6d2c` (this file only; local, **not pushed**; `main` is 2 ahead of `origin/main`).
+  `.claude/settings.json` was uncommitted at that point (resolved in Follow-up 3); backup stash retained.
+- Read-only audit of `TASKS.md` against the requirements, traceability table and this log: it is out of date (no
+  entries for the built QA Operating Model Setup and Projects slices; "Slice 2 ... then Project creation" still listed
+  as not started; Deployment phase wording). Corrections were **proposed only; `TASKS.md` was not edited**, pending
+  Product Owner approval. Also found: `requirements-traceability.md` still shows FR-QAOM-001-003 and FR-QAOM-012 as
+  "Pending" although FR-QAOM-012 was accepted; no Product Owner acceptance of the QA Setup slice is recorded.
+- Produced a staging-deployment readiness checklist (tests, security, migrations, configuration, rollback) in the
+  conversation only. No tests were run, nothing was deployed, and the live commit on Render was not verified.
+- This entry was needed because the Stop hook blocks while `.claude/settings.json` is the only uncommitted change.
+
+**Follow-up 3 (same day) - documentation corrections approved by the Product Owner (docs only; committed together with Follow-up 2):**
+- `TASKS.md`: Testing phase marked "ongoing per feature slice"; Deployment phase reworded (staging/beta exists, Projects
+  slice not deployed); UX note narrowed to the pending Custom Setup screen; added Slice 3 (Projects Create + List,
+  accepted 2026-10-08) and Slice 2 (QA Operating Model Setup: **implemented and E2E-verified, Product Owner acceptance
+  not recorded**); the stale "Slice 2 ... then Project creation" item is kept as a history note.
+- `requirements-traceability.md`: added an implementation-status note under the CHANGE-001 table (FR-QAOM-001-009
+  implemented, acceptance not recorded; FR-QAOM-012 accepted; FR-QAOM-010/011/013 no implementation recorded). The
+  existing "Pending" cells were not altered. Not fixed (out of scope): the main traceability table still shows "Pending"
+  UI/Tests for many already-built FRs (e.g. FR-AUTH-*).
+- Validation: documentation only; no tests run (no code changed). `scripts/validate.py` (v1.1.0) re-run: **97 passed, 0 failed**.
+- Product Owner approved reverting the repo-root `.claude/settings.json`. Verified first that its only difference from
+  `HEAD` was the added `mcp__claude-in-chrome__tabs_context_mcp` allow entry; reverted with `git checkout` of that
+  file only. The Stop hook (in `testflow-ai/.claude/settings.json`) was not modified. Stop-hook root cause: it blocks
+  whenever any file is dirty but the status file is not itself among the dirty files; with the tree now clean it
+  returns `{}`. The backup stash is retained. Nothing pushed or deployed.
+
 **Deployment/demo link:** none; nothing deployed or pushed.
 
 **Blockers:** none. A git stash (`pre-sync PROJECT_STATUS local entry`) remains as an extra backup; it can be
