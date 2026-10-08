@@ -12,6 +12,67 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-08 - Synchronised local `main` with GitHub `main` @ `453f3ca` (no product code changed)
+
+**Branch/commit:** `main` fast-forwarded `5e3f47a` -> `453f3ca` (`git merge --ff-only`; no reset, rebase,
+force-pull or overwrite). Local = origin/main (0 ahead / 0 behind) before this entry. After the sync:
+`.claude/settings.json` stays uncommitted (pre-existing local change, preserved); this file is committed on its own
+(docs-only commit, local only, not pushed).
+
+**Why:** local `main` was 8 commits behind GitHub, so `docs/framework/` (canonical framework v1.1.0), `CLAUDE.md`
+rules 20/23/30/31 and the canonical agent files were absent locally. Earlier agent-roster findings below were made
+on that stale checkout and are superseded.
+
+**Completed work:**
+- Backed up the affected local state first (outside the repo): this file, `.claude/settings.json`, the three agent
+  files and the full local diff.
+- A stale `.git/refs/remotes/origin/main.lock` (15:15, no git fetch process running) blocked `git fetch`; removed
+  with Product Owner approval, then fetched.
+- Removed the three untracked agent files only after confirming each was byte-identical to GitHub's copy; the
+  fast-forward then brought them in as tracked files.
+- Stashed this file's local entry, fast-forwarded, and preserved that entry below (not discarded).
+- The `.claude/settings.json` change (`mcp__claude-in-chrome__tabs_context_mcp` allow entry) was untouched.
+
+**Verification actually run:**
+- `.claude/agents/` has 10 files; `backend-reviewer`, `database-architect`, `frontend-reviewer` are byte-identical
+  to GitHub `453f3ca`.
+- `docs/framework/` contains `ADOPTING-1.1.md`, `ADOPTION_RECORD.md`, `FRAMEWORK_VERSION` (`1.1.0`), `POLICY.md`,
+  `PROJECT_PROFILE.md`, `VERSION.md`, `VERSIONING.md`; `POLICY.md` and `VERSIONING.md` are byte-identical to the
+  v1.1.0 checkout (`~/dev/framework-v1.1.0-checkout`, commit `31dd835e`).
+- `python3 -I scripts/validate.py --project .` (v1.1.0 checkout) -> **97 passed, 0 failed**.
+- Not run: backend/frontend/E2E suites (no product code changed); registration of the agents in a *new* session
+  was not re-checked after the sync.
+
+**Deployment/demo link:** none; nothing deployed or pushed.
+
+**Blockers:** none. A git stash (`pre-sync PROJECT_STATUS local entry`) remains as an extra backup; it can be
+dropped once this entry is accepted.
+
+**Next three tasks:** (1) Product Owner decides whether to push this commit (committed locally, not pushed); (2) choose the next feature and
+run the first slice under the adopted framework; (3) verify in a live session that the Stop hook blocks as expected.
+
+---
+
+### 2026-10-08 - Agent roster verification (SUPERSEDED - made on a stale checkout, kept for the record)
+
+> **Correction:** the findings below were made when local `main` was at `5e3f47a`, 8 commits behind GitHub. On
+> GitHub (`453f3ca`) all 10 agents exist (including `database-architect`, `backend-reviewer`, `frontend-reviewer`,
+> and `security` as the tenth), `reviewer` is already scoped to cross-cutting review, and `docs/framework/` is
+> present. The "roster NOT met" and "tenth agent not identified" statements no longer apply.
+
+**Branch/commit (at the time):** `main` @ `5e3f47a`. Uncommitted: `.claude/settings.json` only (plus this file).
+
+**Completed work (at the time):**
+- Verified the project subagent roster. `.claude/agents/` held 7 files: `backend`, `design`, `devops`, `frontend`,
+  `qa`, `reviewer`, `security`; all 7 were registered in the session.
+- Recorded the pre-existing uncommitted change to `.claude/settings.json` (not made by that session): one entry
+  added to `permissions.allow`, `mcp__claude-in-chrome__tabs_context_mcp`. The Stop hook was unchanged.
+- Updated only this file, with the Product Owner's explicit authorization.
+
+**Tests actually run and results:** None; verification was `ls`, `git status`/`git diff` and the session's agent list.
+
+---
+
 ### 2026-10-08 - Adopted the canonical AI Software Delivery Framework v1.1.0 (framework-only change)
 
 **Branch/commit:** `main` - see the commit containing this entry (not deployed). No product functionality,
