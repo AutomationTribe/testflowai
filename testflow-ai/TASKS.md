@@ -12,8 +12,10 @@ This file represents approved work only, not unapproved ideas. See [CLAUDE.md](C
 - [ ] Development — in progress, one vertical slice at a time (see below)
 - [ ] Testing — ongoing per feature slice (developer tests, independent review, QA and E2E run for every slice; there
       is no separate end-of-project testing phase recorded)
-- [ ] Deployment — staging/beta on Render + Neon exists (`docs/technical/deployment.md`); the Projects slice has not
-      been deployed
+- [ ] Deployment — staging/beta on Render + Neon exists (`docs/technical/deployment.md`). Verified 2026-10-08 from
+      GitHub deployment records: the Projects slice is deployed to staging (first at `5e3f47a`); latest successful
+      deployment `453f3ca`. The running build SHA itself is not independently confirmed. Render currently auto-deploys
+      every push to `main`.
 
 ## Development Slices
 
@@ -43,7 +45,8 @@ Approved, completed:
       FR-PRJ-008 (list search, filters, counts, pagination) and FR-QAOM-012 (project pins the published QA
       configuration). Migration `0005_projects.sql`. **Accepted by the Product Owner 2026-10-08.** Last recorded
       results (see `docs/PROJECT_STATUS.md`): backend 125/125, frontend 111/111, E2E 27/27; QA PASS WITH FINDINGS,
-      security PASS WITH WARNINGS. Not deployed. TD-008 and TD-010 fixed afterwards.
+      security PASS WITH WARNINGS. Deployed to staging (first at `5e3f47a`, 2026-10-07; GitHub deployment records show
+      `453f3ca` as the latest successful deployment, 2026-10-08). TD-008 and TD-010 fixed afterwards (`ab7d06d`).
 
 Implemented and E2E-verified; Product Owner acceptance not recorded:
 

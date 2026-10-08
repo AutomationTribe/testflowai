@@ -83,6 +83,43 @@ on that stale checkout and are superseded.
   whenever any file is dirty but the status file is not itself among the dirty files; with the tree now clean it
   returns `{}`. The backup stash is retained. Nothing pushed or deployed.
 
+**Follow-up 4 (same day) - correction: staging deployment history (verified, read-only):**
+- **Correction:** earlier entries (including Follow-ups 2-3 and `TASKS.md` as committed in `a94de90`) said the Projects
+  slice was "not deployed". That was wrong. GitHub deployment records (`/repos/AutomationTribe/testflowai/deployments`)
+  show both Render services deployed with status `success` for `5e3f47a` (the Projects slice, 2026-10-07 22:26Z) and for
+  every later commit up to **`453f3ca` (2026-10-08 13:48Z), the latest successful deployment**. So **Projects Create +
+  List is already deployed to staging.** Earlier "nothing deployed" lines referred to what that task deployed, not to
+  what was live.
+- **Not confirmed:** the actual running build SHA. `/health` returns only `{"status":"ok"}` (HTTP 200 at 14:56Z) and no
+  Render dashboard access was available, so "deployed" means the last successful deployment record. GitHub Actions
+  results for `453f3ca` could not be retrieved.
+- **Render auto-deploys every push to `main`** (observed from the deployment records; `render.yaml` sets no
+  `autoDeploy`/`autoDeployTrigger`). A push is therefore a deployment.
+- **Unpushed:** three local documentation commits (`08f1ca6`, `fbe6d2c`, `a94de90`, plus this entry's commit once
+  made); local `main` is ahead of `origin/main`. Pushing them would redeploy both services.
+- Fixed wording: "three local documentation commits" = `08f1ca6`, `fbe6d2c`, `a94de90` (unpushed).
+- No Render setting, code, push or deployment was changed. Auto-deploy-off proposal pending Product Owner approval.
+
+**Phase 1 (Render auto-deploy) - BLOCKED on authorization:** the Render CLI token is expired (`render whoami`: "your
+token is expired; run `render login`") and `api.render.com` / `render.com` docs are unreachable from this environment
+(`render blueprints validate` -> 401). Auto-deploy is therefore **still ON**; nothing may be pushed until the Product
+Owner disables it for both services. The Render CLI binary (v2.28.0) lists the values `commit`, `off`, `checksPass`
+and the API field `autoDeployTrigger`, which supports `autoDeployTrigger: off`; the exact `render.yaml` key was not
+validated against Render's Blueprint validator and `render.yaml` was not edited.
+
+**Readiness checks actually run (read-only; commit `453f3ca`, clone `~/dev/testflowai`, throwaway local database
+`testflow_readiness`, dropped afterwards):**
+- `tsc` typecheck (backend, frontend, e2e) and `eslint --max-warnings=0` (backend, frontend): clean. Migrations 0001-0005
+  applied cleanly to an empty database.
+- Frontend `vitest`: **111/111**. Backend `vitest`: three full runs - run 1 **124/125**, run 2 failed again (one test in
+  `qaConfiguration.test.ts`, "materializes Controlled QA settings", `TypeError: Cannot read properties of undefined`),
+  run 3 **125/125**; that file alone passes 16/16. Intermittent, unexplained, not the known `bruteForce` flake.
+- `npm audit`: backend 3 critical / 12 high; frontend 3 critical / 16 high (e.g. direct `next`, transitive `proxy-addr`,
+  `vitest`/`tinypool`). Not triaged here; relates to TD-012.
+- **Finding:** `testflow-ai/.github/workflows/ci.yml` is not at the repository root, so GitHub runs no workflow
+  (GitHub API: 0 workflows, 0 runs). CI has never run on GitHub; any "CI green" claim is unsupported.
+- E2E not run in this step.
+
 **Deployment/demo link:** none; nothing deployed or pushed.
 
 **Blockers:** none. A git stash (`pre-sync PROJECT_STATUS local entry`) remains as an extra backup; it can be
