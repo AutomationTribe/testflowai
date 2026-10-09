@@ -1,13 +1,17 @@
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, testSignup } from './testUtils.js';
+import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, testSignup, startTestServer, type TestServer } from './testUtils.js';
 
 describe('GET /v1/me — tenant context resolution', () => {
   const app = createApp();
+  let server: TestServer;
+  let baseUrl = '';
 
   beforeAll(async () => {
     await setupTestDatabase();
+    server = await startTestServer(app);
+    baseUrl = server.baseUrl;
   });
 
   afterEach(async () => {
@@ -15,14 +19,15 @@ describe('GET /v1/me — tenant context resolution', () => {
   });
 
   afterAll(async () => {
+    await server.close();
     await teardownTestDatabase();
   });
 
   it('resolves the authenticated user and their organisation from the session only', async () => {
-    const signupResponse = await request(app).post('/v1/auth/signup').send(testSignup);
+    const signupResponse = await request(baseUrl).post('/v1/auth/signup').send(testSignup);
     const cookie = signupResponse.headers['set-cookie']![0]!;
 
-    const response = await request(app).get('/v1/me').set('Cookie', cookie);
+    const response = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
 
     expect(response.status).toBe(200);
     expect(response.body.user).toMatchObject({ email: testSignup.email, role: 'admin' });
@@ -32,7 +37,7 @@ describe('GET /v1/me — tenant context resolution', () => {
   });
 
   it('rejects a request with an invalid/forged session cookie', async () => {
-    const response = await request(app).get('/v1/me').set('Cookie', 'testflow_session=not-a-real-token');
+    const response = await request(baseUrl).get('/v1/me').set('Cookie', 'testflow_session=not-a-real-token');
     expect(response.status).toBe(401);
   });
 });

@@ -2,7 +2,7 @@ import './paystackMock.js';
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './testUtils.js';
+import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, startTestServer, type TestServer } from './testUtils.js';
 
 /**
  * GET /workspace had zero test coverage before this file — it's the concrete,
@@ -13,9 +13,13 @@ import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './te
  */
 describe('GET /workspace — requireActiveSubscription gate', () => {
   const app = createApp();
+  let server: TestServer;
+  let baseUrl = '';
 
   beforeAll(async () => {
     await setupTestDatabase();
+    server = await startTestServer(app);
+    baseUrl = server.baseUrl;
   });
 
   afterEach(async () => {
@@ -23,16 +27,17 @@ describe('GET /workspace — requireActiveSubscription gate', () => {
   });
 
   afterAll(async () => {
+    await server.close();
     await teardownTestDatabase();
   });
 
   it('rejects an unauthenticated request', async () => {
-    const res = await request(app).get('/v1/workspace');
+    const res = await request(baseUrl).get('/v1/workspace');
     expect(res.status).toBe(401);
   });
 
   it('rejects an authenticated organisation with no trial/subscription (subscription_required)', async () => {
-    const signup = await request(app).post('/v1/auth/signup').send({
+    const signup = await request(baseUrl).post('/v1/auth/signup').send({
       email: 'no-sub@example.com',
       password: 'correct-horse-battery-staple',
       name: 'No Sub',
@@ -41,13 +46,13 @@ describe('GET /workspace — requireActiveSubscription gate', () => {
     });
     const cookie = signup.headers['set-cookie']![0]!;
 
-    const res = await request(app).get('/v1/workspace').set('Cookie', cookie);
+    const res = await request(baseUrl).get('/v1/workspace').set('Cookie', cookie);
     expect(res.status).toBe(403);
     expect(res.body.error).toBe('subscription_required');
   });
 
   it('allows access once the organisation has activated its trial', async () => {
-    const signup = await request(app).post('/v1/auth/signup').send({
+    const signup = await request(baseUrl).post('/v1/auth/signup').send({
       email: 'has-trial@example.com',
       password: 'correct-horse-battery-staple',
       name: 'Has Trial',
@@ -55,12 +60,12 @@ describe('GET /workspace — requireActiveSubscription gate', () => {
       organisationName: 'Has Trial Org',
     });
     const cookie = signup.headers['set-cookie']![0]!;
-    const me = await request(app).get('/v1/me').set('Cookie', cookie);
+    const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
     const organisationId = me.body.organisation.id as string;
 
-    await request(app).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
+    await request(baseUrl).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
 
-    const res = await request(app).get('/v1/workspace').set('Cookie', cookie);
+    const res = await request(baseUrl).get('/v1/workspace').set('Cookie', cookie);
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
   });

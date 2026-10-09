@@ -26,6 +26,12 @@ than it should have been.
 **Priority/risk:** Low-medium. Not a correctness bug, but a diagnosability gap — a hung
 connection attempt currently looks identical to a hung anything-else.
 
+**Resolution (2026-10-09):** the intermittent backend failures seen during release-readiness (a signup answering an
+empty-body `404`, a missing cookie `TypeError`, and unrelated assertions failing once each — roughly 5 of 28 full runs)
+matched this signature. Every suite now shares one long-lived server per file through `startTestServer()` in
+`tests/testUtils.ts`. Reliability evidence is recorded in `docs/PROJECT_STATUS.md`; the mechanism is still the most
+likely explanation, not a proven one, so the assertion helpers report status and body on failure.
+
 **When to address:** Next time `pool.ts` is touched for another reason, or if this becomes a
 recurring diagnostic problem; add a `connectionTimeoutMillis` (e.g. 5–10s) so a real outage fails
 fast with a clear error instead of hanging silently.
@@ -120,7 +126,7 @@ made a hard requirement.
 
 ---
 
-## TD-007 — Existing backend suites use `request(app)`, which can flake under many requests
+## TD-007 — Existing backend suites use `request(app)`, which can flake under many requests — RESOLVED 2026-10-09 (pending Product Owner acceptance)
 
 **Where:** `backend/tests/*.test.ts` other than `projects.test.ts`.
 

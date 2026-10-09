@@ -4,9 +4,11 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
 import { initializeTransactionMock, verifyPaystackSignatureMock } from './paystackMock.js';
 import { clearSentEmails, sentEmails } from '../src/lib/email.js';
-import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './testUtils.js';
+import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, startTestServer, type TestServer } from './testUtils.js';
 
 const app = createApp();
+let server: TestServer;
+let baseUrl = '';
 
 async function signUpAndGetCookie(overrides: Partial<Record<string, string>> = {}) {
   const payload = {
@@ -17,9 +19,9 @@ async function signUpAndGetCookie(overrides: Partial<Record<string, string>> = {
     organisationName: 'Acme QA',
     ...overrides,
   };
-  const res = await request(app).post('/v1/auth/signup').send(payload);
+  const res = await request(baseUrl).post('/v1/auth/signup').send(payload);
   const cookie = res.headers['set-cookie']![0]!;
-  const me = await request(app).get('/v1/me').set('Cookie', cookie);
+  const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
   return { cookie, organisationId: me.body.organisation.id as string, userId: me.body.user.id as string };
 }
 
@@ -30,6 +32,8 @@ function chargeEvent(eventType: 'charge.success' | 'charge.failed', reference: s
 describe('subscription domain', () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    server = await startTestServer(app);
+    baseUrl = server.baseUrl;
   });
 
   afterEach(async () => {
@@ -40,15 +44,16 @@ describe('subscription domain', () => {
   });
 
   afterAll(async () => {
+    await server.close();
     await teardownTestDatabase();
   });
 
   it('reports no access for a brand-new organisation with no subscription', async () => {
     const { cookie } = await signUpAndGetCookie();
-    const me = await request(app).get('/v1/me').set('Cookie', cookie);
+    const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
     expect(me.body.subscription).toMatchObject({ hasAccess: false, status: 'none', planType: null });
 
-    const workspace = await request(app).get('/v1/workspace').set('Cookie', cookie);
+    const workspace = await request(baseUrl).get('/v1/workspace').set('Cookie', cookie);
     expect(workspace.status).toBe(403);
     expect(workspace.body.error).toBe('subscription_required');
   });
@@ -57,22 +62,22 @@ describe('subscription domain', () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
     expect(sentEmails.some((e) => e.subject.includes('Welcome'))).toBe(true);
 
-    const trial = await request(app).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
+    const trial = await request(baseUrl).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
     expect(trial.status).toBe(201);
     expect(trial.body.subscription.planType).toBe('trial');
 
-    const me = await request(app).get('/v1/me').set('Cookie', cookie);
+    const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
     expect(me.body.subscription).toMatchObject({ hasAccess: true, status: 'trial_active', planType: 'trial', seatsTotal: 3 });
 
-    const workspace = await request(app).get('/v1/workspace').set('Cookie', cookie);
+    const workspace = await request(baseUrl).get('/v1/workspace').set('Cookie', cookie);
     expect(workspace.status).toBe(200);
   });
 
   it('cannot activate a second trial for the same organisation', async () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
-    await request(app).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
+    await request(baseUrl).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
 
-    const second = await request(app).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
+    const second = await request(baseUrl).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
     expect(second.status).toBe(409);
   });
 
@@ -80,11 +85,11 @@ describe('subscription domain', () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
     const key = 'trial-key-1';
 
-    const first = await request(app)
+    const first = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/trial`)
       .set('Cookie', cookie)
       .set('Idempotency-Key', key);
-    const replay = await request(app)
+    const replay = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/trial`)
       .set('Cookie', cookie)
       .set('Idempotency-Key', key);
@@ -96,13 +101,13 @@ describe('subscription domain', () => {
 
   it('rejects an invalid seat quantity for monthly subscribe', async () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/monthly`)
       .set('Cookie', cookie)
       .send({ seatCount: 0 });
     expect(res.status).toBe(422);
 
-    const negative = await request(app)
+    const negative = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/monthly`)
       .set('Cookie', cookie)
       .send({ seatCount: -5 });
@@ -111,7 +116,7 @@ describe('subscription domain', () => {
 
   it('calculates monthly amount server-side and ignores a client-submitted total', async () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/monthly`)
       .set('Cookie', cookie)
       // attacker attempts to smuggle a manipulated price alongside the real field
@@ -126,7 +131,7 @@ describe('subscription domain', () => {
 
   it('calculates yearly amount server-side (5 seats x $9 x 12 = $540.00)', async () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/yearly`)
       .set('Cookie', cookie)
       .send({ seatCount: 5 });
@@ -139,12 +144,12 @@ describe('subscription domain', () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
     const key = 'monthly-checkout-key-1';
 
-    const first = await request(app)
+    const first = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/monthly`)
       .set('Cookie', cookie)
       .set('Idempotency-Key', key)
       .send({ seatCount: 5 });
-    const replay = await request(app)
+    const replay = await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/monthly`)
       .set('Cookie', cookie)
       .set('Idempotency-Key', key)
@@ -157,15 +162,15 @@ describe('subscription domain', () => {
 
   it('grants no access and creates no billing records while payment is only client-initiated (not yet webhook-confirmed)', async () => {
     const { cookie, organisationId } = await signUpAndGetCookie();
-    await request(app)
+    await request(baseUrl)
       .post(`/v1/organisations/${organisationId}/subscription/monthly`)
       .set('Cookie', cookie)
       .send({ seatCount: 5 });
 
-    const me = await request(app).get('/v1/me').set('Cookie', cookie);
+    const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
     expect(me.body.subscription.hasAccess).toBe(false);
 
-    const billing = await request(app).get(`/v1/organisations/${organisationId}/billing-history`).set('Cookie', cookie);
+    const billing = await request(baseUrl).get(`/v1/organisations/${organisationId}/billing-history`).set('Cookie', cookie);
     expect(billing.body.payments).toHaveLength(0);
   });
 
@@ -176,17 +181,17 @@ describe('subscription domain', () => {
       metadata: { organisationId, planType: 'monthly', seatCount: '5', usdAmountCents: '5000' },
     });
 
-    const webhook = await request(app)
+    const webhook = await request(baseUrl)
       .post('/v1/webhooks/payments')
       .set('Content-Type', 'application/json')
       .set('x-paystack-signature', 'valid')
       .send(JSON.stringify(event));
     expect(webhook.status).toBe(200);
 
-    const me = await request(app).get('/v1/me').set('Cookie', cookie);
+    const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
     expect(me.body.subscription).toMatchObject({ hasAccess: true, status: 'active', planType: 'monthly', seatsTotal: 5 });
 
-    const billing = await request(app).get(`/v1/organisations/${organisationId}/billing-history`).set('Cookie', cookie);
+    const billing = await request(baseUrl).get(`/v1/organisations/${organisationId}/billing-history`).set('Cookie', cookie);
     expect(billing.body.payments).toHaveLength(1);
     expect(billing.body.payments[0]).toMatchObject({ status: 'succeeded', amount: '50.00' });
     expect(sentEmails.some((e) => e.subject.includes('Payment confirmed'))).toBe(true);
@@ -199,12 +204,12 @@ describe('subscription domain', () => {
       metadata: { organisationId, planType: 'monthly', seatCount: '10', usdAmountCents: '10000' },
     });
 
-    const first = await request(app)
+    const first = await request(baseUrl)
       .post('/v1/webhooks/payments')
       .set('Content-Type', 'application/json')
       .set('x-paystack-signature', 'valid')
       .send(JSON.stringify(event));
-    const replay = await request(app)
+    const replay = await request(baseUrl)
       .post('/v1/webhooks/payments')
       .set('Content-Type', 'application/json')
       .set('x-paystack-signature', 'valid')
@@ -221,7 +226,7 @@ describe('subscription domain', () => {
       metadata: { organisationId: '00000000-0000-0000-0000-000000000000', planType: 'monthly', seatCount: '1', usdAmountCents: '100' },
     });
 
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post('/v1/webhooks/payments')
       .set('Content-Type', 'application/json')
       .send(JSON.stringify(event));
@@ -237,7 +242,7 @@ describe('subscription domain', () => {
       metadata: { organisationId, planType: 'monthly', seatCount: '999', usdAmountCents: '999999' },
     });
 
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post('/v1/webhooks/payments')
       .set('Content-Type', 'application/json')
       .set('x-paystack-signature', 'invalid-signature')
@@ -253,16 +258,16 @@ describe('subscription domain', () => {
       metadata: { organisationId, planType: 'monthly', seatCount: '5', usdAmountCents: '5000' },
     });
 
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post('/v1/webhooks/payments')
       .set('Content-Type', 'application/json')
       .set('x-paystack-signature', 'valid')
       .send(JSON.stringify(event));
     expect(res.status).toBe(200);
 
-    const me = await request(app).get('/v1/me').set('Cookie', cookie);
+    const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
     expect(me.body.subscription.hasAccess).toBe(false);
-    const billing = await request(app).get(`/v1/organisations/${organisationId}/billing-history`).set('Cookie', cookie);
+    const billing = await request(baseUrl).get(`/v1/organisations/${organisationId}/billing-history`).set('Cookie', cookie);
     expect(billing.body.payments).toHaveLength(0);
   });
 
@@ -270,24 +275,24 @@ describe('subscription domain', () => {
     const orgA = await signUpAndGetCookie({ email: 'a@example.com', organisationName: 'Org A' });
     const orgB = await signUpAndGetCookie({ email: 'b@example.com', organisationName: 'Org B' });
 
-    const crossRead = await request(app)
+    const crossRead = await request(baseUrl)
       .get(`/v1/organisations/${orgB.organisationId}/subscription`)
       .set('Cookie', orgA.cookie);
     expect(crossRead.status).toBe(404);
 
-    const crossBilling = await request(app)
+    const crossBilling = await request(baseUrl)
       .get(`/v1/organisations/${orgB.organisationId}/billing-history`)
       .set('Cookie', orgA.cookie);
     expect(crossBilling.status).toBe(404);
 
-    const crossTrial = await request(app)
+    const crossTrial = await request(baseUrl)
       .post(`/v1/organisations/${orgB.organisationId}/subscription/trial`)
       .set('Cookie', orgA.cookie);
     expect(crossTrial.status).toBe(404);
   });
 
   it('rejects subscription access with no session at all', async () => {
-    const res = await request(app).get('/v1/organisations/00000000-0000-0000-0000-000000000000/subscription');
+    const res = await request(baseUrl).get('/v1/organisations/00000000-0000-0000-0000-000000000000/subscription');
     expect(res.status).toBe(401);
   });
 
@@ -297,7 +302,7 @@ describe('subscription domain', () => {
         amount: 100,
         metadata: { organisationId, planType: 'monthly', seatCount: String(seatCount), usdAmountCents: '5000' },
       });
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post('/v1/webhooks/payments')
         .set('Content-Type', 'application/json')
         .set('x-paystack-signature', 'valid')
@@ -307,7 +312,7 @@ describe('subscription domain', () => {
 
     it('rejects adding seats when there is no active subscription at all (409)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/seats`)
         .set('Cookie', cookie)
         .send({ seatCount: 2 });
@@ -316,9 +321,9 @@ describe('subscription domain', () => {
 
     it('rejects adding seats while still on trial (must convert to paid first) (409)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      await request(app).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/subscription/trial`).set('Cookie', cookie);
 
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/seats`)
         .set('Cookie', cookie)
         .send({ seatCount: 2 });
@@ -329,7 +334,7 @@ describe('subscription domain', () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
       await activatePaidPlan(organisationId);
 
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/seats`)
         .set('Cookie', cookie)
         .send({ seatCount: 0 });
@@ -341,7 +346,7 @@ describe('subscription domain', () => {
       await activatePaidPlan(organisationId, 5);
       initializeTransactionMock.mockClear();
 
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/seats`)
         .set('Cookie', cookie)
         .send({ seatCount: 3 });
@@ -359,12 +364,12 @@ describe('subscription domain', () => {
       initializeTransactionMock.mockClear();
       const key = 'seats-add-key-1';
 
-      const first = await request(app)
+      const first = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/seats`)
         .set('Cookie', cookie)
         .set('Idempotency-Key', key)
         .send({ seatCount: 2 });
-      const replay = await request(app)
+      const replay = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/seats`)
         .set('Cookie', cookie)
         .set('Idempotency-Key', key)
@@ -380,7 +385,7 @@ describe('subscription domain', () => {
       const orgB = await signUpAndGetCookie({ email: 'seats-b@example.com', organisationName: 'Seats Org B' });
       await activatePaidPlan(orgB.organisationId);
 
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post(`/v1/organisations/${orgB.organisationId}/seats`)
         .set('Cookie', orgA.cookie)
         .send({ seatCount: 2 });
@@ -388,7 +393,7 @@ describe('subscription domain', () => {
     });
 
     it('rejects an unauthenticated request', async () => {
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post('/v1/organisations/00000000-0000-0000-0000-000000000000/seats')
         .send({ seatCount: 2 });
       expect(res.status).toBe(401);
