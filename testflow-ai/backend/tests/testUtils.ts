@@ -1,12 +1,17 @@
 import { pool } from '../src/db/pool.js';
 import { runMigrations } from '../src/db/migrate.js';
+import { env } from '../src/config/env.js';
+import { assertSafeTestDatabase } from './testDatabaseGuard.js';
 
 /** Shared test setup: apply migrations once, then truncate between tests for isolation. */
 export async function setupTestDatabase(): Promise<void> {
+  assertSafeTestDatabase(env.databaseUrl);
   await runMigrations();
 }
 
 export async function resetTestDatabase(): Promise<void> {
+  // Defence in depth: TRUNCATE ... CASCADE must never reach a non-test database.
+  assertSafeTestDatabase(env.databaseUrl);
   await pool.query(
     `TRUNCATE TABLE
        project_memberships, projects,

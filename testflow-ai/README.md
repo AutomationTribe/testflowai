@@ -125,9 +125,12 @@ subscription_required`) — not just the frontend route.
 npm test
 ```
 
-Backend tests apply migrations against the same local PostgreSQL instance (`DATABASE_URL`)
-and truncate tables between tests — point `DATABASE_URL` at a disposable database if you
-don't want test data mixed with your manual-testing data. Paystack itself is mocked in
+Backend tests run against a dedicated, disposable database, `testflow_test` on the local
+PostgreSQL instance (created automatically). Your `DATABASE_URL` (the dev database) is ignored
+by the test run; set `TEST_DATABASE_URL` to use a different database. The suite TRUNCATEs every
+table between tests, so `backend/tests/testDatabaseGuard.ts` refuses to run unless the target is a
+local database whose name ends in `_test` (and `NODE_ENV` is not `production`), and a lock allows only
+one backend test run per database at a time. Paystack itself is mocked in
 backend tests (`tests/paystackMock.ts`) — no real Paystack test-mode credentials are
 required to run the automated suite.
 
