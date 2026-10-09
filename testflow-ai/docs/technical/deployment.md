@@ -99,8 +99,12 @@ previous `453f3ca`, kept as the rollback target). Deploy with `render deploys cr
    `DATABASE_URL`, `CORS_ORIGIN` (= the frontend URL), `PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`,
    `E2E_FAKE_PAYMENTS=false`, `SWAGGER_UI_ENABLED` unset or false; frontend `NEXT_PUBLIC_API_BASE_URL` (= the backend URL),
    `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`, `NEXT_PUBLIC_E2E_FAKE_PAYMENTS=false`. `NEXT_PUBLIC_*` values are baked in at build time.
-3. Migrations: `npm run migrate` runs on every backend boot and is idempotent. Check `git diff <live>..<new> -- testflow-ai/backend/migrations`;
-   if it is empty (true for `453f3ca`..`95da669`), the boot-time migration is a no-op. If not, take a Neon snapshot/branch first.
+3. Migrations: the backend applies pending migrations itself when it starts (`npm run migrate` precedes `npm run start`), so a backend
+   deploy that carries a new migration changes the database as soon as that backend boots; the frontend deploy never touches the database.
+   Before triggering the backend deploy, run `git diff <live-sha>..<release-sha> -- testflow-ai/backend/migrations` (path is relative to the
+   repository root, which contains `testflow-ai/`). If it is empty (true for `453f3ca`..`95da669`), no schema change will happen: after the
+   deploy the backend log shows `[migrate] up to date` and no `applied ...` line. If it is not empty, stop and get approval first, and take a
+   Neon snapshot/branch **before** the backend deploy is triggered; migrations are forward-only, so rolling the code back does not undo them.
 4. Rollback target: note the live deploy ids/commits (`render deploys list <service-id>`); the previous live commit is the rollback.
 
 **Deploy** (manual, with approval): backend first, wait for `/health`; then frontend (it must rebuild). Do not change variables during

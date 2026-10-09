@@ -12,6 +12,49 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Post-deployment validation of staging `95da669`: browser smoke 6/6, PR #2 merged, cleanup and security plans proposed
+
+**Documentation PR #2 merged** into `main` with a merge commit, SHA `e157d14176ef5430f194f4c03aaaf047d956d549`, after confirming its head `8504f6f`
+had green CI (backend, frontend, e2e, security-audit), mergeable/clean, only the two expected docs files changed, and Auto-Deploy still `off` for
+both services (Render CLI). No Render deployment was triggered by the merge (newest deploys still `95da669`: backend `dep-db4h9lbbc2fs73bpo5kg`,
+frontend `dep-db4hahflk1mc7381mk40`). This follow-up documentation change is on branch `docs/post-deploy-validation` (not merged).
+
+**Browser-driven Playwright smoke against the deployed staging frontend (`https://testflow-frontend.onrender.com`): 6 of 6 passed (1.4 min).**
+Headless Chromium 1440x900, two isolated organisations created through the real UI with the free trial only (no payment, no Paystack). Sign-up
+e-mails used Resend's documented test inbox (`delivered+smoke-ui-{a,b}-1791564118292@resend.dev`, simulated delivery, no real e-mail). Covered: public
+login screen; sign-up + trial for A and B; UI login (after clearing the session); empty state; creating two projects through the dialog (codes PRJ-001
+and PRJ-002, pinned to Standard QA v1, persisted across reload); 10 more via the API for data volume; pagination (12 projects: page 1 of 2 with 10
+rows, page 2 with 2, Previous back, 25 rows per page); search by name (case-insensitive) and by project code; status tabs and counts (All 12 / Active
+12 / Archived 0), Archived tab empty, status and QA-configuration filters; **organisation isolation** (B's list is the empty state; B listing or
+creating in A's organisation and reading A's QA configuration -> 404; signed-out request -> 401); test-support endpoints (`simulate-payment`,
+`reset-projects`, `set-project-status`) and Swagger `/docs` -> 404. Screenshots (13) are in `/tmp/staging-smoke/screenshots/` (not committed); the
+throwaway spec is `/tmp/staging-smoke/staging-smoke.spec.ts` (not in the repo). **Console/network findings: only expected `401 GET /v1/me` responses
+(3, each logged as a console error) when no session exists on the login/sign-up pages; no page errors, failed requests or 5xx.** Not covered: real
+payments, real e-mail, Paystack checkout, other browsers, mobile widths, non-admin roles.
+**Earlier note:** the API-level smoke test run before this task used `@example.com` addresses; the app attempted its normal welcome e-mails for
+those two accounts through the live Resend integration, so that step may have sent (undeliverable) mail. This task used the Resend test inbox instead.
+
+**Cleanup of the four staging smoke organisations: NOT performed.** Exact records, a dry-run query, a guarded single-transaction delete with
+expected counts, a Neon restore-point precondition and rollback are proposed in `docs/technical/staging-smoke-cleanup.md`; awaiting Product Owner
+approval. Two more organisations were created by the browser run (`UI SMOKE A/B 1791564118292`), so four now exist.
+
+**Migration checklist wording corrected** in `docs/technical/deployment.md` (item 3): migrations are applied by the backend on boot, so the
+snapshot/approval must come before the backend deploy; the diff command path is relative to the repo root; the expected post-deploy log is
+`[migrate] up to date`. (Interpretation of the requested correction; tell me if a different wording was meant.)
+
+**Security plan (agent `security`, read-only):** `docs/technical/security-remediation-plan.md`. P0: Origin allow-list on non-GET `/v1` requests (CSRF is
+partly exploitable today: `POST .../subscription/trial` accepts an empty body, verified; `logout` and `draft/publish` by code reading) and hand-written
+backend security headers + `Cache-Control: no-store`; P1: frontend baseline headers, CSP report-only then enforce, JSON content-type enforcement; P2: custom
+domain + `SameSite=Lax`, nonce CSP. TD-011 updated (it understated the exposure). No application code was changed. SECURITY STATUS: PASS WITH WARNINGS.
+
+**Tests run:** the Playwright staging smoke above (6/6); framework validator result below. No unit/E2E suites were re-run (no code changed). Render
+Auto-Deploy stayed OFF; nothing deployed; no production or database change.
+**Remaining risks:** staging data not yet cleaned; CSRF exposure above; no frontend security headers; browser coverage limited to Chromium/admin;
+free-tier cold starts; deferred upgrades (vitest 5, `@typescript-eslint` 8, Next 16). **Next three tasks:** (1) approve/decline the cleanup; (2) approve the
+first security slice (Origin check + backend headers) as a reviewed change; (3) decide on deferred upgrades.
+
+---
+
 ### 2026-10-09 - Controlled STAGING release of `95da669` (backend, then frontend): deployed, smoke tests 24/24
 
 **Release:** merge commit `95da6696681449b4a22e4408b29edf24f98d0954` (PR #1), deployed manually to the two Render **staging** services

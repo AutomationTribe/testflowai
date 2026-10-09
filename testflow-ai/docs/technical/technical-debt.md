@@ -200,6 +200,13 @@ but any future state-changing endpoint that accepts an empty body would be forge
 **When to address:** add an Origin allow-list check on non-GET `/v1` routes before such an
 endpoint exists.
 
+**Update (2026-10-09, security agent plan, `docs/technical/security-remediation-plan.md`):** the text above understates the exposure. Routes
+that accept an empty body already exist: `POST /v1/organisations/:orgId/subscription/trial` (verified on staging: succeeds with no body),
+`POST /v1/auth/logout`, and (by code reading, not verified live) `POST .../qa-configuration/draft/publish`. A page on another site can
+auto-submit a form or a `no-cors` request to them (no preflight) and the browser attaches the `SameSite=None` cookie, so the action runs
+if the victim has an active session and the attacker knows the organisation id. Impact today is Low to Medium (trial activation, logout,
+publishing an already-open draft); it grows with every new empty-body POST. Priority P0 in the plan.
+
 ---
 
 ## TD-012 — Known `npm audit` findings in runtime dependencies — PARTLY RESOLVED 2026-10-09
