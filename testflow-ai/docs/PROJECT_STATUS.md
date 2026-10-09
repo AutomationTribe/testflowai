@@ -12,6 +12,85 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Controlled STAGING release of `95da669` (backend, then frontend): deployed, smoke tests 24/24
+
+**Release:** merge commit `95da6696681449b4a22e4408b29edf24f98d0954` (PR #1), deployed manually to the two Render **staging** services
+with `render deploys create <service> --commit 95da669... --wait`, on the Product Owner's explicit approval. **No production
+deployment** (staging/beta is the only environment); Auto-Deploy stayed OFF and was not changed.
+
+**Gates (all passed before deploying):** (1) both services `autoDeployTrigger = off` (Render CLI); (2) `main` = `95da669`, CI run
+37956067563 on that push: backend, frontend, e2e, security-audit all success; (3) environment verified through Render's API using the
+Product Owner's CLI login, names and non-secret values only: backend `NODE_ENV=production`, `DATABASE_URL`, `CORS_ORIGIN` (= frontend
+URL), `PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS` all present and non-empty, `E2E_FAKE_PAYMENTS=false`,
+`SWAGGER_UI_ENABLED` absent (defaults off); frontend `NODE_ENV=production`, `NEXT_PUBLIC_API_BASE_URL` (= backend URL),
+`NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` present, `NEXT_PUBLIC_E2E_FAKE_PAYMENTS=false`, `NEXT_TELEMETRY_DISABLED=1`; no secret value was
+printed or stored; (4) rollback target: previous live deploys `453f3ca` (backend `dep-db3pufff3r2c7388ro7g`, frontend
+`dep-db3pufff3r2c7388ro2g`), then `20b02d6`, all present in Render's deploy history.
+
+**Deployments:** backend `dep-db4h9lbbc2fs73bpo5kg` -> commit `95da669`, status live (finished 2026-10-09 16:24Z); boot log
+`[migrate] up to date` (no migration applied) and `server_started`; `/health` -> `{"status":"ok"}` 200 on three consecutive checks;
+then frontend `dep-db4hahflk1mc7381mk40` -> commit `95da669`, status live (finished 16:26Z), log `Ready in 3.7s`. The `453f3ca`
+deploys are now `deactivated` (kept as rollback targets). **The deployed SHAs are Render's deploy records; the process itself was
+not independently fingerprinted.**
+
+**Smoke tests (API-level against the live backend, plus frontend route checks): 24/24 passed.** Frontend `/`, `/login`, `/signup`,
+`/projects`, `/qa-setup`, `/subscription`, `/subscription-required`, `/app` all 200 with no error text. Projects: signup + trial for two
+throwaway organisations; empty state in a fresh organisation; create (name only; with description, trimmed) with sequential codes
+PRJ-001/PRJ-002; list + counts; search by name and by code; status filter; QA-configuration filter; cursor pagination;
+**organisation isolation** (org B listing/creating in org A and reading A's QA configuration -> 404, not 403; unauthenticated -> 401;
+cannot pin another organisation's QA configuration version -> 422); **fake-payment protection** (`POST /v1/test-support/simulate-payment`,
+`/reset-projects`, `/set-project-status` -> 404; Swagger `/docs` -> 404). Not done: a browser-driven UI smoke test on staging (only
+HTTP-level checks and route loads); real Paystack/email flows were not exercised.
+
+**Data left in staging (no destructive operation was run):** two throwaway organisations named `SMOKE TEST A 1791563212` and
+`SMOKE TEST B 1791563212` (users `smoke-a-1791563212@example.com`, `smoke-b-1791563212@example.com`), with 2 projects in A. They were
+not deleted. No migration, no data deletion, no environment variable change.
+
+**Local repos:** the Documents clone's stale 24-hour-old zero-byte `.git/index.lock` was removed after confirming no git process
+was using that repo (the only other git processes were transient IDE ones and one in an unrelated repo); the clone was then
+fast-forwarded to `95da669` (clean tree, 0 ahead / 0 behind); the backup stash `pre-sync PROJECT_STATUS local entry` is intact.
+`~/dev/testflowai` `main` = `95da669`.
+
+**Remaining risks:** staging only exercised through HTTP-level smoke tests; no browser UI pass on staging; deferred dependency
+upgrades (vitest 5, `@typescript-eslint` 8, Next 16) and no frontend security headers; backend-test flake cause (TD-007) likely, not
+proven; free-tier cold starts; rollback is code-level only (Render redeploy of `453f3ca`; no schema change in this release).
+**Next three tasks:** (1) Product Owner reviews the documentation PR and decides on any browser-level staging pass; (2) decide on cleaning
+up the two throwaway smoke organisations (needs a deliberate data decision); (3) schedule the deferred upgrades and security headers.
+
+---
+
+### 2026-10-09 - PR #1 merged into `main` (merge commit `95da669`); staging deployment NOT performed
+
+**Merge:** PR #1 (`next15-upgrade`) merged with a **merge commit**, SHA `95da6696681449b4a22e4408b29edf24f98d0954`, on the Product
+Owner's approval. Pre-merge checks: PR head `5f4cef2`, all four CI checks green (backend, frontend, e2e, security-audit), PR
+mergeable/clean, `main` still at `453f3ca`, 18 commits / 59 files, only expected areas changed (the single backend non-test file
+is `backend/vitest.config.ts`; no migrations, no backend `src`, no `render.yaml` change).
+
+**Render auto-deploy - verified this time with the Render CLI** (after the Product Owner ran `render login`): `testflow-backend`
+(srv-dakmr89594qs73fi0eu0) and `testflow-frontend` (srv-dakmr89594qs73fi0eug) both report `autoDeployTrigger = off`, branch `main`.
+After the merge, Render's deploy list and GitHub's deployment records show **no new deployment**: both services' live deploy is
+still `453f3ca` (2026-10-08 13:48Z), previous `20b02d6`. This also confirms the running build SHA for the first time. Live
+`/health` -> `{"status":"ok"}` (200), frontend `/login` 200 (checked after the merge; the first check hit a free-tier cold start).
+
+**Local clones:** `~/dev/testflowai` (active clone): `main` fast-forwarded to `95da669` (0 ahead / 0 behind); worktree
+`~/dev/testflowai-next15` still on `next15-upgrade`. **`~/Documents/.../testflow ai` (old, iCloud-synced clone): NOT synced** -
+its fetch completed (`origin/main` = `95da669`) but the fast-forward stalled on that slow folder and left a stale
+`.git/index.lock`; HEAD is still `5ab2e2a` with a clean tree. Removing the lock and fast-forwarding needs approval. The backup
+stash (`pre-sync PROJECT_STATUS local entry`) is untouched. This status entry is committed on the local branch
+`docs/post-merge-status` (not pushed).
+
+**Tests:** none run in this step (merge/sync/docs only). Last evidence: CI green on `5f4cef2`; local backend 140/140 (22
+consecutive), frontend 111/111, E2E 27/27.
+
+**Deployment:** none; no Render setting, environment variable or production data was changed or migrated. A staging deployment
+checklist was added to `docs/technical/deployment.md` and awaits approval.
+
+**Blockers:** Product Owner approval to deploy staging; approval to clear the Documents clone's lock. **Next three tasks:** (1) approve
+and run the staging deployment checklist (manual deploy, backend first); (2) sync the Documents clone or retire it; (3) decide on the
+deferred upgrades (vitest 5, `@typescript-eslint` 8, Next 16) and frontend security headers.
+
+---
+
 ### 2026-10-09 - Integration: `next15-upgrade` pushed, PR #1 opened, first GitHub Actions run green (not merged, not deployed)
 
 **Branch/commit:** `next15-upgrade` pushed to `origin` (HEAD `f846af4` at push time); PR #1 into `main`:
