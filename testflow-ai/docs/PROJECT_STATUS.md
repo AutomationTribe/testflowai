@@ -12,6 +12,27 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Integration: `next15-upgrade` pushed, PR #1 opened, first GitHub Actions run green (not merged, not deployed)
+
+**Branch/commit:** `next15-upgrade` pushed to `origin` (HEAD `f846af4` at push time); PR #1 into `main`:
+https://github.com/AutomationTribe/testflowai/pull/1 (17 commits, 59 files; GitHub reports mergeable/clean). The Product Owner stated
+they disabled Auto-Deploy for both Render services before the push; this was **not independently verified** (Render CLI token
+expired, no dashboard access). After the push, GitHub's deployment records showed no new deployment (latest is still `453f3ca`
+from 2026-10-08 13:48Z), consistent with that, but a branch push would not have deployed `main` services either way.
+
+**CI (first ever GitHub Actions run, workflow `CI`, run 37953945638, event `pull_request`):** `backend` success, `frontend`
+success, `e2e` success, `security-audit` success. Note: `security-audit` is `continue-on-error`, so its "success" does not mean
+zero advisories (local audit: backend 2 critical/10 high, frontend 2 critical/13 high, e2e 0 - dev/build tooling plus the
+bundled postcss). No CI failures to fix; no required check bypassed (no branch protection was inspected).
+
+**Not done:** merge, deployment, any Render or production change. **Remaining risks:** as in the previous entry (deferred vitest 5,
+@typescript-eslint 8, Next 16; no frontend security headers; E2E only a few Next 15 runs - CI adds one more green run;
+backend flake cause is TD-007, likely not proven; code-level rollback only; running Render build SHA still unconfirmed).
+**Next three tasks:** (1) Product Owner: review PR #1 and decide on merge; (2) after any merge, deployment is a separate manual
+approval (Auto-Deploy off); (3) schedule the deferred dependency upgrades and consider frontend security headers.
+
+---
+
 ### 2026-10-09 - Release-readiness remediation, part 2: isolated test database, Next.js 15 upgrade (local branch `next15-upgrade`; not pushed, not deployed)
 
 **Branches/commits (`~/dev/testflowai`, worktree `~/dev/testflowai-next15`):** `test-db-isolation` (guarded test DB, shared test server,
