@@ -25,6 +25,18 @@ production/test isolation, OWASP risks generally).
   server-side; a resource belonging to another organisation returns 404, never 403.
 - **Session cookies**: `httpOnly` always; `secure` + `SameSite=None` in production (required by
   the frontend/backend cross-origin topology); `SameSite=Lax` in development.
+- **CSRF** (TD-011, APID-022): state-changing `/v1` requests must come from the trusted frontend `Origin`
+  (`backend/src/middleware/originCheck.ts`, shared predicate `lib/origin.ts`); `null` and foreign origins get 403
+  `forbidden_origin`. A request with no `Origin` is allowed only if nothing marks it as browser cross-site traffic
+  (`Sec-Fetch-Site: cross-site` or an untrusted `Referer` are refused) — server-to-server clients and the Paystack
+  webhook are unaffected. Reads are protected by CORS.
+  The development relaxation (any `http(s)://localhost|127.0.0.1:<port>` origin) applies whenever `NODE_ENV` is not
+  `production`, so **every deployed environment must run with `NODE_ENV=production`** (staging and production both do:
+  `render.yaml`).
+- **API response headers**: `nosniff`, `Referrer-Policy: no-referrer`, CSP `default-src 'none'; frame-ancestors 'none'`,
+  `X-Frame-Options: DENY`, HSTS (production, short max-age), and `Cache-Control: no-store` on all `/v1` responses
+  (`backend/src/middleware/securityHeaders.ts`). Frontend headers/CSP are not implemented yet (see
+  `security-remediation-plan.md`).
 - **Brute-force protection** (NFR-SEC-001): login locks out after 5 failed attempts within a
   rolling window, tracked server-side (`backend/src/lib/bruteForce.ts`).
 - **Payment authority** (NFR-REL-003): a paid subscription/seat batch is created *only* by the

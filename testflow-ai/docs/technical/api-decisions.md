@@ -341,3 +341,20 @@ The decisions below re-baseline the API contract against PD-049–PD-063, DBD-00
 **Alternatives Considered:** A dedicated `/organisations/{orgId}/delivery-context` or `/methodology` endpoint (rejected — implies a governed concept beyond one descriptive text field; the existing Organisation Settings resource is the natural, sufficient home). A dedicated `/scopes` collection resource independent of documents (rejected — no requirement needs to list/manage scopes across documents; scope is a property of one document, not a first-class resource).
 
 **Consequences:** `reports.md`, `users.md`. `GET /projects/{projectId}/readiness` (APID-019) and `dashboards.md` are **unchanged** — readiness is not scope-aware. No new module/service is implied.
+
+---
+
+## APID-022 — CSRF Origin Allow-List on State-Changing Requests; API Security Headers
+
+**Status:** Implemented on branch `security/origin-check-and-headers`; awaiting Product Owner merge/deploy approval (proposed by the `security` agent's plan, `docs/technical/security-remediation-plan.md`, items 1-2).
+
+**Context:** The production session cookie is `SameSite=None` (frontend and backend are different sites), so a browser attaches it to cross-site requests. Routes that accept an empty body (`subscription/trial`, `auth/logout`, `qa-configuration/draft/publish`) could be forged by a page on another site with a form or `no-cors` request (no preflight). TD-011.
+
+**Decision:** (1) Every non-GET/HEAD/OPTIONS request under `/v1` must pass an Origin check before the body is parsed or the route is resolved: an `Origin` header must be the configured frontend origin (`CORS_ORIGIN`; in non-production also `http(s)://localhost|127.0.0.1:<port>`); the literal `null` and every other value get **403** in the shared envelope with `error: "forbidden_origin"`. (2) A request **without** an `Origin` header is allowed unless it carries `Sec-Fetch-Site: cross-site` or a `Referer` whose origin is untrusted/unparseable (both 403). A request with none of these is treated as a non-browser client (server-to-server, curl, Playwright API context, health probes, the Paystack webhook, which is mounted outside this check) and is allowed — it has no ambient browser cookie to ride and must still authenticate. (3) One shared predicate (`backend/src/lib/origin.ts`) serves both CORS and this check. (4) All responses carry `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'` and `X-Frame-Options: DENY` (Swagger UI exempt from the last two), `Strict-Transport-Security: max-age=300` in production only; every `/v1` response (including CORS preflights and the webhook path, but not `/health`) is `Cache-Control: no-store`.
+
+**Reason:** Closes the forgeable empty-body POSTs without a token scheme, new dependency or infrastructure; reads stay protected by CORS. A short HSTS max-age limits harm from a mistake because HSTS is sticky.
+
+**Alternatives Considered:** Double-submit CSRF token (rejected: the frontend cannot read the cross-origin httpOnly cookie, so the token would live in JS memory and break on reload, adding nothing the Origin check does not); `helmet` (rejected for now: five hand-written headers do not justify a dependency, rule 26); a custom `X-Requested-With` header requirement (skipped: no benefit once the Origin check exists); `SameSite=Lax` via a custom domain (the long-term fix, a separate product/cost decision).
+
+**Consequences:** A new browser client on a different origin must be added to `CORS_ORIGIN` (single value today). `openapi.yaml` documents `forbidden_origin` and the headers; `security.md` and TD-011 updated. Not covered by this decision: frontend security headers/CSP, JSON content-type enforcement (plan items 3-5).
+
