@@ -514,3 +514,30 @@ The decisions below re-baseline the architecture against PD-049–PD-063, DBD-00
 **Consequences:** New `backend/src/lib/resend.ts` (the provider boundary, mirroring `lib/paystack.ts`'s shape). `backend/src/config/env.ts` gains `resendApiKey` and `emailFromAddress` (defaults to `TestFlow <onboarding@resend.dev>`, Resend's no-verification-needed sender). `.env.example` documents `RESEND_API_KEY`. No change to `jobs.ts`'s enqueue/retry mechanics or to any call site — `sendEmail()`'s signature and the `sentEmails` test-assertion array are both unchanged, so this is purely additive within the existing email boundary.
 
 **Addendum (2026-09-14) — sandbox-mode recipient restriction:** Resend accounts without a verified sending domain (still using the default `onboarding@resend.dev` sender) can only deliver to the account owner's own verified email address — any other recipient is rejected with a 403 (`"You can only send testing emails to your own email address..."`). This is a Resend account-level restriction, not an integration bug: real signup/payment-confirmation emails to actual users' addresses will silently fail to arrive until a real domain is verified at resend.com/domains and `EMAIL_FROM_ADDRESS` is updated to use it. Discovered when a real signup to a non-owner address produced no delivered email; the job was still marked `status = 'done'` because `sendEmail()` was swallowing the Resend error internally (fixed in this same change — see Decision above) rather than letting `jobs.ts`'s existing retry/failed-marking handle it, so this restriction is now at least observable via the `jobs` table (`status = 'failed'`, `payload`/error visible via the job-failure log line) instead of silently hidden.
+
+---
+
+## AD-030 — Frontend framework upgrade: Next.js 14 → 15.5.27 with React 19
+
+**Status:** Implemented on branch `next15-upgrade` (local; not pushed or deployed). Product Owner approved the upgrade
+on 2026-10-09 as part of release-readiness remediation; this record is the rule-26 decision record.
+
+**Context:** `next@14.2.35` is the last 14.x release and carries advisories (audit severity critical) with no fix in the 14
+line; every fix is in 15.5.24 or later. It was the only production-path critical finding. Reachability (security agent): the
+app uses no rewrites, middleware, server actions, `next/image` or async request APIs, so the practical exposure was mostly
+denial of service and cache issues on the public frontend; the worst advisory (image-optimizer RCE) was judged unlikely to
+be exploitable but not tested.
+
+**Decision:** upgrade to `next@15.5.27` (the newest 15.5.x, npm tag `backport`), `react`/`react-dom@19.3.0`,
+`@types/react(-dom)@19`, `eslint-config-next@15.5.27`. Not Next 16: no need yet and a larger change.
+
+**Compatibility analysis:** only one break was found — React 19's types removed the global `JSX` namespace; fixed with a
+type-only `import type { JSX } from 'react'` in 32 files. No runtime source change. Two frontend test files had latent
+hygiene problems exposed by React 19 effect timing (fresh `organisation` object per mocked `useSession` call; a test ending
+before its post-create reload) and were corrected without weakening assertions. E2E Flow C excludes the dev-only
+"Open Next.js Dev Tools" button from its button count.
+
+**Consequences:** remaining audit findings are dev/build tooling (vitest, tinypool, vite, `@typescript-eslint`, glob chain,
+`eslint-config-next`) plus a postcss 8.4.31 copy bundled inside Next (build-time, first-party CSS only; cleared only by Next
+16). **Rollback:** revert the upgrade commit (`67c8147`) and restore the lockfile; the app has no data-format dependency on Next.
+

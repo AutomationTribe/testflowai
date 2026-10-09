@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { AppSidebar, Tile } from '@/components/AppSidebar';
 import { ErrorState } from '@/components/ErrorState';
 import { Icon, type IconName } from '@/components/Icon';

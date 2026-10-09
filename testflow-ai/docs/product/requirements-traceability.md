@@ -125,6 +125,16 @@ The following FR IDs were introduced or generalized by the CHANGE-001 re-baselin
 | FR-QAOM-010 | Governance Catalogue | `workflow_definitions`, `qa_artifact_policies`, `quality_gate_definitions` (the catalogue is the union of these tables' configurable columns) | Update Configuration Draft (`qa-configuration.md`) | Pending |
 | FR-QAOM-012 | Project Pinning | `projects.qa_configuration_version_id` | (resolved server-side on project creation/reads — `projects.md`, `project-policy.md`) | Pending |
 | FR-QAOM-013 **[CHANGE-002]** | Preferred Scope Terminology | `organisations.preferred_scope_terminology` | View/Update Organisation Settings (`preferredScopeTerminology`) (`users.md`) | UXF-019 |
+
+**Implementation status of the rows above (added 2026-10-08, from `docs/PROJECT_STATUS.md` and the git history; the
+"Pending" values in the User Flow column above are the original placeholders and were left unchanged):**
+
+- FR-QAOM-001, 002, 003, 004–009: implemented by the QA Operating Model Setup slice (commit `c0239ef`, migration
+  `0004`), covered by backend/frontend tests and E2E Flow F. **Product Owner acceptance is not recorded.** The Custom
+  Setup full configuration screen is deferred (TD-003).
+- FR-QAOM-012: implemented with the Projects slice (migration `0005`); **accepted by the Product Owner on 2026-10-08.**
+- FR-QAOM-010, 011, 013: no implementation recorded in the status log.
+
 | FR-TPL-001–004 | Structured Fields | `document_template_fields`, `document_template_field_options` | Add/Update/Remove Field; Configure Field Options (`templates.md`) | Pending |
 | FR-TPL-005 | Default Templates | `document_templates`, `document_template_versions`, `document_template_fields` (seeded rows, app-layer) | Create Template (default-seeded) (`templates.md`) | Pending |
 | FR-TPL-006–008 | Draft/Publish/History | `document_template_versions` | Retrieve/Start Draft; Publish Template; List/Retrieve Versions (`templates.md`) | Pending |

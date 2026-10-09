@@ -101,6 +101,16 @@ explicit flag, and a developer running any of the above locally sees the real br
 Artifacts land under `e2e/test-results/`; a full HTML report (`e2e/playwright-report/`) is
 generated and uploaded as a CI artifact on failure (see `.github/workflows/ci.yml`).
 
+## Backend test database isolation
+
+Backend tests run only against a dedicated local `*_test` database (default `testflow_test`, created by
+`backend/tests/globalSetup.ts`; override with `TEST_DATABASE_URL`). `backend/tests/testDatabaseGuard.ts`
+refuses destructive operations unless the host is local, the database name ends in `_test` and `NODE_ENV` is
+not `production`; it is checked in global setup, in `setupTestDatabase` and in `resetTestDatabase`, and is itself
+unit-tested. A session-level Postgres advisory lock allows one run per test database at a time: a concurrent run
+fails immediately instead of corrupting the other (the suite truncates all tables between tests). The dev
+database (`testflow`) and the E2E database (`testflow_e2e`, rebuilt by `e2e/prepare-db.js`) are never used by it.
+
 ## Known flaky test
 
 `backend/tests/bruteForce.test.ts` uses a fixed test email shared across its three cases and is

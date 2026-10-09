@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 interface MinimalHeaderProps {
   /** Shown as an "Organisation: X" chip on screens where the design includes it (Subscription Activated, Subscription Required). Omitted entirely when not passed (Sign Up, Login, Plan Selection — matching each screen's own reference). */
   organisationName?: string;

@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 /**
  * Monochrome 16px line-icon set (visual reference: the approved designs).
  * `stroke="currentColor"` throughout so each call site controls colour via the

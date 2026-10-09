@@ -1,9 +1,11 @@
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { resetTestDatabase, setupTestDatabase, teardownTestDatabase } from './testUtils.js';
+import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, startTestServer, type TestServer } from './testUtils.js';
 
 const app = createApp();
+let server: TestServer;
+let baseUrl = '';
 
 async function signUpAndGetCookie(overrides: Partial<Record<string, string>> = {}) {
   const payload = {
@@ -14,15 +16,18 @@ async function signUpAndGetCookie(overrides: Partial<Record<string, string>> = {
     organisationName: 'Acme QA',
     ...overrides,
   };
-  const res = await request(app).post('/v1/auth/signup').send(payload);
-  const cookie = res.headers['set-cookie']![0]!;
-  const me = await request(app).get('/v1/me').set('Cookie', cookie);
+  const res = await request(baseUrl).post('/v1/auth/signup').send(payload);
+  if (!res.headers['set-cookie']) throw new Error(`signup failed: status=${res.status} body=${JSON.stringify(res.body)}`);
+  const cookie = res.headers['set-cookie'][0]!;
+  const me = await request(baseUrl).get('/v1/me').set('Cookie', cookie);
   return { cookie, organisationId: me.body.organisation.id as string };
 }
 
 describe('QA Operating Model (FR-QAOM)', () => {
   beforeAll(async () => {
     await setupTestDatabase();
+    server = await startTestServer(app);
+    baseUrl = server.baseUrl;
   });
 
   afterEach(async () => {
@@ -30,6 +35,7 @@ describe('QA Operating Model (FR-QAOM)', () => {
   });
 
   afterAll(async () => {
+    await server.close();
     await teardownTestDatabase();
   });
 
@@ -37,7 +43,7 @@ describe('QA Operating Model (FR-QAOM)', () => {
     it('publishes Standard QA immediately at signup, before any QA Setup action', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
 
-      const res = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
+      const res = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
       expect(res.status).toBe(200);
       expect(res.body).toMatchObject({ status: 'published', presetOrigin: 'standard', versionNumber: 1 });
       expect(res.body.publishedAt).toBeTruthy();
@@ -50,12 +56,12 @@ describe('QA Operating Model (FR-QAOM)', () => {
       // so this asserts the route imposes no extra role check beyond requireAuth —
       // it does not (and cannot, at MVP) exercise a qa_tester session directly.
       const { cookie, organisationId } = await signUpAndGetCookie({ role: 'qa_manager' });
-      const res = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
+      const res = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
       expect(res.status).toBe(200);
     });
 
     it('rejects an unauthenticated request', async () => {
-      const res = await request(app).get('/v1/organisations/00000000-0000-0000-0000-000000000000/qa-configuration/current');
+      const res = await request(baseUrl).get('/v1/organisations/00000000-0000-0000-0000-000000000000/qa-configuration/current');
       expect(res.status).toBe(401);
     });
   });
@@ -63,7 +69,7 @@ describe('QA Operating Model (FR-QAOM)', () => {
   describe('GET /qa-configuration/presets — FR-QAOM-003', () => {
     it('returns exactly the four approved presets, Standard marked recommended', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      const res = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/presets`).set('Cookie', cookie);
+      const res = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/presets`).set('Cookie', cookie);
 
       expect(res.status).toBe(200);
       const origins = res.body.map((p: { presetOrigin: string }) => p.presetOrigin);
@@ -76,7 +82,7 @@ describe('QA Operating Model (FR-QAOM)', () => {
       const orgA = await signUpAndGetCookie({ email: 'a@example.com', organisationName: 'Org A' });
       const orgB = await signUpAndGetCookie({ email: 'b@example.com', organisationName: 'Org B' });
 
-      const res = await request(app)
+      const res = await request(baseUrl)
         .get(`/v1/organisations/${orgB.organisationId}/qa-configuration/presets`)
         .set('Cookie', orgA.cookie);
       expect(res.status).toBe(404);
@@ -87,14 +93,14 @@ describe('QA Operating Model (FR-QAOM)', () => {
     it('materializes Standard QA settings exactly per FR-QAOM-004 (no approval, only Test Report required, no gates)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
 
-      const draft = await request(app)
+      const draft = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/qa-configuration/draft`)
         .set('Cookie', cookie)
         .send({ presetOrigin: 'standard' });
       expect(draft.status).toBe(201);
       expect(draft.body).toMatchObject({ status: 'draft', presetOrigin: 'standard', versionNumber: 2 });
 
-      const publish = await request(app)
+      const publish = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`)
         .set('Cookie', cookie);
       expect(publish.status).toBe(200);
@@ -106,15 +112,15 @@ describe('QA Operating Model (FR-QAOM)', () => {
         totalGatesCount: 6,
       });
 
-      const current = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
+      const current = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
       expect(current.body.versionNumber).toBe(2); // superseded the auto-published v1
     });
 
     it('materializes Lightweight QA settings per FR-QAOM-005 (no approval, nothing required, no gates)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
 
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'lightweight' });
-      const publish = await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'lightweight' });
+      const publish = await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
 
       expect(publish.status).toBe(200);
       expect(publish.body.presetOrigin).toBe('lightweight');
@@ -128,8 +134,8 @@ describe('QA Operating Model (FR-QAOM)', () => {
     it('materializes Controlled QA settings per FR-QAOM-006 (review+approval, both reports required, 3 gates enabled)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
 
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'controlled' });
-      const publish = await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'controlled' });
+      const publish = await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
 
       expect(publish.status).toBe(200);
       expect(publish.body.presetOrigin).toBe('controlled');
@@ -141,7 +147,7 @@ describe('QA Operating Model (FR-QAOM)', () => {
 
     it('rejects an invalid presetOrigin', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/qa-configuration/draft`)
         .set('Cookie', cookie)
         .send({ presetOrigin: 'enterprise' });
@@ -151,9 +157,9 @@ describe('QA Operating Model (FR-QAOM)', () => {
 
     it('rejects starting a second draft while one is already open (409, one-draft-per-org)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'standard' });
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'standard' });
 
-      const second = await request(app)
+      const second = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/qa-configuration/draft`)
         .set('Cookie', cookie)
         .send({ presetOrigin: 'lightweight' });
@@ -162,48 +168,48 @@ describe('QA Operating Model (FR-QAOM)', () => {
 
     it('rejects publishing when no draft is open (404)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      const res = await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
+      const res = await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
       expect(res.status).toBe(404);
     });
 
     it('rejects publishing an incomplete Custom Setup draft (FR-QAOM-007 — empty draft has no workflow settings)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'custom' });
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'custom' });
 
-      const publish = await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
+      const publish = await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
       expect(publish.status).toBe(422);
       expect(publish.body.errors.length).toBeGreaterThan(0);
       expect(publish.body.errors[0]).toMatchObject({ section: 'workflows', code: 'CONFIGURATION_INCOMPLETE' });
 
       // The previous published version (auto-published Standard QA) remains in
       // effect until publish completes — FR-QAOM-007's explicit error/edge condition.
-      const current = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
+      const current = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
       expect(current.body).toMatchObject({ presetOrigin: 'standard', versionNumber: 1 });
     });
 
     it('publishing does not disturb a previously published version — history remains resolvable (FR-QAOM-009/012)', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      const v1 = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
+      const v1 = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
       expect(v1.body.versionNumber).toBe(1);
 
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'controlled' });
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'controlled' });
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`).set('Cookie', cookie);
 
-      const v2 = await request(app).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
+      const v2 = await request(baseUrl).get(`/v1/organisations/${organisationId}/qa-configuration/current`).set('Cookie', cookie);
       expect(v2.body.versionNumber).toBe(2);
       expect(v2.body.presetOrigin).toBe('controlled');
     });
 
     it('is idempotent under a repeated Idempotency-Key on publish', async () => {
       const { cookie, organisationId } = await signUpAndGetCookie();
-      await request(app).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'standard' });
+      await request(baseUrl).post(`/v1/organisations/${organisationId}/qa-configuration/draft`).set('Cookie', cookie).send({ presetOrigin: 'standard' });
       const key = 'qa-publish-key-1';
 
-      const first = await request(app)
+      const first = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`)
         .set('Cookie', cookie)
         .set('Idempotency-Key', key);
-      const replay = await request(app)
+      const replay = await request(baseUrl)
         .post(`/v1/organisations/${organisationId}/qa-configuration/draft/publish`)
         .set('Cookie', cookie)
         .set('Idempotency-Key', key);
@@ -216,25 +222,25 @@ describe('QA Operating Model (FR-QAOM)', () => {
       const orgA = await signUpAndGetCookie({ email: 'ta@example.com', organisationName: 'Tenant A' });
       const orgB = await signUpAndGetCookie({ email: 'tb@example.com', organisationName: 'Tenant B' });
 
-      const crossDraft = await request(app)
+      const crossDraft = await request(baseUrl)
         .post(`/v1/organisations/${orgB.organisationId}/qa-configuration/draft`)
         .set('Cookie', orgA.cookie)
         .send({ presetOrigin: 'standard' });
       expect(crossDraft.status).toBe(404);
 
-      const crossPublish = await request(app)
+      const crossPublish = await request(baseUrl)
         .post(`/v1/organisations/${orgB.organisationId}/qa-configuration/draft/publish`)
         .set('Cookie', orgA.cookie);
       expect(crossPublish.status).toBe(404);
     });
 
     it('rejects unauthenticated draft creation and publish', async () => {
-      const draft = await request(app)
+      const draft = await request(baseUrl)
         .post('/v1/organisations/00000000-0000-0000-0000-000000000000/qa-configuration/draft')
         .send({ presetOrigin: 'standard' });
       expect(draft.status).toBe(401);
 
-      const publish = await request(app).post('/v1/organisations/00000000-0000-0000-0000-000000000000/qa-configuration/draft/publish');
+      const publish = await request(baseUrl).post('/v1/organisations/00000000-0000-0000-0000-000000000000/qa-configuration/draft/publish');
       expect(publish.status).toBe(401);
     });
   });

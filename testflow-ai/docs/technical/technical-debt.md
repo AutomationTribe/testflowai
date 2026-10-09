@@ -26,6 +26,12 @@ than it should have been.
 **Priority/risk:** Low-medium. Not a correctness bug, but a diagnosability gap — a hung
 connection attempt currently looks identical to a hung anything-else.
 
+**Resolution (2026-10-09):** the intermittent backend failures seen during release-readiness (a signup answering an
+empty-body `404`, a missing cookie `TypeError`, and unrelated assertions failing once each — roughly 5 of 28 full runs)
+matched this signature. Every suite now shares one long-lived server per file through `startTestServer()` in
+`tests/testUtils.ts`. Reliability evidence is recorded in `docs/PROJECT_STATUS.md`; the mechanism is still the most
+likely explanation, not a proven one, so the assertion helpers report status and body on failure.
+
 **When to address:** Next time `pool.ts` is touched for another reason, or if this becomes a
 recurring diagnostic problem; add a `connectionTimeoutMillis` (e.g. 5–10s) so a real outage fails
 fast with a clear error instead of hanging silently.
@@ -120,7 +126,7 @@ made a hard requirement.
 
 ---
 
-## TD-007 — Existing backend suites use `request(app)`, which can flake under many requests
+## TD-007 — Existing backend suites use `request(app)`, which can flake under many requests — RESOLVED 2026-10-09 (pending Product Owner acceptance)
 
 **Where:** `backend/tests/*.test.ts` other than `projects.test.ts`.
 
@@ -196,7 +202,7 @@ endpoint exists.
 
 ---
 
-## TD-012 — Known `npm audit` findings in runtime dependencies
+## TD-012 — Known `npm audit` findings in runtime dependencies — PARTLY RESOLVED 2026-10-09
 
 **What:** `npm audit --omit=dev` reports 6 findings (2 moderate, 2 high, 2 critical) in packages
 this project already depended on: `next` (critical), `express`, `qs`, `proxy-addr` (critical,
@@ -204,6 +210,12 @@ transitive via express), and `postcss`/`source-map-js` (via next). The full audi
 (5 moderate, 16 high, 4 critical); the other 19 are dev-only toolchain packages. None were
 introduced by the Projects slice (no package.json change). Not mapped advisory-by-advisory to the
 code paths in use.
+
+**Update (2026-10-09):** `next` upgraded to 15.5.27 (AD-030), `proxy-addr` to 2.0.8, `source-map-js` to 1.2.2. No critical/high
+finding is now on a production runtime path that is reachable (security agent: PASS WITH WARNINGS). Audit now: backend 2 critical /
+10 high, frontend 2 critical / 13 high, e2e 0 — all dev/build tooling except a postcss 8.4.31 copy bundled in Next (build time,
+first-party CSS). **Still open (need Product Owner approval):** vitest 5, `@typescript-eslint` 8, `eslint-config-next`, and
+Next 16 for the bundled postcss.
 
 **When to address:** a dedicated dependency-hygiene task: review each advisory against how the
 package is used, upgrade `express`, `qs`, `proxy-addr` and `next`, re-run the full test suites.

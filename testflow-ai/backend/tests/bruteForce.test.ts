@@ -1,14 +1,18 @@
 import request from 'supertest';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from '../src/app.js';
-import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, testSignup } from './testUtils.js';
+import { resetTestDatabase, setupTestDatabase, teardownTestDatabase, testSignup, startTestServer, type TestServer } from './testUtils.js';
 
 /** NFR-SEC-001: protective response after 5 consecutive failed login attempts. */
 describe('login brute-force protection', () => {
   const app = createApp();
+  let server: TestServer;
+  let baseUrl = '';
 
   beforeAll(async () => {
     await setupTestDatabase();
+    server = await startTestServer(app);
+    baseUrl = server.baseUrl;
   });
 
   afterEach(async () => {
@@ -16,27 +20,28 @@ describe('login brute-force protection', () => {
   });
 
   afterAll(async () => {
+    await server.close();
     await teardownTestDatabase();
   });
 
   it('locks out after the 5th consecutive failed attempt, and a correct password no longer works until the window passes', async () => {
-    await request(app).post('/v1/auth/signup').send(testSignup);
+    await request(baseUrl).post('/v1/auth/signup').send(testSignup);
 
     for (let i = 0; i < 4; i += 1) {
-      const res = await request(app)
+      const res = await request(baseUrl)
         .post('/v1/auth/login')
         .send({ email: testSignup.email, password: 'wrong-password' });
       expect(res.status).toBe(401);
     }
 
     // 5th failed attempt still reports invalid credentials, but has now crossed the threshold.
-    const fifth = await request(app)
+    const fifth = await request(baseUrl)
       .post('/v1/auth/login')
       .send({ email: testSignup.email, password: 'wrong-password' });
     expect(fifth.status).toBe(401);
 
     // Even the CORRECT password is now rejected — the lockout blocks the account, not just bad guesses.
-    const lockedOut = await request(app)
+    const lockedOut = await request(baseUrl)
       .post('/v1/auth/login')
       .send({ email: testSignup.email, password: testSignup.password });
     expect(lockedOut.status).toBe(429);
@@ -44,13 +49,13 @@ describe('login brute-force protection', () => {
   });
 
   it('does not lock out an account with fewer than 5 failed attempts', async () => {
-    await request(app).post('/v1/auth/signup').send(testSignup);
+    await request(baseUrl).post('/v1/auth/signup').send(testSignup);
 
     for (let i = 0; i < 3; i += 1) {
-      await request(app).post('/v1/auth/login').send({ email: testSignup.email, password: 'wrong-password' });
+      await request(baseUrl).post('/v1/auth/login').send({ email: testSignup.email, password: 'wrong-password' });
     }
 
-    const res = await request(app)
+    const res = await request(baseUrl)
       .post('/v1/auth/login')
       .send({ email: testSignup.email, password: testSignup.password });
     expect(res.status).toBe(200);
@@ -59,21 +64,21 @@ describe('login brute-force protection', () => {
   it(
     'clears the failed-attempt counter after a successful login',
     async () => {
-      await request(app).post('/v1/auth/signup').send(testSignup);
+      await request(baseUrl).post('/v1/auth/signup').send(testSignup);
 
       for (let i = 0; i < 4; i += 1) {
-        await request(app).post('/v1/auth/login').send({ email: testSignup.email, password: 'wrong-password' });
+        await request(baseUrl).post('/v1/auth/login').send({ email: testSignup.email, password: 'wrong-password' });
       }
-      const success = await request(app)
+      const success = await request(baseUrl)
         .post('/v1/auth/login')
         .send({ email: testSignup.email, password: testSignup.password });
       expect(success.status).toBe(200);
 
       // 4 more failures after a reset should still be under the threshold, not cumulative with the earlier 4.
       for (let i = 0; i < 4; i += 1) {
-        await request(app).post('/v1/auth/login').send({ email: testSignup.email, password: 'wrong-password' });
+        await request(baseUrl).post('/v1/auth/login').send({ email: testSignup.email, password: 'wrong-password' });
       }
-      const stillAllowed = await request(app)
+      const stillAllowed = await request(baseUrl)
         .post('/v1/auth/login')
         .send({ email: testSignup.email, password: testSignup.password });
       expect(stillAllowed.status).toBe(200);

@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import { Icon, type IconName } from '../Icon';
 import { Tile } from '../AppSidebar';
 import { initialsOf } from './projectFormat';

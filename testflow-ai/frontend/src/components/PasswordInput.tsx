@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type InputHTMLAttributes } from 'react';
+import { useState, type InputHTMLAttributes, type JSX } from 'react';
 import { TextInput } from './TextInput';
 
 /** Password field with a show/hide toggle — same visual chrome as TextInput, plus an eye icon. */

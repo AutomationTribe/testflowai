@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import type { ProjectQaConfiguration, ProjectStatus } from '@/lib/apiClient';
 import { Icon } from '../Icon';
 import { qaConfigurationLabel } from './projectFormat';

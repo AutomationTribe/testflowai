@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, type JSX } from 'react';
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
 import { MinimalHeader } from '@/components/MinimalHeader';

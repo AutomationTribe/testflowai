@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 import type { Project } from '@/lib/apiClient';
 import { formatCreatedOn, initialsOf, memberChipColour, qaConfigurationLabel } from './projectFormat';
 

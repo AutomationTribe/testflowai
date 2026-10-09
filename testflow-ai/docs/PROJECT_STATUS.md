@@ -12,6 +12,243 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Integration: `next15-upgrade` pushed, PR #1 opened, first GitHub Actions run green (not merged, not deployed)
+
+**Branch/commit:** `next15-upgrade` pushed to `origin` (HEAD `f846af4` at push time); PR #1 into `main`:
+https://github.com/AutomationTribe/testflowai/pull/1 (17 commits, 59 files; GitHub reports mergeable/clean). The Product Owner stated
+they disabled Auto-Deploy for both Render services before the push; this was **not independently verified** (Render CLI token
+expired, no dashboard access). After the push, GitHub's deployment records showed no new deployment (latest is still `453f3ca`
+from 2026-10-08 13:48Z), consistent with that, but a branch push would not have deployed `main` services either way.
+
+**CI (first ever GitHub Actions run, workflow `CI`, run 37953945638, event `pull_request`):** `backend` success, `frontend`
+success, `e2e` success, `security-audit` success. Note: `security-audit` is `continue-on-error`, so its "success" does not mean
+zero advisories (local audit: backend 2 critical/10 high, frontend 2 critical/13 high, e2e 0 - dev/build tooling plus the
+bundled postcss). No CI failures to fix; no required check bypassed (no branch protection was inspected).
+
+**Not done:** merge, deployment, any Render or production change. **Remaining risks:** as in the previous entry (deferred vitest 5,
+@typescript-eslint 8, Next 16; no frontend security headers; E2E only a few Next 15 runs - CI adds one more green run;
+backend flake cause is TD-007, likely not proven; code-level rollback only; running Render build SHA still unconfirmed).
+**Next three tasks:** (1) Product Owner: review PR #1 and decide on merge; (2) after any merge, deployment is a separate manual
+approval (Auto-Deploy off); (3) schedule the deferred dependency upgrades and consider frontend security headers.
+
+---
+
+### 2026-10-09 - Release-readiness remediation, part 2: isolated test database, Next.js 15 upgrade (local branch `next15-upgrade`; not pushed, not deployed)
+
+**Branches/commits (`~/dev/testflowai`, worktree `~/dev/testflowai-next15`):** `test-db-isolation` (guarded test DB, shared test server,
+TD-007) -> `next15-upgrade` (Next 15.5.27 / React 19.3.0, e2e fix, merged from the former). **Nothing pushed. Render auto-deploy
+status could NOT be verified (CLI token expired, no dashboard access) and is assumed ON; do not push until the Product Owner
+confirms both services show Auto-Deploy = Off.**
+
+**Completed:** (1) Backend tests run only against a local `*_test` database (default `testflow_test`, auto-created), guard enforced
+in global setup/setup/reset and unit-tested (14 tests), session advisory lock allows one run per database; `backend-reviewer`
+found a real hole (`?host=` query override) - fixed - re-review PASS (+ whitespace hardening). (2) Intermittent backend failures
+(empty-body 404 on signup, missing cookie, unrelated assertions) matched TD-007; all suites now use one long-lived server per file.
+(3) Next 14.2.35 -> 15.5.27, React 19.3.0 (AD-030). Reviews: `frontend-reviewer` PASS; `security` PASS WITH WARNINGS; `qa` PASS.
+
+**Tests actually run:** typecheck clean (backend, frontend, e2e); lint clean (backend, frontend, `--max-warnings=0`); frontend 111/111
+(3+ runs); **backend 140/140 in 17 consecutive runs by me plus 5 by QA (own database) = 22 consecutive clean runs after the
+TD-007 fix** (before it: about 5 failures in 28 runs, so this is evidence, not proof - 22 clean runs bound the failure rate
+below about 14% at 95% confidence); Playwright E2E 27/27 (me) and 27/27 (QA) on Next 15 (one earlier run had 1 failure: the
+dev-only Next.js dev-tools button counted by Flow C - test corrected); production builds OK (13 static pages); `next start`
+served /, /login, /signup, /projects with HTTP 200. Visual regression (login): fails on both Next 14 (2,844 px) and Next 15
+(3,695 px) against the stored baseline - pre-existing, machine-sensitive baseline; Next 14 vs Next 15 renders differ only in the
+74x59 dev-indicator region. Framework validator (v1.1.0): 97 passed, 0 failed.
+
+**Dependency state (exact):** next 15.5.27, react/react-dom 19.3.0, @types/react(-dom) 19.3.0, eslint-config-next 15.5.27,
+proxy-addr 2.0.8, source-map-js 1.2.2, postcss 8.5.29 (vite) / 8.4.31 (bundled in next), vitest 2.1.9, @typescript-eslint 7.18.0,
+express 4.22.2. **Audit:** backend 2 critical/10 high; frontend 2 critical/13 high; e2e 0. Remaining critical/high are dev/build
+tooling except the bundled postcss (Low in practice).
+
+**Outstanding risks / blockers:** Render auto-deploy unverified; CI workflow (now at repo root) has never run on GitHub; E2E only
+run twice on Next 15 (no multi-run reliability data); vitest 5 / `@typescript-eslint` 8 / Next 16 not approved or done; no
+security headers on the frontend (pre-existing); pre-existing visual baseline mismatch; rollback is code-level only (no down
+migrations; migrations unchanged in this work). The flaky-test cause is the most likely explanation (TD-007), not proven.
+
+**Next three tasks:** (1) Product Owner: confirm/disable Render auto-deploy for both services; (2) review and approve push of the
+two branches (and merge to `main`); (3) first GitHub Actions run, then decide on vitest 5 / `@typescript-eslint` 8.
+
+---
+
+### 2026-10-09 - Release-readiness remediation (branch `release-readiness`, local only; not pushed, not deployed)
+
+**Branch/commit:** `release-readiness` in `~/dev/testflowai` (from `main` + the three local doc commits): `5ab2e2a` docs,
+`d3ad6a3` CI move + test diagnostic, `c3cc5ed` CI fixes + lockfile security updates. Nothing pushed; Render
+auto-deploy is still ON (Phase 1 blocked, see below).
+
+**Phase 1 - Render auto-deploy: NOT DONE.** CLI token expired (`render login` needs the Product Owner's browser). No
+Render setting or `render.yaml` change was made. **Do not push until both services show Auto-Deploy = Off.**
+
+**Phase 2 - CI:** `.github/workflows/ci.yml` moved to the repository root (it was at `testflow-ai/.github/`, so GitHub
+ran nothing: 0 workflows/0 runs). Inner paths were already `testflow-ai/`-relative. Independent `reviewer`: PASS WITH
+CHANGES; fixed the MEDIUM (e2e CI now emits the HTML report the upload step expects), added `permissions: contents:
+read`, corrected the README; re-review of the fixes and the lockfile-only dependency change: **PASS**. YAML parses; actionlint unavailable; **the workflow has not run on GitHub yet.**
+
+**Phase 3 - flaky backend test:** root cause NOT proven. Intermittent failures seen: 3 of 21 full backend runs (2x
+`qaConfiguration` "Controlled", 1x `bruteForce`), 18 clean (incl. 3 under CPU stress, 3 on fresh databases, 5 in a row
+at the end). `backend-reviewer` reproduced the exact symptom (signup 500 -> no Set-Cookie -> `TypeError ... '0'`) when two
+test processes share one database (tests TRUNCATE the whole DB; all use `admin@example.com`), the leading hypothesis
+(H1); whether that caused the original failures is unverified. Change made: the helper now fails with signup status/body.
+**Proposed, needs approval:** run backend tests on a dedicated guarded test database (changes CI env and local setup).
+
+**Phase 4 - security (agent `security`, dependency posture): SECURITY STATUS FAIL.** Production-path: `next@14.2.35`
+(critical per audit; no 14.x fix, fixes need 15.5.27+/16; reachable risk is mostly DoS/cache issues, no tenant-data path
+found; AVIF image-optimizer RCE judged unlikely, not tested) and `proxy-addr` (not reachable: no `trust proxy`/`req.ip`).
+Everything else is dev/build-only. Applied (lockfile only): proxy-addr 2.0.8, source-map-js 1.2.2, brace-expansion
+1.1.21/2.1.7, postcss 8.5.29. Audit now: backend 2 critical/10 high (was 3/12), frontend 3 critical/14 high (was 3/16),
+e2e 0. **Major upgrades NOT applied, need separate approval + a decision record:** next 15.5.27+, vitest 4+,
+@typescript-eslint 8, eslint-config-next.
+
+**Tests actually run after the changes (clone `~/dev/testflowai`, local Postgres, throwaway DB):** typecheck OK; lint OK
+(backend, frontend); frontend 111/111; backend 125/125 in the final consecutive runs (one earlier post-update run had the
+known `bruteForce` flake, 124/125, that file passes 3/3 alone); Playwright E2E (`CI=true`, flows A-I) **27/27**.
+`scripts/validate.py` result recorded below.
+
+**Blockers:** Render auto-deploy still ON; Next.js critical advisory unresolved pending upgrade decision; CI unproven on
+GitHub; flaky-test root cause unproven. **Next three tasks:** (1) Product Owner: `render login` / disable auto-deploy for
+both services; (2) decide on the Next 15 upgrade and the dedicated test database; (3) push `release-readiness` only after
+(1), then confirm the first GitHub Actions run.
+
+---
+
+### 2026-10-08 - Synchronised local `main` with GitHub `main` @ `453f3ca` (no product code changed)
+
+**Branch/commit:** `main` fast-forwarded `5e3f47a` -> `453f3ca` (`git merge --ff-only`; no reset, rebase,
+force-pull or overwrite). Local = origin/main (0 ahead / 0 behind) before this entry. After the sync:
+`.claude/settings.json` stays uncommitted (pre-existing local change, preserved); this file is committed on its own
+(docs-only commit, local only, not pushed).
+
+**Why:** local `main` was 8 commits behind GitHub, so `docs/framework/` (canonical framework v1.1.0), `CLAUDE.md`
+rules 20/23/30/31 and the canonical agent files were absent locally. Earlier agent-roster findings below were made
+on that stale checkout and are superseded.
+
+**Completed work:**
+- Backed up the affected local state first (outside the repo): this file, `.claude/settings.json`, the three agent
+  files and the full local diff.
+- A stale `.git/refs/remotes/origin/main.lock` (15:15, no git fetch process running) blocked `git fetch`; removed
+  with Product Owner approval, then fetched.
+- Removed the three untracked agent files only after confirming each was byte-identical to GitHub's copy; the
+  fast-forward then brought them in as tracked files.
+- Stashed this file's local entry, fast-forwarded, and preserved that entry below (not discarded).
+- The `.claude/settings.json` change (`mcp__claude-in-chrome__tabs_context_mcp` allow entry) was untouched.
+
+**Verification actually run:**
+- `.claude/agents/` has 10 files; `backend-reviewer`, `database-architect`, `frontend-reviewer` are byte-identical
+  to GitHub `453f3ca`.
+- `docs/framework/` contains `ADOPTING-1.1.md`, `ADOPTION_RECORD.md`, `FRAMEWORK_VERSION` (`1.1.0`), `POLICY.md`,
+  `PROJECT_PROFILE.md`, `VERSION.md`, `VERSIONING.md`; `POLICY.md` and `VERSIONING.md` are byte-identical to the
+  v1.1.0 checkout (`~/dev/framework-v1.1.0-checkout`, commit `31dd835e`).
+- `python3 -I scripts/validate.py --project .` (v1.1.0 checkout) -> **97 passed, 0 failed**.
+- Not run: backend/frontend/E2E suites (no product code changed); registration of the agents in a *new* session
+  was not re-checked after the sync.
+
+**Follow-up (same day, after the sync):**
+- Committed only this file as `08f1ca6` (docs-only; local, **not pushed**; local `main` was 1 ahead of `origin/main` at that point; 2 ahead once this follow-up is committed).
+  `.claude/settings.json` was deliberately not staged and remains uncommitted and unchanged. The backup stash is retained.
+- Read-only status review of the Projects Create + List feature from the canonical docs (no code run, no tests run this
+  step): FR-PRJ-001, FR-PRJ-004, FR-PRJ-008 and FR-QAOM-012 are accepted by the Product Owner (2026-10-08) and not
+  deployed. Last recorded results (from earlier entries, not re-run here): backend 125/125, frontend 111/111, E2E 27/27.
+- Noted, not changed: `TASKS.md` still lists "Slice 2 ... then Project creation" as unapproved/unchecked, which is out of
+  date; updating it needs Product Owner approval. Open on the slice: deployment decision, approved List/Empty State
+  reference images (Google login), TD-006/007/009/011/012/013.
+- This update was made because the Stop hook blocked on the uncommitted `.claude/settings.json` change; the hook was not
+  modified or bypassed.
+
+**Follow-up 2 (same day):**
+- Committed the previous follow-up as `fbe6d2c` (this file only; local, **not pushed**; `main` is 2 ahead of `origin/main`).
+  `.claude/settings.json` was uncommitted at that point (resolved in Follow-up 3); backup stash retained.
+- Read-only audit of `TASKS.md` against the requirements, traceability table and this log: it is out of date (no
+  entries for the built QA Operating Model Setup and Projects slices; "Slice 2 ... then Project creation" still listed
+  as not started; Deployment phase wording). Corrections were **proposed only; `TASKS.md` was not edited**, pending
+  Product Owner approval. Also found: `requirements-traceability.md` still shows FR-QAOM-001-003 and FR-QAOM-012 as
+  "Pending" although FR-QAOM-012 was accepted; no Product Owner acceptance of the QA Setup slice is recorded.
+- Produced a staging-deployment readiness checklist (tests, security, migrations, configuration, rollback) in the
+  conversation only. No tests were run, nothing was deployed, and the live commit on Render was not verified.
+- This entry was needed because the Stop hook blocks while `.claude/settings.json` is the only uncommitted change.
+
+**Follow-up 3 (same day) - documentation corrections approved by the Product Owner (docs only; committed together with Follow-up 2):**
+- `TASKS.md`: Testing phase marked "ongoing per feature slice"; Deployment phase reworded (staging/beta exists, Projects
+  slice not deployed); UX note narrowed to the pending Custom Setup screen; added Slice 3 (Projects Create + List,
+  accepted 2026-10-08) and Slice 2 (QA Operating Model Setup: **implemented and E2E-verified, Product Owner acceptance
+  not recorded**); the stale "Slice 2 ... then Project creation" item is kept as a history note.
+- `requirements-traceability.md`: added an implementation-status note under the CHANGE-001 table (FR-QAOM-001-009
+  implemented, acceptance not recorded; FR-QAOM-012 accepted; FR-QAOM-010/011/013 no implementation recorded). The
+  existing "Pending" cells were not altered. Not fixed (out of scope): the main traceability table still shows "Pending"
+  UI/Tests for many already-built FRs (e.g. FR-AUTH-*).
+- Validation: documentation only; no tests run (no code changed). `scripts/validate.py` (v1.1.0) re-run: **97 passed, 0 failed**.
+- Product Owner approved reverting the repo-root `.claude/settings.json`. Verified first that its only difference from
+  `HEAD` was the added `mcp__claude-in-chrome__tabs_context_mcp` allow entry; reverted with `git checkout` of that
+  file only. The Stop hook (in `testflow-ai/.claude/settings.json`) was not modified. Stop-hook root cause: it blocks
+  whenever any file is dirty but the status file is not itself among the dirty files; with the tree now clean it
+  returns `{}`. The backup stash is retained. Nothing pushed or deployed.
+
+**Follow-up 4 (same day) - correction: staging deployment history (verified, read-only):**
+- **Correction:** earlier entries (including Follow-ups 2-3 and `TASKS.md` as committed in `a94de90`) said the Projects
+  slice was "not deployed". That was wrong. GitHub deployment records (`/repos/AutomationTribe/testflowai/deployments`)
+  show both Render services deployed with status `success` for `5e3f47a` (the Projects slice, 2026-10-07 22:26Z) and for
+  every later commit up to **`453f3ca` (2026-10-08 13:48Z), the latest successful deployment**. So **Projects Create +
+  List is already deployed to staging.** Earlier "nothing deployed" lines referred to what that task deployed, not to
+  what was live.
+- **Not confirmed:** the actual running build SHA. `/health` returns only `{"status":"ok"}` (HTTP 200 at 14:56Z) and no
+  Render dashboard access was available, so "deployed" means the last successful deployment record. GitHub Actions
+  results for `453f3ca` could not be retrieved.
+- **Render auto-deploys every push to `main`** (observed from the deployment records; `render.yaml` sets no
+  `autoDeploy`/`autoDeployTrigger`). A push is therefore a deployment.
+- **Unpushed:** three local documentation commits (`08f1ca6`, `fbe6d2c`, `a94de90`, plus this entry's commit once
+  made); local `main` is ahead of `origin/main`. Pushing them would redeploy both services.
+- Fixed wording: "three local documentation commits" = `08f1ca6`, `fbe6d2c`, `a94de90` (unpushed).
+- No Render setting, code, push or deployment was changed. Auto-deploy-off proposal pending Product Owner approval.
+
+**Phase 1 (Render auto-deploy) - BLOCKED on authorization:** the Render CLI token is expired (`render whoami`: "your
+token is expired; run `render login`") and `api.render.com` / `render.com` docs are unreachable from this environment
+(`render blueprints validate` -> 401). Auto-deploy is therefore **still ON**; nothing may be pushed until the Product
+Owner disables it for both services. The Render CLI binary (v2.28.0) lists the values `commit`, `off`, `checksPass`
+and the API field `autoDeployTrigger`, which supports `autoDeployTrigger: off`; the exact `render.yaml` key was not
+validated against Render's Blueprint validator and `render.yaml` was not edited.
+
+**Readiness checks actually run (read-only; commit `453f3ca`, clone `~/dev/testflowai`, throwaway local database
+`testflow_readiness`, dropped afterwards):**
+- `tsc` typecheck (backend, frontend, e2e) and `eslint --max-warnings=0` (backend, frontend): clean. Migrations 0001-0005
+  applied cleanly to an empty database.
+- Frontend `vitest`: **111/111**. Backend `vitest`: three full runs - run 1 **124/125**, run 2 failed again (one test in
+  `qaConfiguration.test.ts`, "materializes Controlled QA settings", `TypeError: Cannot read properties of undefined`),
+  run 3 **125/125**; that file alone passes 16/16. Intermittent, unexplained, not the known `bruteForce` flake.
+- `npm audit`: backend 3 critical / 12 high; frontend 3 critical / 16 high (e.g. direct `next`, transitive `proxy-addr`,
+  `vitest`/`tinypool`). Not triaged here; relates to TD-012.
+- **Finding:** `testflow-ai/.github/workflows/ci.yml` is not at the repository root, so GitHub runs no workflow
+  (GitHub API: 0 workflows, 0 runs). CI has never run on GitHub; any "CI green" claim is unsupported.
+- E2E not run in this step.
+
+**Deployment/demo link:** none; nothing deployed or pushed.
+
+**Blockers:** none. A git stash (`pre-sync PROJECT_STATUS local entry`) remains as an extra backup; it can be
+dropped once this entry is accepted.
+
+**Next three tasks:** (1) Product Owner decides whether to push this commit (committed locally, not pushed); (2) choose the next feature and
+run the first slice under the adopted framework; (3) verify in a live session that the Stop hook blocks as expected.
+
+---
+
+### 2026-10-08 - Agent roster verification (SUPERSEDED - made on a stale checkout, kept for the record)
+
+> **Correction:** the findings below were made when local `main` was at `5e3f47a`, 8 commits behind GitHub. On
+> GitHub (`453f3ca`) all 10 agents exist (including `database-architect`, `backend-reviewer`, `frontend-reviewer`,
+> and `security` as the tenth), `reviewer` is already scoped to cross-cutting review, and `docs/framework/` is
+> present. The "roster NOT met" and "tenth agent not identified" statements no longer apply.
+
+**Branch/commit (at the time):** `main` @ `5e3f47a`. Uncommitted: `.claude/settings.json` only (plus this file).
+
+**Completed work (at the time):**
+- Verified the project subagent roster. `.claude/agents/` held 7 files: `backend`, `design`, `devops`, `frontend`,
+  `qa`, `reviewer`, `security`; all 7 were registered in the session.
+- Recorded the pre-existing uncommitted change to `.claude/settings.json` (not made by that session): one entry
+  added to `permissions.allow`, `mcp__claude-in-chrome__tabs_context_mcp`. The Stop hook was unchanged.
+- Updated only this file, with the Product Owner's explicit authorization.
+
+**Tests actually run and results:** None; verification was `ls`, `git status`/`git diff` and the session's agent list.
+
+---
+
 ### 2026-10-08 - Adopted the canonical AI Software Delivery Framework v1.1.0 (framework-only change)
 
 **Branch/commit:** `main` - see the commit containing this entry (not deployed). No product functionality,

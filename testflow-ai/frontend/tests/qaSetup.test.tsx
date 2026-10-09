@@ -7,11 +7,15 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, back, replace: vi.fn() }),
 }));
 
+// The real SessionProvider keeps `organisation` in state, so its identity is stable across renders.
+// A mock that returned a fresh object on every call would re-fire every effect that depends on it.
+const stableOrganisation = vi.hoisted(() => ({ id: 'org-1', name: 'Acme QA' }));
+
 vi.mock('@/lib/SessionProvider', () => ({
   useSession: () => ({
     status: 'authenticated',
     user: { id: 'u1', email: 'ada@example.com', name: 'Ada', role: 'admin' },
-    organisation: { id: 'org-1', name: 'Acme QA' },
+    organisation: stableOrganisation,
     subscription: { hasAccess: true, planType: 'trial', status: 'trial_active', trialEndsAt: null, gracePeriodEndsAt: null, seatsTotal: 3 },
     refresh: vi.fn(),
     logout: vi.fn(),

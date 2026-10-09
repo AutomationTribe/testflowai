@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
 import { AppSidebar } from '@/components/AppSidebar';
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';

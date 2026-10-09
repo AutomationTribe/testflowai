@@ -7,10 +7,15 @@ This file represents approved work only, not unapproved ideas. See [CLAUDE.md](C
 - [x] Product Definition
 - [x] Requirements
 - [x] Technical Design
-- [x] UX and Design (user flows + design system; visual design of new CHANGE-001 screens still pending)
+- [x] UX and Design (user flows + design system; Stitch designs approved for the screens built so far; the QA Setup
+      "Custom Setup" full configuration screen design is still pending — TD-003)
 - [ ] Development — in progress, one vertical slice at a time (see below)
-- [ ] Testing
-- [ ] Deployment
+- [ ] Testing — ongoing per feature slice (developer tests, independent review, QA and E2E run for every slice; there
+      is no separate end-of-project testing phase recorded)
+- [ ] Deployment — staging/beta on Render + Neon exists (`docs/technical/deployment.md`). Verified 2026-10-08 from
+      GitHub deployment records: the Projects slice is deployed to staging (first at `5e3f47a`); latest successful
+      deployment `453f3ca`. The running build SHA itself is not independently confirmed. Render currently auto-deploys
+      every push to `main`.
 
 ## Development Slices
 
@@ -36,7 +41,26 @@ Approved, completed:
       Paystack credentials (`E2E_FAKE_PAYMENTS`/`NEXT_PUBLIC_E2E_FAKE_PAYMENTS`, gated non-production).
       Slice 1 is now fully done per its Definition of Done, including automated E2E coverage.
 
+- [x] **Slice 3 — Projects: Create Project + Project List.** FR-PRJ-001 (create), FR-PRJ-004 (visibility by role),
+      FR-PRJ-008 (list search, filters, counts, pagination) and FR-QAOM-012 (project pins the published QA
+      configuration). Migration `0005_projects.sql`. **Accepted by the Product Owner 2026-10-08.** Last recorded
+      results (see `docs/PROJECT_STATUS.md`): backend 125/125, frontend 111/111, E2E 27/27; QA PASS WITH FINDINGS,
+      security PASS WITH WARNINGS. Deployed to staging (first at `5e3f47a`, 2026-10-07; GitHub deployment records show
+      `453f3ca` as the latest successful deployment, 2026-10-08). TD-008 and TD-010 fixed afterwards (`ab7d06d`).
+
+Implemented and E2E-verified; Product Owner acceptance not recorded:
+
+- [x] **Slice 2 — Organisation QA Operating Model Setup.** "Set up your QA process" screen with four presets
+      (Standard / Lightweight / Controlled / Custom), auto-published Standard QA at organisation creation, and
+      draft/publish semantics (FR-QAOM-001/002/003/004–009, commit `c0239ef`; migration `0004`). E2E Flow F covers it.
+      Deferred: the Custom Setup full configuration screen (TD-003). No Product Owner acceptance of this slice is
+      recorded in `docs/PROJECT_STATUS.md`.
+
 Not yet approved/started — do not begin without an explicit approved slice definition:
 
-- [ ] Slice 2 — Organisation QA Setup / QA Operating Model foundation, then Project creation —
-      per the Slice 1 final report's recommendation.
+- (No further slice is currently approved. Candidates such as FR-PRJ-002/003/005–007, the Custom Setup screen
+  (TD-003) or deployment of Slice 3 need the Product Owner's decision first.)
+
+History (kept for the record): this section previously listed "Slice 2 — Organisation QA Setup / QA Operating Model
+foundation, then Project creation — per the Slice 1 final report's recommendation." Both parts were subsequently
+built (Slices 2 and 3 above).

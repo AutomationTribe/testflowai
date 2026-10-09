@@ -19,7 +19,9 @@ test('Flow C — subscription gate blocks /app and exposes only the permitted ac
   await expect(page.getByText('No active plan')).toBeVisible();
 
   // Only the three permitted actions are exposed — no project/business functionality.
-  await expect(page.getByRole('button')).toHaveCount(3);
+  // `next dev` (which the E2E suite runs) adds its own "Open Next.js Dev Tools" button; it is not part of the
+  // product UI and does not exist in a production build, so it is excluded from the count.
+  await expect(page.getByRole('button', { name: /^(?!Open Next\.js Dev Tools$)/ })).toHaveCount(3);
   await expect(page.getByRole('button', { name: 'Choose a Plan' })).toBeVisible();
   await expect(page.getByRole('button', { name: /Start Free Trial/ })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign Out' })).toBeVisible();

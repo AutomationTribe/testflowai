@@ -6,11 +6,15 @@ vi.mock('next/navigation', () => ({
 }));
 
 let sessionRole: 'admin' | 'qa_manager' | 'qa_tester' = 'admin';
+// The real SessionProvider keeps `organisation` in state, so its identity is stable across renders.
+// A mock that returned a fresh object on every call would re-fire every effect that depends on it.
+const stableOrganisation = vi.hoisted(() => ({ id: 'org-1', name: 'Acme QA' }));
+
 vi.mock('@/lib/SessionProvider', () => ({
   useSession: () => ({
     status: 'authenticated',
     user: { id: 'u1', email: 'ada@example.com', name: 'Ada Admin', role: sessionRole },
-    organisation: { id: 'org-1', name: 'Acme QA' },
+    organisation: stableOrganisation,
     subscription: { hasAccess: true, planType: 'trial', status: 'trial_active', trialEndsAt: null, gracePeriodEndsAt: null, seatsTotal: 3 },
     refresh: vi.fn(),
     logout: vi.fn(),
@@ -573,6 +577,10 @@ describe('Projects page', () => {
 
       await waitFor(() => expect(createProject).toHaveBeenCalled());
       expect(createProject.mock.calls[0]![1]).not.toHaveProperty('description');
+      // Let the post-create work (dialog closes, list reloads) finish inside the test. Otherwise it runs
+      // after afterEach has reset the mocks and the reload calls a mock that returns undefined.
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+      await waitFor(() => expect(listProjects).toHaveBeenCalledTimes(2));
     });
 
     it('shows a server-side field error next to the field and keeps the dialog open', async () => {

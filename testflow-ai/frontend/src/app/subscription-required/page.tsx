@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';
