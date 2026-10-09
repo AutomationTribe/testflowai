@@ -202,7 +202,7 @@ endpoint exists.
 
 ---
 
-## TD-012 — Known `npm audit` findings in runtime dependencies
+## TD-012 — Known `npm audit` findings in runtime dependencies — PARTLY RESOLVED 2026-10-09
 
 **What:** `npm audit --omit=dev` reports 6 findings (2 moderate, 2 high, 2 critical) in packages
 this project already depended on: `next` (critical), `express`, `qs`, `proxy-addr` (critical,
@@ -210,6 +210,12 @@ transitive via express), and `postcss`/`source-map-js` (via next). The full audi
 (5 moderate, 16 high, 4 critical); the other 19 are dev-only toolchain packages. None were
 introduced by the Projects slice (no package.json change). Not mapped advisory-by-advisory to the
 code paths in use.
+
+**Update (2026-10-09):** `next` upgraded to 15.5.27 (AD-030), `proxy-addr` to 2.0.8, `source-map-js` to 1.2.2. No critical/high
+finding is now on a production runtime path that is reachable (security agent: PASS WITH WARNINGS). Audit now: backend 2 critical /
+10 high, frontend 2 critical / 13 high, e2e 0 — all dev/build tooling except a postcss 8.4.31 copy bundled in Next (build time,
+first-party CSS). **Still open (need Product Owner approval):** vitest 5, `@typescript-eslint` 8, `eslint-config-next`, and
+Next 16 for the bundled postcss.
 
 **When to address:** a dedicated dependency-hygiene task: review each advisory against how the
 package is used, upgrade `express`, `qs`, `proxy-addr` and `next`, re-run the full test suites.

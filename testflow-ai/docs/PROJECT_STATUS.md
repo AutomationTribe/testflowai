@@ -12,6 +12,43 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Release-readiness remediation, part 2: isolated test database, Next.js 15 upgrade (local branch `next15-upgrade`; not pushed, not deployed)
+
+**Branches/commits (`~/dev/testflowai`, worktree `~/dev/testflowai-next15`):** `test-db-isolation` (guarded test DB, shared test server,
+TD-007) -> `next15-upgrade` (Next 15.5.27 / React 19.3.0, e2e fix, merged from the former). **Nothing pushed. Render auto-deploy
+status could NOT be verified (CLI token expired, no dashboard access) and is assumed ON; do not push until the Product Owner
+confirms both services show Auto-Deploy = Off.**
+
+**Completed:** (1) Backend tests run only against a local `*_test` database (default `testflow_test`, auto-created), guard enforced
+in global setup/setup/reset and unit-tested (14 tests), session advisory lock allows one run per database; `backend-reviewer`
+found a real hole (`?host=` query override) - fixed - re-review PASS (+ whitespace hardening). (2) Intermittent backend failures
+(empty-body 404 on signup, missing cookie, unrelated assertions) matched TD-007; all suites now use one long-lived server per file.
+(3) Next 14.2.35 -> 15.5.27, React 19.3.0 (AD-030). Reviews: `frontend-reviewer` PASS; `security` PASS WITH WARNINGS; `qa` PASS.
+
+**Tests actually run:** typecheck clean (backend, frontend, e2e); lint clean (backend, frontend, `--max-warnings=0`); frontend 111/111
+(3+ runs); **backend 140/140 in 17 consecutive runs by me plus 5 by QA (own database) = 22 consecutive clean runs after the
+TD-007 fix** (before it: about 5 failures in 28 runs, so this is evidence, not proof - 22 clean runs bound the failure rate
+below about 14% at 95% confidence); Playwright E2E 27/27 (me) and 27/27 (QA) on Next 15 (one earlier run had 1 failure: the
+dev-only Next.js dev-tools button counted by Flow C - test corrected); production builds OK (13 static pages); `next start`
+served /, /login, /signup, /projects with HTTP 200. Visual regression (login): fails on both Next 14 (2,844 px) and Next 15
+(3,695 px) against the stored baseline - pre-existing, machine-sensitive baseline; Next 14 vs Next 15 renders differ only in the
+74x59 dev-indicator region. Framework validator (v1.1.0): 97 passed, 0 failed.
+
+**Dependency state (exact):** next 15.5.27, react/react-dom 19.3.0, @types/react(-dom) 19.3.0, eslint-config-next 15.5.27,
+proxy-addr 2.0.8, source-map-js 1.2.2, postcss 8.5.29 (vite) / 8.4.31 (bundled in next), vitest 2.1.9, @typescript-eslint 7.18.0,
+express 4.22.2. **Audit:** backend 2 critical/10 high; frontend 2 critical/13 high; e2e 0. Remaining critical/high are dev/build
+tooling except the bundled postcss (Low in practice).
+
+**Outstanding risks / blockers:** Render auto-deploy unverified; CI workflow (now at repo root) has never run on GitHub; E2E only
+run twice on Next 15 (no multi-run reliability data); vitest 5 / `@typescript-eslint` 8 / Next 16 not approved or done; no
+security headers on the frontend (pre-existing); pre-existing visual baseline mismatch; rollback is code-level only (no down
+migrations; migrations unchanged in this work). The flaky-test cause is the most likely explanation (TD-007), not proven.
+
+**Next three tasks:** (1) Product Owner: confirm/disable Render auto-deploy for both services; (2) review and approve push of the
+two branches (and merge to `main`); (3) first GitHub Actions run, then decide on vitest 5 / `@typescript-eslint` 8.
+
+---
+
 ### 2026-10-09 - Release-readiness remediation (branch `release-readiness`, local only; not pushed, not deployed)
 
 **Branch/commit:** `release-readiness` in `~/dev/testflowai` (from `main` + the three local doc commits): `5ab2e2a` docs,
