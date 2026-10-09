@@ -12,6 +12,38 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - PR #1 merged into `main` (merge commit `95da669`); staging deployment NOT performed
+
+**Merge:** PR #1 (`next15-upgrade`) merged with a **merge commit**, SHA `95da6696681449b4a22e4408b29edf24f98d0954`, on the Product
+Owner's approval. Pre-merge checks: PR head `5f4cef2`, all four CI checks green (backend, frontend, e2e, security-audit), PR
+mergeable/clean, `main` still at `453f3ca`, 18 commits / 59 files, only expected areas changed (the single backend non-test file
+is `backend/vitest.config.ts`; no migrations, no backend `src`, no `render.yaml` change).
+
+**Render auto-deploy - verified this time with the Render CLI** (after the Product Owner ran `render login`): `testflow-backend`
+(srv-dakmr89594qs73fi0eu0) and `testflow-frontend` (srv-dakmr89594qs73fi0eug) both report `autoDeployTrigger = off`, branch `main`.
+After the merge, Render's deploy list and GitHub's deployment records show **no new deployment**: both services' live deploy is
+still `453f3ca` (2026-10-08 13:48Z), previous `20b02d6`. This also confirms the running build SHA for the first time. Live
+`/health` -> `{"status":"ok"}` (200), frontend `/login` 200 (checked after the merge; the first check hit a free-tier cold start).
+
+**Local clones:** `~/dev/testflowai` (active clone): `main` fast-forwarded to `95da669` (0 ahead / 0 behind); worktree
+`~/dev/testflowai-next15` still on `next15-upgrade`. **`~/Documents/.../testflow ai` (old, iCloud-synced clone): NOT synced** -
+its fetch completed (`origin/main` = `95da669`) but the fast-forward stalled on that slow folder and left a stale
+`.git/index.lock`; HEAD is still `5ab2e2a` with a clean tree. Removing the lock and fast-forwarding needs approval. The backup
+stash (`pre-sync PROJECT_STATUS local entry`) is untouched. This status entry is committed on the local branch
+`docs/post-merge-status` (not pushed).
+
+**Tests:** none run in this step (merge/sync/docs only). Last evidence: CI green on `5f4cef2`; local backend 140/140 (22
+consecutive), frontend 111/111, E2E 27/27.
+
+**Deployment:** none; no Render setting, environment variable or production data was changed or migrated. A staging deployment
+checklist was added to `docs/technical/deployment.md` and awaits approval.
+
+**Blockers:** Product Owner approval to deploy staging; approval to clear the Documents clone's lock. **Next three tasks:** (1) approve
+and run the staging deployment checklist (manual deploy, backend first); (2) sync the Documents clone or retire it; (3) decide on the
+deferred upgrades (vitest 5, `@typescript-eslint` 8, Next 16) and frontend security headers.
+
+---
+
 ### 2026-10-09 - Integration: `next15-upgrade` pushed, PR #1 opened, first GitHub Actions run green (not merged, not deployed)
 
 **Branch/commit:** `next15-upgrade` pushed to `origin` (HEAD `f846af4` at push time); PR #1 into `main`:

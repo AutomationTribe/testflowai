@@ -86,3 +86,32 @@ See `render.yaml` for the full list per service. Values marked `sync: false` mus
 
 - `E2E_FAKE_PAYMENTS` / `NEXT_PUBLIC_E2E_FAKE_PAYMENTS` are pinned to `false` in `render.yaml` and are also independently double-gated in code (`backend/src/app.ts` only mounts the test-support router when `env.e2eFakePayments && !isProduction` — `NODE_ENV=production` alone is enough to block it even if the flag were ever mistakenly set true).
 - `backend/.env.example` / `frontend/.env.example` document every variable's purpose without real values.
+
+## Staging release checklist (manual deploy; Auto-Deploy is Off for both services)
+
+Render auto-deploy is disabled (`autoDeployTrigger = off`, verified with the Render CLI on 2026-10-09), so merging to `main`
+does not deploy. A deployment is a separate, explicitly approved action. Last deployed commit: `453f3ca`.
+
+**Before** (no step changes anything):
+1. Confirm the commit to deploy is on `main` and its GitHub Actions run is green; note the commit SHA.
+2. Read-only environment check in the Render dashboard (names only; never paste values): backend `NODE_ENV=production`,
+   `DATABASE_URL`, `CORS_ORIGIN` (= the frontend URL), `PAYSTACK_SECRET_KEY`, `RESEND_API_KEY`, `EMAIL_FROM_ADDRESS`,
+   `E2E_FAKE_PAYMENTS=false`, `SWAGGER_UI_ENABLED` unset or false; frontend `NEXT_PUBLIC_API_BASE_URL` (= the backend URL),
+   `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`, `NEXT_PUBLIC_E2E_FAKE_PAYMENTS=false`. `NEXT_PUBLIC_*` values are baked in at build time.
+3. Migrations: `npm run migrate` runs on every backend boot and is idempotent. Check `git diff <live>..<new> -- testflow-ai/backend/migrations`;
+   if it is empty (true for `453f3ca`..`95da669`), the boot-time migration is a no-op. If not, take a Neon snapshot/branch first.
+4. Rollback target: note the live deploy ids/commits (`render deploys list <service-id>`); the previous live commit is the rollback.
+
+**Deploy** (manual, with approval): backend first, wait for `/health`; then frontend (it must rebuild). Do not change variables during
+the deploy.
+
+**After** (smoke): backend `GET /health` -> `{"status":"ok"}`; frontend `/login` and `/signup` return 200; sign in as a test
+organisation; **Projects:** create a project (name only, then with a description), see it in the list with its code, search by
+name and by project code, status tabs/counts, QA-configuration filter, pagination (Next/Previous, rows per page), empty state in a
+fresh organisation, and 404 (not 403) when opening another organisation's project URL. No console errors; no E2E fake-payment path
+reachable (`POST /v1/test-support/simulate-payment` returns 404, not 401).
+
+**Rollback:** in the Render dashboard redeploy the previous live commit for each service (frontend and backend independently), or
+revert the merge commit on `main` via a new PR and deploy that. Migrations are forward-only: schema changes are not rolled back by
+a code rollback (this release adds none). Verify `/health` and the smoke steps again afterwards.
+
