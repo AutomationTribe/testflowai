@@ -21,7 +21,12 @@ export default async function setup(): Promise<() => Promise<void>> {
     const exists = await client.query('SELECT 1 FROM pg_database WHERE datname = $1', [databaseName]);
     if (exists.rowCount === 0) {
       // The name is validated against /^[a-z][a-z0-9_]*_test$/, so quoting it is safe.
-      await client.query(`CREATE DATABASE "${databaseName}"`);
+      try {
+        await client.query(`CREATE DATABASE "${databaseName}"`);
+      } catch (error) {
+        // 42P04 = duplicate_database: another first run created it between the check and here.
+        if ((error as { code?: string }).code !== '42P04') throw error;
+      }
     }
   } finally {
     await client.end();

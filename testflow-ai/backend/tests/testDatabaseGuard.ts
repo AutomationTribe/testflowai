@@ -37,6 +37,15 @@ export function assertSafeTestDatabase(connectionString: string | undefined): Te
     throw new Error('Refusing to run destructive test operations: the database URL cannot be parsed.');
   }
 
+  if (url.protocol !== 'postgres:' && url.protocol !== 'postgresql:') {
+    throw new Error('Refusing to run destructive test operations: the database URL must use postgres:// or postgresql://.');
+  }
+  // `pg` lets query parameters (?host=..., ?port=...) override the host in the URL, which this guard
+  // does not see. A test database URL never needs a query string, so reject any.
+  if (url.search) {
+    throw new Error('Refusing to run destructive test operations: the database URL must not contain a query string.');
+  }
+
   const host = url.hostname.toLowerCase();
   if (!LOCAL_HOSTS.has(host)) {
     throw new Error(`Refusing to run destructive test operations against non-local host "${host}".`);

@@ -4,7 +4,8 @@ import { assertSafeTestDatabase, DEFAULT_TEST_DATABASE_URL } from './testDatabas
 describe('assertSafeTestDatabase', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = originalNodeEnv;
   });
 
   it('accepts a local database whose name ends in _test', () => {
@@ -33,6 +34,21 @@ describe('assertSafeTestDatabase', () => {
   it('is not fooled by a *_test name placed in the query string or userinfo', () => {
     expect(() => assertSafeTestDatabase('postgres://localhost/testflow?dbname=x_test')).toThrow(/Refusing/);
     expect(() => assertSafeTestDatabase('postgres://x_test@localhost/testflow')).toThrow(/Refusing/);
+  });
+
+  it('refuses a query string, because pg lets ?host= override the host the guard checked', () => {
+    expect(() => assertSafeTestDatabase('postgres://u:p@localhost/x_test?host=evil.example')).toThrow(/query string/);
+    expect(() => assertSafeTestDatabase('postgres://u:p@localhost/x_test?host=/var/run/postgresql')).toThrow(/query string/);
+    expect(() => assertSafeTestDatabase('postgres:///x_test?host=evil.example')).toThrow(/Refusing/);
+    expect(() => assertSafeTestDatabase('postgres://u:p@localhost/x_test?sslmode=disable')).toThrow(/query string/);
+  });
+
+  it('accepts the postgresql:// scheme and refuses other schemes and look-alike hosts', () => {
+    expect(assertSafeTestDatabase('postgresql://u:p@localhost:5432/x_test').databaseName).toBe('x_test');
+    expect(() => assertSafeTestDatabase('mysql://u:p@localhost/x_test')).toThrow(/postgres:\/\//);
+    expect(() => assertSafeTestDatabase('postgres://u:p@localhost./x_test')).toThrow(/non-local host/);
+    expect(() => assertSafeTestDatabase('postgres://u:p@127.1/x_test')).toThrow(/non-local host/);
+    expect(() => assertSafeTestDatabase('postgres://u:p@0.0.0.0/x_test')).toThrow(/non-local host/);
   });
 
   it('refuses in production mode, even for a valid test database', () => {
