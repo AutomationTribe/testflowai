@@ -30,6 +30,12 @@ export function assertSafeTestDatabase(connectionString: string | undefined): Te
     throw new Error('Refusing to run destructive test operations: NODE_ENV is "production".');
   }
 
+  // `new URL()` silently trims surrounding whitespace; pg's parser does not, so a padded string could be
+  // validated as one thing and used as another.
+  if (connectionString !== connectionString.trim()) {
+    throw new Error('Refusing to run destructive test operations: the database URL has leading or trailing whitespace.');
+  }
+
   let url: URL;
   try {
     url = new URL(connectionString);
