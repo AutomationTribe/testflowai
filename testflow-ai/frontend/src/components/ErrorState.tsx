@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 /** One restrained error-state component (Step 10) — reused for network/unauthorized/server-error states. */
 export function ErrorState({
   title = 'Something went wrong',

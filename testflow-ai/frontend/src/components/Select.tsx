@@ -1,6 +1,6 @@
 'use client';
 
-import type { SelectHTMLAttributes } from 'react';
+import type { SelectHTMLAttributes, JSX } from 'react';
 
 export function Select(props: SelectHTMLAttributes<HTMLSelectElement>): JSX.Element {
   return (

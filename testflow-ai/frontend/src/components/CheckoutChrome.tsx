@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 /**
  * Shared Checkout "chrome" (§23; visual reference: checkout.png) — the failure
  * banner and Order Summary column are identical whether the payment column is

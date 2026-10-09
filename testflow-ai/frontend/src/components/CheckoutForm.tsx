@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type JSX } from 'react';
 import { payWithPaystack } from '@/lib/paystackClient';
 import { Button } from './Button';
 import { formatUsd, OrderSummary, PaymentFailureBanner } from './CheckoutChrome';

@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ReactNode, JSX } from 'react';
 import { Hanken_Grotesk } from 'next/font/google';
 import { SessionProvider } from '@/lib/SessionProvider';
 import '../styles/tokens.css';

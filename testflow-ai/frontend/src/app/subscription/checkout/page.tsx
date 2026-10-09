@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type JSX } from 'react';
 import { CheckoutForm } from '@/components/CheckoutForm';
 import { ErrorState } from '@/components/ErrorState';
 import { FakeCheckoutForm } from '@/components/FakeCheckoutForm';

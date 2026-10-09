@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { Icon, type IconName } from './Icon';
 import { useSession } from '@/lib/SessionProvider';
 

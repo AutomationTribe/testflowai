@@ -1,6 +1,6 @@
 'use client';
 
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, JSX } from 'react';
 
 type Variant = 'primary' | 'secondary';
 

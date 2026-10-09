@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { ErrorState } from '@/components/ErrorState';

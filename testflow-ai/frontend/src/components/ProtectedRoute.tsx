@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ReactNode, type JSX } from 'react';
 import { useSession } from '@/lib/SessionProvider';
 
 /**

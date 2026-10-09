@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, type JSX } from 'react';
 import { useSession } from '@/lib/SessionProvider';
 
 /** Root route: send the user to the right place once session/subscription status is known. */

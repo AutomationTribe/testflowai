@@ -1,5 +1,6 @@
 'use client';
 
+import type { JSX } from 'react';
 type Tone = 'neutral' | 'success' | 'danger' | 'info';
 
 const TONE_STYLES: Record<Tone, React.CSSProperties> = {

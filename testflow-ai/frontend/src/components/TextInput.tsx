@@ -1,6 +1,6 @@
 'use client';
 
-import type { InputHTMLAttributes } from 'react';
+import type { InputHTMLAttributes, JSX } from 'react';
 
 export function TextInput(props: InputHTMLAttributes<HTMLInputElement>): JSX.Element {
   return (

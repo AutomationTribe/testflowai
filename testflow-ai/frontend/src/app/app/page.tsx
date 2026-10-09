@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { ErrorState } from '@/components/ErrorState';
 import { ProtectedRoute } from '@/components/ProtectedRoute';

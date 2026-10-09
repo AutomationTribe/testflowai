@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent, type JSX } from 'react';
 import { ApiError, apiClient, type Project, type QaConfigurationVersion } from '@/lib/apiClient';
 import { Button } from '../Button';
 import { Icon } from '../Icon';
