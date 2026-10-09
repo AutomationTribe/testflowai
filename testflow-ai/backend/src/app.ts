@@ -2,9 +2,12 @@ import cors from 'cors';
 import express, { type Express } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import { env, isProduction } from './config/env.js';
+import { isTrustedOrigin } from './lib/origin.js';
 import { loadOpenApiSpec } from './lib/openapi.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { requireTrustedOrigin } from './middleware/originCheck.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { noStore, securityHeaders } from './middleware/securityHeaders.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { healthRouter } from './modules/health/health.routes.js';
 import { meRouter } from './modules/me/me.routes.js';
@@ -23,20 +26,13 @@ export function createApp(): Express {
   const app = express();
 
   app.disable('x-powered-by');
+  app.use(securityHeaders);
   app.use(
     cors({
-      // Production: exactly the one configured origin, no exceptions.
-      // Development: also accept any http(s)://localhost:<port> or 127.0.0.1:<port> —
-      // Next's dev server silently picks the next free port (3000 -> 3001 -> ...) when
-      // one is already taken, which previously required manually chasing CORS_ORIGIN
-      // every time that happened. env.corsOrigin is still respected first/always.
-      origin: isProduction
-        ? env.corsOrigin
-        : (origin, callback) => {
-            const isConfiguredOrigin = origin === env.corsOrigin;
-            const isLocalDevOrigin = origin !== undefined && /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin);
-            callback(null, !origin || isConfiguredOrigin || isLocalDevOrigin);
-          },
+      // One shared predicate (lib/origin.ts) decides which origins may read credentialed responses and,
+      // separately, which may change state (middleware/originCheck.ts). Requests without an Origin header
+      // are not browser cross-origin requests and are let through here.
+      origin: (origin, callback) => callback(null, !origin || isTrustedOrigin(origin)),
       credentials: true,
     }),
   );
@@ -60,6 +56,11 @@ export function createApp(): Express {
   // the request stream; applying express.raw() any more broadly than this one path
   // would starve every other route's express.json() parser downstream).
   app.use('/v1/webhooks/payments', express.raw({ type: 'application/json' }), webhookRouter);
+
+  // CSRF defence for state-changing /v1 requests and `Cache-Control: no-store` for every API response.
+  // Placed after the Paystack webhook (a server-to-server call with no Origin, verified by signature) and
+  // before the body parser, so a forged cross-site request is refused before its body is even read.
+  app.use('/v1', noStore, requireTrustedOrigin);
 
   app.use(express.json());
 

@@ -13,6 +13,12 @@ info:
     see its own module doc and the QA Setup slice report for what's deferred). This file
     is the machine-readable contract; those documents remain the narrative source of
     truth — keep both in sync when an endpoint changes.
+
+    Cross-cutting behaviour for every /v1 endpoint (not repeated per operation): every response carries
+    `Cache-Control: no-store`; every state-changing request is subject to the Origin allow-list and may be refused with
+    403 `forbidden_origin` (components/responses/ForbiddenOrigin; APID-022, TD-011); all responses carry baseline security headers
+    (`X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`,
+    `X-Frame-Options: DENY`, and `Strict-Transport-Security` in production).
 servers:
   - url: /v1
     description: All product API paths are prefixed /v1 (APID-001). /health is unversioned infra.
@@ -698,7 +704,7 @@ components:
       type: object
       description: Shared error envelope (APID-007) used by every endpoint.
       properties:
-        error: { type: string, description: 'Stable machine-readable error code, e.g. validation_error, unauthorized, forbidden, not_found, conflict, rate_limited, payment_required, subscription_required.' }
+        error: { type: string, description: 'Stable machine-readable error code, e.g. validation_error, unauthorized, forbidden, forbidden_origin, not_found, conflict, rate_limited, payment_required, subscription_required.' }
         message: { type: string }
         fields:
           type: object
@@ -717,6 +723,15 @@ components:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
     Forbidden:
       description: Authenticated, but role does not permit this action.
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+    ForbiddenOrigin:
+      description: >
+        A state-changing request (any method except GET/HEAD/OPTIONS) to any /v1 path came from an origin that is not the
+        trusted frontend, or from the literal origin "null", or carried `Sec-Fetch-Site: cross-site` / an untrusted `Referer`
+        without an `Origin` header. Error code `forbidden_origin`. Requests with no `Origin`, `Referer` or cross-site marker
+        (server-to-server clients, curl) are not affected. Returned before the route is resolved and before the body is parsed.
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorEnvelope' }
