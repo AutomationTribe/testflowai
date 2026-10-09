@@ -26,6 +26,11 @@ describe('isTrustedOrigin — production', () => {
     expect(isTrustedOrigin('https://testflow-frontend.onrender.com/')).toBe(false);
   });
 
+  it('matches a mixed-case CORS_ORIGIN against the lower-case origin browsers send', async () => {
+    const { isTrustedOrigin } = await loadOrigin('production', 'https://TestFlow-Frontend.onrender.com');
+    expect(isTrustedOrigin('https://testflow-frontend.onrender.com')).toBe(true);
+  });
+
   it.each([
     'https://evil.example',
     'null',

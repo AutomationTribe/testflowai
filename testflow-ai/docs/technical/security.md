@@ -30,6 +30,9 @@ production/test isolation, OWASP risks generally).
   `forbidden_origin`. A request with no `Origin` is allowed only if nothing marks it as browser cross-site traffic
   (`Sec-Fetch-Site: cross-site` or an untrusted `Referer` are refused) — server-to-server clients and the Paystack
   webhook are unaffected. Reads are protected by CORS.
+  The development relaxation (any `http(s)://localhost|127.0.0.1:<port>` origin) applies whenever `NODE_ENV` is not
+  `production`, so **every deployed environment must run with `NODE_ENV=production`** (staging and production both do:
+  `render.yaml`).
 - **API response headers**: `nosniff`, `Referrer-Policy: no-referrer`, CSP `default-src 'none'; frame-ancestors 'none'`,
   `X-Frame-Options: DENY`, HSTS (production, short max-age), and `Cache-Control: no-store` on all `/v1` responses
   (`backend/src/middleware/securityHeaders.ts`). Frontend headers/CSP are not implemented yet (see

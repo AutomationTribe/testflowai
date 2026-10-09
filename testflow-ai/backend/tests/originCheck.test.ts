@@ -109,6 +109,47 @@ describe('Origin allow-list on state-changing /v1 requests', () => {
     });
   });
 
+  describe('bypass attempts that must stay refused (regression guards)', () => {
+    it.each([
+      ['a multi-valued Origin (trusted, evil)', `${FRONTEND}, ${EVIL}`],
+      ['a multi-valued Origin (evil, trusted)', `${EVIL}, ${FRONTEND}`],
+      ['the trusted origin with a trailing slash', `${FRONTEND}/`],
+      ['the trusted origin with a path', `${FRONTEND}/projects`],
+      ['userinfo in front of the evil host', 'http://localhost:3000@evil.example'],
+      ['a look-alike suffix host', 'http://localhost:3000.evil.example'],
+      ['an empty Origin', ''],
+    ])('refuses %s', async (_label, origin) => {
+      const { cookie } = await signUp();
+      const res = await request(baseUrl).post('/v1/auth/logout').set('Cookie', cookie).set('Origin', origin);
+      expect(res.status).toBe(403);
+      expect((await request(baseUrl).get('/v1/me').set('Cookie', cookie)).status).toBe(200); // session untouched
+    });
+
+    it.each([
+      ['userinfo in front of the evil host', 'http://localhost:3000@evil.example/'],
+      ['the trusted origin used only as a path', `${EVIL}/${FRONTEND}`],
+      ['an unrelated host', 'https://evil.example/x'],
+    ])('refuses a Referer with %s (no Origin)', async (_label, referer) => {
+      const { cookie } = await signUp();
+      expect((await request(baseUrl).post('/v1/auth/logout').set('Cookie', cookie).set('Referer', referer)).status).toBe(403);
+    });
+
+    it('refuses a forged request whatever the casing of the /v1 prefix (routing is case-insensitive, the check must be too)', async () => {
+      const res = await request(baseUrl).post('/V1/auth/logout').set('Origin', EVIL);
+      expect(res.status).toBe(403);
+    });
+
+    it('does not let the webhook prefix carry other routes or methods past the check', async () => {
+      expect((await request(baseUrl).post('/v1/webhooks/payments/anything').set('Origin', EVIL)).status).toBe(403);
+      expect((await request(baseUrl).put('/v1/webhooks/payments').set('Origin', EVIL)).status).toBe(403);
+    });
+
+    it('ignores method-override headers: the real method is what is checked', async () => {
+      const res = await request(baseUrl).get('/v1/me').set('X-HTTP-Method-Override', 'POST').set('Origin', EVIL);
+      expect(res.status).toBe(401); // still a GET: no origin check, no state change, normal auth answer
+    });
+  });
+
   describe('requests WITHOUT an Origin header (explicit handling)', () => {
     it('are allowed when nothing marks them as browser cross-site traffic (server-to-server, curl, Playwright API context)', async () => {
       const { cookie } = await signUp(); // signup itself had no Origin and succeeded
@@ -169,6 +210,15 @@ describe('Origin allow-list on state-changing /v1 requests', () => {
     it('the Paystack webhook (server-to-server, outside the /v1 origin check) is unaffected', async () => {
       const res = await request(baseUrl).post('/v1/webhooks/payments').set('Content-Type', 'application/json').send('{}');
       expect(res.status).not.toBe(403); // rejected (if at all) by its own signature check, not by the origin check
+    });
+  });
+
+  describe('Cache-Control on every /v1 response', () => {
+    it('is no-store on a CORS preflight and on the webhook response too', async () => {
+      const preflight = await request(baseUrl).options('/v1/auth/logout').set('Origin', FRONTEND).set('Access-Control-Request-Method', 'POST');
+      expect(preflight.headers['cache-control']).toBe('no-store');
+      const webhook = await request(baseUrl).post('/v1/webhooks/payments').set('Content-Type', 'application/json').send('{}');
+      expect(webhook.headers['cache-control']).toBe('no-store');
     });
   });
 

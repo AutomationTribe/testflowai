@@ -27,6 +27,8 @@ export function createApp(): Express {
 
   app.disable('x-powered-by');
   app.use(securityHeaders);
+  // Every /v1 response is uncacheable, including CORS preflights and the webhook (which are answered before the Origin check below).
+  app.use('/v1', noStore);
   app.use(
     cors({
       // One shared predicate (lib/origin.ts) decides which origins may read credentialed responses and,
@@ -60,7 +62,7 @@ export function createApp(): Express {
   // CSRF defence for state-changing /v1 requests and `Cache-Control: no-store` for every API response.
   // Placed after the Paystack webhook (a server-to-server call with no Origin, verified by signature) and
   // before the body parser, so a forged cross-site request is refused before its body is even read.
-  app.use('/v1', noStore, requireTrustedOrigin);
+  app.use('/v1', requireTrustedOrigin);
 
   app.use(express.json());
 

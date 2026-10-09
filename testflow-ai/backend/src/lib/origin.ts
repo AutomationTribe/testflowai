@@ -14,7 +14,8 @@ import { env, isProduction } from '../config/env.js';
 const LOCAL_DEV_ORIGIN = /^https?:\/\/(localhost|127\.0\.0\.1):\d+$/;
 
 function configuredOrigin(): string {
-  return env.corsOrigin.replace(/\/+$/, '');
+  // Browsers send lower-case scheme and host, so compare in lower case (a mixed-case CORS_ORIGIN would otherwise never match).
+  return env.corsOrigin.replace(/\/+$/, '').toLowerCase();
 }
 
 /** True for an Origin header value that is a trusted frontend. Browsers send Origin without a path or trailing slash. */
