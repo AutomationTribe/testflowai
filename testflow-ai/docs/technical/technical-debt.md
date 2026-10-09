@@ -189,7 +189,7 @@ timeout reachable as an error. Pre-existing; applies to every authenticated rout
 
 ---
 
-## TD-011 — No Origin check on state-changing requests (CSRF defence in depth) — IMPLEMENTED on branch `security/origin-check-and-headers` (pending merge and staging deploy)
+## TD-011 — No Origin check on state-changing requests (CSRF defence in depth) — RESOLVED 2026-10-09 (merged `9f7a910`; backend deployed to staging `dep-db4mnqrtqb8s7397hdp0`)
 
 **What:** Production sessions use a `SameSite=None; Secure; HttpOnly` cookie (documented,
 `docs/technical/security.md`) with no Origin/Referer allow-list or CSRF token. For the Projects
