@@ -12,6 +12,47 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Release-readiness remediation (branch `release-readiness`, local only; not pushed, not deployed)
+
+**Branch/commit:** `release-readiness` in `~/dev/testflowai` (from `main` + the three local doc commits): `5ab2e2a` docs,
+`d3ad6a3` CI move + test diagnostic, `c3cc5ed` CI fixes + lockfile security updates. Nothing pushed; Render
+auto-deploy is still ON (Phase 1 blocked, see below).
+
+**Phase 1 - Render auto-deploy: NOT DONE.** CLI token expired (`render login` needs the Product Owner's browser). No
+Render setting or `render.yaml` change was made. **Do not push until both services show Auto-Deploy = Off.**
+
+**Phase 2 - CI:** `.github/workflows/ci.yml` moved to the repository root (it was at `testflow-ai/.github/`, so GitHub
+ran nothing: 0 workflows/0 runs). Inner paths were already `testflow-ai/`-relative. Independent `reviewer`: PASS WITH
+CHANGES; fixed the MEDIUM (e2e CI now emits the HTML report the upload step expects), added `permissions: contents:
+read`, corrected the README; re-review of the fixes and the lockfile-only dependency change: **PASS**. YAML parses; actionlint unavailable; **the workflow has not run on GitHub yet.**
+
+**Phase 3 - flaky backend test:** root cause NOT proven. Intermittent failures seen: 3 of 21 full backend runs (2x
+`qaConfiguration` "Controlled", 1x `bruteForce`), 18 clean (incl. 3 under CPU stress, 3 on fresh databases, 5 in a row
+at the end). `backend-reviewer` reproduced the exact symptom (signup 500 -> no Set-Cookie -> `TypeError ... '0'`) when two
+test processes share one database (tests TRUNCATE the whole DB; all use `admin@example.com`), the leading hypothesis
+(H1); whether that caused the original failures is unverified. Change made: the helper now fails with signup status/body.
+**Proposed, needs approval:** run backend tests on a dedicated guarded test database (changes CI env and local setup).
+
+**Phase 4 - security (agent `security`, dependency posture): SECURITY STATUS FAIL.** Production-path: `next@14.2.35`
+(critical per audit; no 14.x fix, fixes need 15.5.27+/16; reachable risk is mostly DoS/cache issues, no tenant-data path
+found; AVIF image-optimizer RCE judged unlikely, not tested) and `proxy-addr` (not reachable: no `trust proxy`/`req.ip`).
+Everything else is dev/build-only. Applied (lockfile only): proxy-addr 2.0.8, source-map-js 1.2.2, brace-expansion
+1.1.21/2.1.7, postcss 8.5.29. Audit now: backend 2 critical/10 high (was 3/12), frontend 3 critical/14 high (was 3/16),
+e2e 0. **Major upgrades NOT applied, need separate approval + a decision record:** next 15.5.27+, vitest 4+,
+@typescript-eslint 8, eslint-config-next.
+
+**Tests actually run after the changes (clone `~/dev/testflowai`, local Postgres, throwaway DB):** typecheck OK; lint OK
+(backend, frontend); frontend 111/111; backend 125/125 in the final consecutive runs (one earlier post-update run had the
+known `bruteForce` flake, 124/125, that file passes 3/3 alone); Playwright E2E (`CI=true`, flows A-I) **27/27**.
+`scripts/validate.py` result recorded below.
+
+**Blockers:** Render auto-deploy still ON; Next.js critical advisory unresolved pending upgrade decision; CI unproven on
+GitHub; flaky-test root cause unproven. **Next three tasks:** (1) Product Owner: `render login` / disable auto-deploy for
+both services; (2) decide on the Next 15 upgrade and the dedicated test database; (3) push `release-readiness` only after
+(1), then confirm the first GitHub Actions run.
+
+---
+
 ### 2026-10-08 - Synchronised local `main` with GitHub `main` @ `453f3ca` (no product code changed)
 
 **Branch/commit:** `main` fast-forwarded `5e3f47a` -> `453f3ca` (`git merge --ff-only`; no reset, rebase,
