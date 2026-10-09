@@ -175,7 +175,9 @@ npm run lint
 
 ## CI
 
-`.github/workflows/ci.yml` runs three jobs on every push/PR to `main`: `backend`
+`.github/workflows/ci.yml` runs four jobs on every push/PR to `main` (the file lives at the repository root, which is where GitHub
+reads workflows from): `backend`
 (typecheck, lint, migrate, unit/integration tests), `frontend` (typecheck, lint, unit
 tests), and `e2e` (the full Playwright suite against a dedicated Postgres service
-container, uploading the HTML report as a build artifact on failure).
+container, uploading the HTML report as a build artifact on failure), and `security-audit` (`npm audit`,
+non-blocking).
