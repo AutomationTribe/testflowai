@@ -90,7 +90,8 @@ See `render.yaml` for the full list per service. Values marked `sync: false` mus
 ## Staging release checklist (manual deploy; Auto-Deploy is Off for both services)
 
 Render auto-deploy is disabled (`autoDeployTrigger = off`, verified with the Render CLI on 2026-10-09), so merging to `main`
-does not deploy. A deployment is a separate, explicitly approved action. Last deployed commit: `453f3ca`.
+does not deploy. A deployment is a separate, explicitly approved action. Last deployed commit: `95da669` (staging, 2026-10-09;
+previous `453f3ca`, kept as the rollback target). Deploy with `render deploys create <service-id> --commit <sha> --wait` (backend first).
 
 **Before** (no step changes anything):
 1. Confirm the commit to deploy is on `main` and its GitHub Actions run is green; note the commit SHA.
