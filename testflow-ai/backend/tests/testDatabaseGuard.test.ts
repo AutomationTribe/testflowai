@@ -51,6 +51,11 @@ describe('assertSafeTestDatabase', () => {
     expect(() => assertSafeTestDatabase('postgres://u:p@0.0.0.0/x_test')).toThrow(/non-local host/);
   });
 
+  it('refuses a URL padded with whitespace, which new URL() trims but pg does not', () => {
+    expect(() => assertSafeTestDatabase(` ${DEFAULT_TEST_DATABASE_URL}`)).toThrow(/whitespace/);
+    expect(() => assertSafeTestDatabase(`${DEFAULT_TEST_DATABASE_URL}\n`)).toThrow(/whitespace/);
+  });
+
   it('refuses in production mode, even for a valid test database', () => {
     process.env.NODE_ENV = 'production';
     expect(() => assertSafeTestDatabase(DEFAULT_TEST_DATABASE_URL)).toThrow(/production/);
