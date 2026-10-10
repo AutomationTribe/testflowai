@@ -78,10 +78,10 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     the next three tasks. Never mark work "complete" there unless its tests were actually run
     in that session and passed; report untested work as untested. A Stop hook enforces this by
     blocking when the repo changed without this file being part of that change — do not weaken
-    or bypass that hook instead of actually updating the file. PROJECT_STATUS.md is the concise
-    handoff/state record — it does not replace product requirements, architecture docs, ADRs,
-    API specs, database docs, or product decisions; consult those alongside it before planning
-    new work.
+    or bypass that hook instead of actually updating the file. PROJECT_STATUS.md is the historical
+    progress log (docs/HANDOFF.md is the current restart guide, rule 32; it does not replace the
+    log). Neither replaces product requirements, architecture docs, ADRs, API specs, database
+    docs, or product decisions; consult those alongside them before planning new work.
 23. Frontend and Backend implementation agents (.claude/agents/frontend.md, .claude/agents/backend.md)
     must never self-certify their own work as correct or complete — that determination belongs to the
     independent specialist reviewers: the backend-reviewer for backend work, the frontend-reviewer for
@@ -145,3 +145,31 @@ Rules for AI-assisted work on the TestFlow AI project. Framework version: **1.1*
     in the addendum below the marker, project configuration in docs/framework/PROJECT_PROFILE.md, and any
     deliberate deviation in the compatibility-exceptions table of ADOPTION_RECORD.md. Upgrades follow
     docs/framework/VERSIONING.md, forward-only.
+32. Session continuity and handoff (docs/framework/SESSION-CONTINUITY-AND-WORKSPACE.md, installed byte-for-byte
+    from the framework's `main` at 97800f8, a post-1.1.0 policy document; the recorded framework version stays 1.1.0
+    until an official new release). docs/HANDOFF.md is the current restart guide for Claude Code, independent of account
+    or conversation history; docs/PROJECT_STATUS.md remains the historical progress log and is not replaced.
+    - Update docs/HANDOFF.md after every substantial coding task, at the end of every active development day, and
+      BEFORE changing Claude accounts, ending a session, or approaching context/usage limits. Do not wait for a token
+      threshold: checkpoint proactively when a limit is foreseeable. Never claim the handoff was saved unless it was
+      written to disk. If a session is interrupted, reconstruct state from git and project files at the next start. Review
+      continuity weekly while development is active.
+    - Include: timestamp; repository and local workspace; branch and HEAD SHA; working tree, stash and untracked state;
+      active objective and slice; completed work and evidence; test commands and results; decisions and approvals;
+      blockers and risks; pending PRs and deployment state; the precise next three steps with commands and file paths;
+      any required human decision. Never include credentials, tokens, secret values or private customer data.
+    - At the start of a new session or Claude account, read CLAUDE.md, docs/HANDOFF.md, docs/PROJECT_STATUS.md,
+      docs/framework/PROJECT_PROFILE.md and git status/log; reconcile anything stale or contradictory with the repository
+      (and, for deployment state, with the live Render records) before changing anything. A different Claude account does
+      not remember earlier chats; per-folder Claude memory also does not follow a workspace move.
+    - A handoff update is a documentation operation, not permission to commit, push, merge or deploy; the approval gates
+      above still apply. If it cannot be committed, keep the local handoff current and report that it is uncommitted.
+33. Local, non-iCloud workspace (same policy document). On macOS iCloud Drive syncs Documents and Desktop on this machine
+    (verified 2026-10-10), so this project is developed ONLY from ~/dev/testflowai (repository root; the application is in
+    testflow-ai/). Start Claude Code and the editor from that path. Do not clone, install dependencies, build, run tests,
+    create databases or keep caches, containers' bind-mounted data or generated artifacts in iCloud Drive, Desktop,
+    Documents or any other cloud-synced folder; check a path is outside iCloud synchronisation before creating a workspace
+    or installing tools. The old clone at ~/Documents/Intello/Produts/testflow ai is iCloud-synced: make no new installs,
+    builds or test runs there; it is kept, untouched, together with its backup stash (`pre-sync PROJECT_STATUS local entry`)
+    until the Product Owner authorises retiring it; never delete or relocate files without that authorisation. Database data
+    lives in a Docker named volume (not a bind mount) and must stay that way.

@@ -29,6 +29,8 @@ Meanings: `docs/framework/POLICY.md` ("Project profiles"). The project's own rec
 | ADR directory | `docs/decisions/` (format: `docs/decisions/README.md`) |
 | Technical-debt register | `docs/technical/technical-debt.md` |
 | Status log | `docs/PROJECT_STATUS.md` |
+| Session handoff / current restart guide | `docs/HANDOFF.md` (CLAUDE.md rule 32; the status log above stays the historical record) |
+| Session-continuity and workspace policy | `docs/framework/SESSION-CONTINUITY-AND-WORKSPACE.md` (post-1.1.0 framework document; version stays 1.1.0) |
 | Testing strategy | `docs/technical/testing.md` |
 | Deployment | `docs/technical/deployment.md`, `render.yaml` |
 | Design tool and project | Google Stitch (project ID recorded in `docs/design/stitch-registry.md`) |
@@ -37,6 +39,14 @@ Meanings: `docs/framework/POLICY.md` ("Project profiles"). The project's own rec
 | Design handoffs | `docs/design/handoffs/` |
 | Design system / tokens | `docs/design/design-system.md`, `frontend/src/styles/tokens.css` |
 | Project-specific framework policy detail (pre-adoption record) | `docs/technical/engineering-framework.md` (retained; canonical policy is `docs/framework/POLICY.md`) |
+
+## Workspace (CLAUDE.md rule 33)
+
+| What | Value |
+|---|---|
+| Active, non-iCloud workspace | `~/dev/testflowai` (repository root; the application is in `testflow-ai/`). Start Claude Code and the editor here |
+| Not to be used for installs/builds/tests/databases | `~/Documents/Intello/Produts/testflow ai` (iCloud Documents sync is ON); retained untouched with its backup stash until the Product Owner authorises retiring it |
+| Database data | Docker **named volume** (`testflow_postgres_data`), never a bind mount into a synchronised folder |
 
 ## How things run (from the project root, `testflow-ai/`)
 
