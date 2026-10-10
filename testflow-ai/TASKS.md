@@ -48,6 +48,13 @@ Approved, completed:
       security PASS WITH WARNINGS. Deployed to staging (first at `5e3f47a`, 2026-10-07; GitHub deployment records show
       `453f3ca` as the latest successful deployment, 2026-10-08). TD-008 and TD-010 fixed afterwards (`ab7d06d`).
 
+- [x] **Security hardening — backend (APID-022, TD-011).** Origin allow-list for state-changing `/v1` requests, API security headers, `Cache-Control: no-store`.
+      Merged (`9f7a910`) and deployed to staging 2026-10-09 (backend `dep-db4mnqrtqb8s7397hdp0`); verified 34/34 on the live backend and in a real browser (6/6).
+      Independent reviews: backend-reviewer PASS, security PASS WITH WARNINGS, qa PASS. Frontend not part of this item.
+
+- [ ] **Security hardening — frontend headers and report-only CSP (AD-031).** Approved to start by the Product Owner 2026-10-09. Implemented on branch
+      `security/frontend-headers-csp`; in review; **not merged, not deployed**. Enforcing the CSP is a separate, later decision.
+
 Implemented and E2E-verified; Product Owner acceptance not recorded:
 
 - [x] **Slice 2 — Organisation QA Operating Model Setup.** "Set up your QA process" screen with four presets

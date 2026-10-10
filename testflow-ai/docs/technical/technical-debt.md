@@ -249,3 +249,18 @@ organisation) or enforce the check in the service, with a cross-tenant test.
   resolved it.
 - Do not add trivial cosmetic issues (naming nitpicks, minor formatting preferences) — this
   register is for things with a real, explainable impact and priority.
+
+---
+
+## TD-014 — Frontend CSP is report-only and allows `'unsafe-inline'`
+
+**Where:** `frontend/security-headers.js` (AD-031).
+
+**What:** The Content Security Policy is delivered as `Content-Security-Policy-Report-Only`, so it blocks nothing, and there is no report collector (new infrastructure
+needs a decision), so violations are only seen in browser consoles and in the E2E sweep. Scripts and styles allow `'unsafe-inline'` because Next 15 emits inline hydration
+scripts and the UI uses inline `style` props; a nonce-based policy needs middleware and dynamic rendering. The valid-card Paystack flow (test key), 3-D Secure and Apple/Google
+Pay were not exercised against the policy.
+
+**When to address:** after the headers are deployed to staging and the real Paystack test-key checkout and main journeys are exercised with zero violations: switch to the
+enforcing header (one-line change, separate approved change). Nonces / removing `'unsafe-inline'` is a later, separately decided item.
+

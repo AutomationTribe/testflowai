@@ -541,3 +541,19 @@ before its post-create reload) and were corrected without weakening assertions. 
 `eslint-config-next`) plus a postcss 8.4.31 copy bundled inside Next (build-time, first-party CSS only; cleared only by Next
 16). **Rollback:** revert the upgrade commit (`67c8147`) and restore the lockfile; the app has no data-format dependency on Next.
 
+---
+
+## AD-031 — Frontend Security Headers and Content Security Policy (report-only first)
+
+**Status:** Implemented on branch `security/frontend-headers-csp`; awaiting Product Owner merge/deploy approval. Approved to start by the Product Owner on 2026-10-09.
+
+**Context:** The Next.js frontend sent no security headers and no CSP (`security-remediation-plan.md` items 3-4). The app loads one third-party resource, Paystack Inline, and calls a cross-origin API with credentials.
+
+**Decision:** `frontend/next.config.js` sends, on every route, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Cross-Origin-Opener-Policy: same-origin-allow-popups`, `Strict-Transport-Security: max-age=300` (production), and removes `X-Powered-By`. A **`Content-Security-Policy-Report-Only`** header (not enforcing) allows `'self'`, the backend API origin from `NEXT_PUBLIC_API_BASE_URL`, `*.paystack.co` / `*.paystack.com`, `'unsafe-inline'` for scripts and styles (Next hydration scripts and inline style props; nonces are a later P2 item), `'unsafe-eval'` and websockets in development only, and forbids framing, plugins, foreign `base`/form targets. Headers are built by a tested pure module (`frontend/security-headers.js`).
+
+**Reason:** Cheap, reversible hardening with no product behaviour change. Report-only is mandatory first because the real Paystack flow (script, popup, wallets) could not be fully exercised without a test key and an enforcing CSP could silently break payments.
+
+**Alternatives Considered:** Enforcing CSP now (rejected: payment risk); nonce-based strict CSP (rejected for now: needs middleware and dynamic rendering, losing static optimisation, an ADR of its own); a `report-uri`/`report-to` collector (rejected: new infrastructure, CLAUDE.md rules 18/26); `payment=(self)` in Permissions-Policy (rejected: would block Paystack's iframe wallets); COEP/CORP (rejected: break the Paystack iframe).
+
+**Consequences:** Violations are observed in the browser console and by the E2E sweep. Enforcement is a separate, approved change (criteria in `frontend-security-headers.md`). `'unsafe-inline'` remains until nonces (TD-014). A frontend deploy is required for the headers to take effect.
+

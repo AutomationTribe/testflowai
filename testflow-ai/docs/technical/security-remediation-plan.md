@@ -4,6 +4,11 @@
 approval and the normal review gates. Verified by code reading and non-mutating requests (`curl -sI`, one forged-Origin preflight) against
 staging; no login, no POST.
 
+## Progress (updated 2026-10-10)
+- Items 1-2 (Origin allow-list, backend headers, no-store): **done**, merged `9f7a910`, backend deployed to staging 2026-10-09 (APID-022).
+- Items 3-4 (frontend baseline headers, CSP): **implemented, report-only**, on branch `security/frontend-headers-csp` (AD-031, `frontend-security-headers.md`); **not merged, not deployed**.
+- Items 5-8: not started.
+
 ## Current state (verified)
 - **Frontend** (`https://testflow-frontend.onrender.com`): no CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy,
   HSTS, COOP or CORP; sends `x-powered-by: Next.js`. `next.config.js` has only `reactStrictMode`.
