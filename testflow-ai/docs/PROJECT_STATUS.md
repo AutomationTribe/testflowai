@@ -12,6 +12,54 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-09 - Backend security update DEPLOYED to staging (`9f7a910`, backend only); PR #4 and PR #5 merged
+
+**Merges (merge commits, on the Product Owner's approval; both PRs had green CI, mergeable/clean, Render Auto-Deploy `off` verified first):**
+PR #4 (cleanup-SQL fix, docs) -> `3be326aeea655b10ce7ec43df524869ef5a9823b`; PR #5 (Origin allow-list, security headers, `no-store`; APID-022, TD-011) ->
+`9f7a9101942c7be8126ae22cdd02cbf95071ff8e`, which is the final `main` commit. **CI on `9f7a910` (GitHub Actions run 37999441661, push to `main`): backend,
+frontend, e2e, security-audit all success.** No deployment followed either merge.
+
+**Release gates (all passed):** diff `95da669..9f7a910` = four backend source files only (`app.ts`, `lib/origin.ts`, `middleware/originCheck.ts`,
+`middleware/securityHeaders.ts`) plus tests/docs: **no migrations, no frontend, no `render.yaml`, no dependency change**; Auto-Deploy `off` on both services;
+backend environment (names/non-secret values via the Render API, no secret printed): `NODE_ENV=production`, **`CORS_ORIGIN` equals the frontend URL exactly**
+(no trailing slash, lower case; the new Origin check depends on it), `E2E_FAKE_PAYMENTS=false`, `SWAGGER_UI_ENABLED` absent, `DATABASE_URL`, Paystack and Resend
+variables present and non-empty; rollback target = previous backend deploy `dep-db4h9lbbc2fs73bpo5kg` (`95da669`), then `dep-db3pufff3r2c7388ro7g` (`453f3ca`).
+
+**Deployment (manual, `render deploys create srv-dakmr89594qs73fi0eu0 --commit 9f7a910... --wait`):** backend deploy `dep-db4mnqrtqb8s7397hdp0`, commit `9f7a910`,
+status **live** (finished 2026-10-09 22:36Z); boot log `[migrate] up to date` (no migration applied) and `server_started` (production). **The frontend was NOT
+deployed**: still `dep-db4hahflk1mc7381mk40` on `95da669`. Auto-Deploy remains OFF on both services. No environment variable, schema or data change; nothing deleted.
+
+**Verification against the live staging backend (API level, 34/34 passed):** headers on `/health` (nosniff, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`,
+CSP `default-src 'none'; frame-ancestors 'none'`, HSTS `max-age=300`, no `X-Powered-By`); `/v1` responses `Cache-Control: no-store` (200/401/404/403 and preflight);
+`/docs` and `/v1/test-support/*` -> 404. **CSRF:** forged logout refused with `403 forbidden_origin` for `Origin: https://evil.example`, `Origin: null`,
+`Sec-Fetch-Site: cross-site` without Origin, `Referer: evil` without Origin, and a multi-valued Origin; forged QA publish (text body) and forged project create refused;
+forged trial refused **and the trial was not started** (state checked); victim sessions survived every forged logout. **Legitimate traffic:** signup, login and trial
+from the trusted frontend Origin work with `Access-Control-Allow-Origin` = frontend and credentials allowed; the same calls with no Origin (server-to-server) work;
+preflight from the frontend 204, from an evil origin no ACAO. **Authentication:** unauthenticated `/v1/me` and project list -> 401. **Projects API:** create (PRJ-001/002),
+list + counts, search, cursor pagination, organisation isolation (B reading/creating in A -> 404). **Paystack webhook compatibility:** `POST /v1/webhooks/payments`
+without a signature -> 400 "Missing signature."; bad signature -> 400 "Invalid signature."; with a foreign Origin still handled by its own signature check (400, not
+403). **Not verified:** a genuinely signed Paystack event (the signing secret was not used), so successful webhook processing is untested on staging; compatibility
+is inferred from unchanged rejection behaviour and the webhook being mounted ahead of the check.
+
+**Real-browser check (deployed frontend -> new backend, cross-origin with credentials): Playwright 6/6 passed** (sign-up + trial through the UI, UI login, empty state,
+create projects, 12-project pagination, search by name and code, filters, organisation isolation, hardening endpoints). Console/network: only the three expected
+`401 GET /v1/me` probes while signed out; **no 403/`forbidden_origin` reached the browser.** One earlier attempt failed on a `503` from the **frontend** `/login`:
+the free-tier frontend was waking from idle (its log shows a fresh start; the first retry took 20 s, then 200); unrelated to this release (frontend unchanged).
+Sign-up e-mails used Resend's test inbox (`delivered+...@resend.dev`), no real e-mail; no payment was exercised.
+
+**Staging data created by this verification (not deleted; cleanup still pending approval):** organisations `SEC VERIFY A/B/C 1791585416` and `UI SMOKE A/B 1791585522127`
+(and possibly a partial `UI SMOKE A 1791585476304` from the 503 attempt), in addition to the four organisations listed in `docs/technical/staging-smoke-cleanup.md`. That
+script matches exact names, so it must be extended with these before any cleanup run.
+
+**Local tests (before merge, on the PR head):** backend 204/204, frontend 111/111, typecheck/lint clean, validator 97/0; E2E 27/27 on `1f0743a` (me and QA), CI green on
+the final commit. **Remaining risks:** frontend still lacks security headers/CSP (plan P1); `SameSite=None` and third-party-cookie blocking remain until a shared parent domain;
+no-`Origin` requests are allowed by design; HSTS is only `max-age=300`; successful signed-webhook path untested on staging; staging smoke data accumulating;
+deferred upgrades (vitest 5, `@typescript-eslint` 8, Next 16). **Rollback if needed:** redeploy backend deploy `dep-db4h9lbbc2fs73bpo5kg` (`95da669`) from the Render
+dashboard or `render deploys create srv-dakmr89594qs73fi0eu0 --commit 95da669...`; this release has no schema change. **Next three tasks:** (1) Product Owner decides on the
+frontend headers/CSP slice; (2) decide on the staging data cleanup (extend the script first); (3) decide on the deferred upgrades.
+
+---
+
 ### 2026-10-09 - Security: Origin allow-list for state-changing requests + API security headers (PR #5, branch `security/origin-check-and-headers`; NOT merged, NOT deployed)
 
 **Merged earlier this session:** PR #3 (docs) as merge commit `53eb2556970e102017e64c21a338b634a3f4f08e`, after confirming head `a4cc24b` had four green checks and Render Auto-Deploy `off` on both services; no deployment followed (newest deploys on both services still `95da669`). Both local clones synchronised to `53eb255` by fast-forward (backup stash `pre-sync PROJECT_STATUS local entry` intact in the Documents clone).
