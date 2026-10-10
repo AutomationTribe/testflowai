@@ -89,7 +89,7 @@
 **Request:** Provider-defined payload (not a TestFlow-authored contract).
 **Successful Response:** `200 OK` (acknowledged).
 **Business Rules:** Must reconcile with the originating Payment record such that the system never ends up with a payment marked successful without corresponding seat activation, or vice versa (NFR-REL-003) — monitored per NFR-OBS-003.
-**Error Conditions:** Signature verification failure rejected outright.
+**Error Conditions:** Signature verification failure (400) rejected outright; a body that is not a Paystack event object (400). **Acknowledged with `200` and logged, never retried (TD-015):** event types TestFlow does not handle, signed events without a reference or data, `charge.success` for charges TestFlow did not create (no valid TestFlow metadata) or for an unknown organisation, malformed plan/seat/amount values, and duplicates (`duplicate: true`). `500` only for a genuine processing failure, after which nothing is committed. The confirmation e-mail is best effort and cannot fail the event.
 **Side Effects:** Updates Payment status; may activate a Seat Batch/Subscription if not already reflected.
 **Audit Behaviour:** Reasonable to log.
 **Security Considerations:** Must verify the webhook's authenticity (signature) before acting on it — this is the one endpoint in the entire API not authenticated via TestFlow's own session or link mechanism.

@@ -39,6 +39,7 @@ production/test isolation, OWASP risks generally).
 - **Frontend response headers** (AD-031, `frontend-security-headers.md`; implemented, **deploy pending approval**): `nosniff`, `X-Frame-Options: DENY`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (camera/microphone/geolocation off), COOP `same-origin-allow-popups`, HSTS (production, short
   max-age) and a **report-only** CSP (`Content-Security-Policy-Report-Only`) built in `frontend/security-headers.js`. The CSP is not enforced yet (TD-014).
+- **Paystack webhook** (AD-028, TD-015): authenticated only by a constant-time HMAC-SHA512 check of the raw body; malformed signatures get 400 without throwing. A validly signed event is never allowed to crash the process: unhandled or unattributable events are acknowledged (200) and logged, genuine failures are 500 with nothing committed, and the idempotency marker and payment writes are one transaction (no double payment on retry). Logs never contain the body, signature or e-mail address.
 - **Brute-force protection** (NFR-SEC-001): login locks out after 5 failed attempts within a
   rolling window, tracked server-side (`backend/src/lib/bruteForce.ts`).
 - **Payment authority** (NFR-REL-003): a paid subscription/seat batch is created *only* by the

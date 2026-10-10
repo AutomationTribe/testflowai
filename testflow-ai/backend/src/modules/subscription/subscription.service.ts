@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { pool } from '../../db/pool.js';
 import { HttpError } from '../../lib/httpError.js';
 import { enqueueEmailJob, processPendingJobs } from '../../lib/jobs.js';
@@ -132,12 +133,15 @@ export function calculateAmountCents(planType: 'monthly' | 'yearly', seatCount: 
   return seatCount * YEARLY_PRICE_CENTS_PER_SEAT_PER_MONTH * YEARLY_MONTHS;
 }
 
+/** Largest seat count one purchase may carry (also the largest the webhook accepts as a TestFlow-created charge). */
+export const MAX_SEATS_PER_PURCHASE = 1000;
+
 export function validateSeatCount(seatCount: unknown): number {
   if (typeof seatCount !== 'number' || !Number.isInteger(seatCount) || seatCount < 1) {
     throw HttpError.validation('Seat count must be a positive whole number.', { seatCount: 'Must be a positive integer.' });
   }
-  if (seatCount > 1000) {
-    throw HttpError.validation('Seat count is too large.', { seatCount: 'Must be 1000 or fewer per purchase.' });
+  if (seatCount > MAX_SEATS_PER_PURCHASE) {
+    throw HttpError.validation('Seat count is too large.', { seatCount: `Must be ${MAX_SEATS_PER_PURCHASE} or fewer per purchase.` });
   }
   return seatCount;
 }
@@ -148,54 +152,62 @@ export function validateSeatCount(seatCount: unknown): number {
  * activates/updates the Subscription. Only ever called after provider confirmation
  * (from the webhook handler) — never speculatively on the client's say-so.
  */
-export async function recordSuccessfulPayment(input: {
+export interface SuccessfulPaymentInput {
   organisationId: string;
   planType: 'monthly' | 'yearly';
   seatCount: number;
   amountCents: number;
-}): Promise<void> {
+}
+
+/**
+ * The three provider-confirmed writes (seat batch, payment, subscription), on a connection that is ALREADY inside a
+ * transaction owned by the caller. The webhook uses this so the idempotency marker and these writes commit or roll
+ * back together (a crash can neither lose a payment behind a marker nor record one twice).
+ */
+export async function applySuccessfulPayment(client: PoolClient, input: SuccessfulPaymentInput): Promise<void> {
+  const amount = (input.amountCents / 100).toFixed(2);
+  const renewsAt =
+    input.planType === 'yearly'
+      ? new Date(Date.now() + YEARLY_MONTHS * 30 * 24 * 60 * 60 * 1000) // PD-027: independent 12-month term per batch
+      : null;
+
+  const seatBatchResult = await client.query<{ id: string }>(
+    `INSERT INTO seat_batches (organisation_id, seat_count, plan_type_at_purchase, amount_charged, renews_at)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING id`,
+    [input.organisationId, input.seatCount, input.planType, amount, renewsAt],
+  );
+  const seatBatchId = seatBatchResult.rows[0]!.id;
+
+  await client.query(
+    `INSERT INTO payments (organisation_id, seat_batch_id, amount, plan_type, status)
+     VALUES ($1, $2, $3, $4, 'succeeded')`,
+    [input.organisationId, seatBatchId, amount, input.planType],
+  );
+
+  const existing = await client.query('SELECT id FROM subscriptions WHERE organisation_id = $1', [input.organisationId]);
+  if (existing.rows.length > 0) {
+    await client.query(
+      `UPDATE subscriptions SET plan_type = $2, status = 'active', grace_period_ends_at = NULL WHERE organisation_id = $1`,
+      [input.organisationId, input.planType],
+    );
+  } else {
+    await client.query(
+      `INSERT INTO subscriptions (organisation_id, plan_type, status, started_at) VALUES ($1, $2, 'active', now())`,
+      [input.organisationId, input.planType],
+    );
+  }
+}
+
+/** Same writes in their own transaction (used by the E2E-only simulate-payment path). */
+export async function recordSuccessfulPayment(input: SuccessfulPaymentInput): Promise<void> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-
-    const amount = (input.amountCents / 100).toFixed(2);
-    const renewsAt =
-      input.planType === 'yearly'
-        ? new Date(Date.now() + YEARLY_MONTHS * 30 * 24 * 60 * 60 * 1000) // PD-027: independent 12-month term per batch
-        : null;
-
-    const seatBatchResult = await client.query<{ id: string }>(
-      `INSERT INTO seat_batches (organisation_id, seat_count, plan_type_at_purchase, amount_charged, renews_at)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id`,
-      [input.organisationId, input.seatCount, input.planType, amount, renewsAt],
-    );
-    const seatBatchId = seatBatchResult.rows[0]!.id;
-
-    await client.query(
-      `INSERT INTO payments (organisation_id, seat_batch_id, amount, plan_type, status)
-       VALUES ($1, $2, $3, $4, 'succeeded')`,
-      [input.organisationId, seatBatchId, amount, input.planType],
-    );
-
-    const existing = await client.query('SELECT id FROM subscriptions WHERE organisation_id = $1', [
-      input.organisationId,
-    ]);
-    if (existing.rows.length > 0) {
-      await client.query(
-        `UPDATE subscriptions SET plan_type = $2, status = 'active', grace_period_ends_at = NULL WHERE organisation_id = $1`,
-        [input.organisationId, input.planType],
-      );
-    } else {
-      await client.query(
-        `INSERT INTO subscriptions (organisation_id, plan_type, status, started_at) VALUES ($1, $2, 'active', now())`,
-        [input.organisationId, input.planType],
-      );
-    }
-
+    await applySuccessfulPayment(client, input);
     await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => undefined); // never mask the original error
     throw error;
   } finally {
     client.release();
