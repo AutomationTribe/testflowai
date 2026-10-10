@@ -510,7 +510,13 @@ paths:
         api-spec.md. Authenticity comes only from the `x-paystack-signature` header,
         verified against the raw request body (AD-028). Idempotent: a redelivered
         event (Paystack retry, or an operator replay) is a no-op once its reference has
-        been recorded in `processed_payment_events`.
+        been recorded in `processed_payment_events`; the marker and the payment writes
+        commit in ONE transaction. Paystack retries every non-2xx answer, so everything
+        that can never succeed on a retry is acknowledged with 200 and logged
+        (`ignored: true`): event types TestFlow does not handle, signed events without a
+        `reference`/`data`, charges without valid TestFlow metadata, unknown
+        organisations. 500 is returned only for a genuine processing failure (nothing is
+        committed then, so the retry is safe). TD-015.
       security: []
       parameters:
         - name: x-paystack-signature
@@ -524,16 +530,22 @@ paths:
             schema: { type: object }
       responses:
         '200':
-          description: Event processed (or a duplicate, safely ignored).
+          description: Event processed, a duplicate, or validly signed but not actionable (acknowledged, logged).
           content:
             application/json:
               schema:
                 type: object
                 properties:
                   received: { type: boolean }
-                  duplicate: { type: boolean }
+                  duplicate: { type: boolean, description: Already recorded by an earlier delivery; nothing changed. }
+                  ignored: { type: boolean, description: Validly signed but not actionable (see the operation description); logged for reconciliation, never retried. }
         '400':
-          description: Missing or invalid Paystack signature.
+          description: Missing or invalid Paystack signature, or a body that is not a Paystack event object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorEnvelope' }
+        '500':
+          description: Genuine processing failure (for example a database error). Nothing was committed; Paystack retries.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorEnvelope' }

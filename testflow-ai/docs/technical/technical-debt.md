@@ -269,7 +269,7 @@ enforcing header (one-line change, separate approved change). Nonces / removing 
 
 ---
 
-## TD-015 — Webhook answers `500` to events that can never succeed (Paystack retries them for days)
+## TD-015 — Webhook answers `500` to events that can never succeed (Paystack retries them for days) — RESOLVED 2026-10-10 on branch `fix/td-015-webhook-handling` (pending merge and backend deploy)
 
 **Where:** `backend/src/modules/subscription/webhook.routes.ts` (`charge.success` branch).
 
@@ -278,5 +278,5 @@ that TestFlow did not create (for example a test charge made from the Paystack d
 (Render logs, read-only check 2026-10-10): 37 deliveries on 2026-10-06/07 for five references, every one `500`, the last on 2026-10-07 19:46Z. Signatures were valid and nothing was written (the processed-marker is removed), so there is no data impact, but it is noise, may trigger Paystack
 failure alerts, and hides genuine failures. In the same logs no webhook delivery ever returned `200`, so webhook-driven activation of a real test-key payment is not confirmed on staging.
 
-**When to address:** its own small reviewed backend slice (Product Owner approval): log and acknowledge (`200`) events that are validly signed but non-attributable, keep `500` for genuine processing failures, add tests that fail on the current behaviour, then run a real test-key payment on staging.
+**Resolution (2026-10-10):** the handler now acknowledges (`200`) and logs everything that can never succeed on retry, keeps `500` for genuine failures, and no longer crashes on validly signed events that lack `data`/`reference` (these were unhandled rejections: a null marker insert, a missing `data`, bad JSON). The idempotency marker and the payment writes now share one transaction (previously a failure after the payment committed, for example the confirmation e-mail or a lookup, deleted the marker and returned `500`, so Paystack's retry recorded a **second payment**). Signature comparison is constant-time. 35 new tests, red before the change. **Still open (not a blocker):** a real test-key payment on staging to confirm webhook-driven activation end to end; a Paystack "verify transaction" reconciliation call was deliberately not added (new integration surface); reconcile from the structured logs below.
 

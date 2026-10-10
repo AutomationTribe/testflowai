@@ -120,3 +120,18 @@ reachable (`POST /v1/test-support/simulate-payment` returns 404, not 401).
 revert the merge commit on `main` via a new PR and deploy that. Migrations are forward-only: schema changes are not rolled back by
 a code rollback (this release adds none). Verify `/health` and the smoke steps again afterwards.
 
+## Paystack webhook: reconciliation (operators)
+
+The backend logs one structured line per webhook delivery (`render logs --resources <backend-service-id> --start <time> -o text --confirm`, filter the output for `webhook_`). Never log bodies, signatures or e-mail addresses (and the handler does not).
+| Log message | Meaning | Action |
+|---|---|---|
+| `webhook_processed` (`reference`, `organisationId`, `planType`, `seatCount`, `amountCents`) | Payment, seat batch and subscription committed | Match the `reference` to the Paystack dashboard transaction |
+| `webhook_duplicate` (`reference`) | Redelivery of an already recorded event | None |
+| `webhook_unattributable` (`reference`, `reason`: `missing_reference`, `invalid_metadata`, `unknown_organisation`) | A signed `charge.success` TestFlow cannot attribute (for example a charge made outside TestFlow); acknowledged, never retried | If it should have been a TestFlow payment, check the transaction's metadata and the organisation, then reconcile by hand |
+| `webhook_ignored` (`event`) | Event type TestFlow does not handle | None |
+| `payment_failed` | `charge.failed` seen; nothing is written by design | None |
+| `webhook_email_failed` | Payment recorded, confirmation e-mail failed (best effort) | None for billing |
+| `webhook_processing_failed` (HTTP 500) | Genuine failure, nothing committed, Paystack retries | Investigate if it repeats |
+| `webhook_signature_invalid` | Bad signature (400) | Check `PAYSTACK_SECRET_KEY` matches the Paystack account if genuine events are rejected |
+Render keeps about 7+ days of backend logs on the free tier; a Paystack dashboard comparison is the long-term reconciliation. A "verify transaction" API call is not implemented (optional).
+
