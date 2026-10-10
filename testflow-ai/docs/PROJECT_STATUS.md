@@ -14,6 +14,24 @@ This file is the **historical progress log**. The **current restart guide** for 
 
 ## Latest entry
 
+### 2026-10-10 - PR #9 (handoff update) opened; PR #7 conflict resolved; Paystack webhook delivery checked read-only (documentation only; nothing merged, nothing deployed)
+
+**PR #7 (`security/frontend-headers-csp`):** its only conflict (`docs/PROJECT_STATUS.md`, two adjacent `Latest entry` blocks after PR #8) was resolved with a normal merge of `origin/main` into the branch (merge commit `5c3041e`, regular push, no rebase or force-push), keeping both historical entries unchanged and
+adding a one-line merge note. The merge touched only PR #8's documentation files: the frontend implementation, unit test and E2E blobs (`security-headers.js`, `next.config.js`, `securityHeaders.test.ts`, `flowJ-security-headers.spec.ts`) are byte-identical to the reviewed head `bae2b33`. Framework validator 97/0 on the merged tree.
+**GitHub: mergeable `clean`; CI on `5c3041e`: backend, frontend, e2e, security-audit all success; 3 commits, 11 files; not merged.**
+
+**PR #9 (`docs/handoff-after-pr8`):** the handoff update after PR #8 (new `main` `6a36f11`, PR #7 status, memory transfer, resume check) plus this entry and TD-015; documentation only; not merged. A worktree `~/dev/testflowai-pr7` was created for the PR #7 merge (remove after PR #7 merges).
+
+**Paystack webhook URL (read-only; no Paystack setting changed; no secret value printed):** Paystack's API does not expose the dashboard webhook URL and the dashboard was not opened, so the exact URL string is **not directly verified**. Evidence from Render's retained backend logs (2026-10-06 to now): Paystack delivered
+**37 webhook events on 2026-10-06/07** (five distinct references, each retried 6-9 times; last 2026-10-07 19:46Z) to the staging backend's webhook route (they appear as `POST` path `/` because the router is mounted at `/v1/webhooks/payments`; my three unsigned probes on 2026-10-09 22:37Z show the same signature with status `400`), and they passed
+signature verification, so **Paystack was posting to the correct staging backend endpoint and its signing key matched the configured test key** (both `sk_test` on the backend and `pk_test` on the frontend: test mode). **All 37 returned `500`**: the events were `charge.success` for charges with no TestFlow metadata (`charge.success missing/invalid metadata for reference ...`), which the handler rejects on purpose so that
+Paystack retries; a retry can never succeed. No data was written. **No delivery has ever returned `200` in the retained logs, so webhook-driven activation of a real test-key payment is unconfirmed on staging.** Recorded as **TD-015** (acknowledge-and-log non-attributable events); no code was changed.
+
+**Tests/validation:** documentation only; framework validator: 97 passed, 0 failed (this branch and the merged PR #7 tree); CI results above (PR #7) and on PR #9. **Preserved, nothing deleted:** the iCloud clone, its backup stash, the Claude memory originals and their copies, build artifacts. **Deployment:** none; Auto-Deploy OFF (verified again at the start of this task); backend `9f7a910`, frontend `95da669` unchanged.
+**Next three tasks:** (1) Product Owner reviews PR #9 and PR #7 and decides on merging (merging is separate from deploying the frontend); (2) decide on TD-015 and a real test-key payment test on staging (someone should also look at the Paystack dashboard webhook URL by eye); (3) decide on retiring the iCloud clone.
+
+---
+
 ### 2026-10-10 - PR #8 merged (`6a36f11`); `~/dev/testflowai` synchronised; handoff updated; Claude memory transferred (branch `docs/handoff-after-pr8`, committed locally, **not pushed**; nothing deployed)
 
 **Merge and sync:** PR #8 (session handoff + non-iCloud workspace policy) is on `main` as merge commit `6a36f11158a107bfe4e945c9e2135d0ee9155d3ff`; CI on that commit: backend, frontend, e2e, security-audit all success. `~/dev/testflowai` `main` fast-forwarded to it
