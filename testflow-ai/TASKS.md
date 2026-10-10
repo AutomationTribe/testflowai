@@ -52,8 +52,12 @@ Approved, completed:
       Merged (`9f7a910`) and deployed to staging 2026-10-09 (backend `dep-db4mnqrtqb8s7397hdp0`); verified 34/34 on the live backend and in a real browser (6/6).
       Independent reviews: backend-reviewer PASS, security PASS WITH WARNINGS, qa PASS. Frontend not part of this item.
 
-- [ ] **Security hardening — frontend headers and report-only CSP (AD-031).** Approved to start by the Product Owner 2026-10-09. Implemented on branch
-      `security/frontend-headers-csp`; in review; **not merged, not deployed**. Enforcing the CSP is a separate, later decision.
+- [x] **Security hardening — frontend headers and report-only CSP (AD-031, TD-014).** Merged to `main` (PR #7, `2e03894`, 2026-10-10); verified in production mode
+      (headers on every route, zero CSP violations on the main journeys, Paystack script/popup loads under the policy). **Not yet deployed** (frontend still `95da669` on staging; a manual
+      frontend deploy needs approval). The CSP stays report-only; enforcing it is a separate, later decision.
+
+- [ ] **Paystack webhook safe handling (TD-015).** Implemented and reviewed (backend-reviewer PASS after re-review, security PASS WITH WARNINGS with findings fixed, qa PASS); **open as PR #10, not merged,
+      not deployed.** Fixes a crash path for validly signed events without `data`/`reference`, a double-payment-on-retry risk and the staging `500` retry loop.
 
 Implemented and E2E-verified; Product Owner acceptance not recorded:
 
@@ -65,8 +69,11 @@ Implemented and E2E-verified; Product Owner acceptance not recorded:
 
 Not yet approved/started — do not begin without an explicit approved slice definition:
 
-- (No further slice is currently approved. Candidates such as FR-PRJ-002/003/005–007, the Custom Setup screen
-  (TD-003) or deployment of Slice 3 need the Product Owner's decision first.)
+- **Proposed next slice (prepared, NOT approved): Projects — Update Project and Archive Project (FR-PRJ-002, FR-PRJ-003).** Requirements checkpoint, risk
+  class (MEDIUM), Definition of Ready and four Product Owner decisions (D1-D4) are in `docs/product/checkpoints/projects-update-and-archive.md`. No implementation before the
+  decisions are answered and the slice is approved here.
+- (Other candidates, not approved: FR-PRJ-005/006/007 project membership — depends on the user-invitation flow that does not exist yet; the Custom Setup screen (TD-003); CSP enforcement
+  prerequisites; deferred dependency upgrades.)
 
 History (kept for the record): this section previously listed "Slice 2 — Organisation QA Setup / QA Operating Model
 foundation, then Project creation — per the Slice 1 final report's recommendation." Both parts were subsequently
