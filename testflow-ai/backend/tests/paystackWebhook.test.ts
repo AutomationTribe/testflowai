@@ -139,6 +139,18 @@ describe('Paystack webhook handling (TD-015)', () => {
       expect(await counts()).toEqual({ payments: 0, seatBatches: 0, markers: 0 });
     });
 
+    it('a rejected reference is logged only as a sanitized, bounded hint (so it can still be reconciled, and cannot inject log lines)', async () => {
+      const organisationId = await signUp();
+      await deliver(chargeSuccess(`ref/with\nbad chars${'x'.repeat(200)}`, { organisationId, planType: 'monthly', seatCount: '5', usdAmountCents: '5000' }));
+      const call = vi.mocked(logger.warn).mock.calls.find(([m]) => m === 'webhook_unattributable');
+      const fields = call![1] as { reference?: string; referenceHint?: string; referenceLength?: number; reason?: string };
+      expect(fields.reason).toBe('missing_or_invalid_reference');
+      expect(fields.reference).toBeUndefined();
+      expect(fields.referenceHint).toBe(`ref?with?bad?chars${'x'.repeat(40 - 'ref?with?bad?chars'.length)}`);
+      expect(fields.referenceHint).toHaveLength(40);
+      expect(fields.referenceLength).toBe(`ref/with\nbad chars${'x'.repeat(200)}`.length);
+    });
+
     it('the largest values the product and the database allow are still processed (the new bounds are not too tight)', async () => {
       const organisationId = await signUp();
       const res = await deliver(chargeSuccess('R'.repeat(100), { organisationId, planType: 'yearly', seatCount: '1000', usdAmountCents: '9999999999' }));

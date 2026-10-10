@@ -127,7 +127,7 @@ The backend logs one structured line per webhook delivery (`render logs --resour
 |---|---|---|
 | `webhook_processed` (`reference`, `organisationId`, `planType`, `seatCount`, `amountCents`) | Payment, seat batch and subscription committed | Match the `reference` to the Paystack dashboard transaction |
 | `webhook_duplicate` (`reference`) | Redelivery of an already recorded event | None |
-| `webhook_unattributable` (`reference`, `reason`: `missing_or_invalid_reference`, `invalid_metadata`, `unknown_organisation`) | A signed `charge.success` TestFlow cannot attribute (for example a charge made outside TestFlow); acknowledged, never retried | If it should have been a TestFlow payment, check the transaction's metadata and the organisation, then reconcile by hand |
+| `webhook_unattributable` (`reference`, `reason`: `missing_or_invalid_reference` (then `referenceHint`, a sanitized 40-character prefix, and `referenceLength` identify it), `invalid_metadata`, `unknown_organisation`) | A signed `charge.success` TestFlow cannot attribute (for example a charge made outside TestFlow); acknowledged, never retried | If it should have been a TestFlow payment, check the transaction's metadata and the organisation, then reconcile by hand |
 | `webhook_ignored` (`event`) | Event type TestFlow does not handle | None |
 | `payment_failed` | `charge.failed` seen; nothing is written by design | None |
 | `webhook_email_failed` | Payment recorded, confirmation e-mail failed (best effort) | None for billing |

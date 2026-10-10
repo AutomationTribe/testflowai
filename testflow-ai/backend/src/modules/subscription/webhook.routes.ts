@@ -120,12 +120,20 @@ webhookRouter.post('/', async (req, res) => {
     eventType = event.event;
     const data = isRecord(event.data) ? event.data : {};
     reference = typeof data.reference === 'string' && REFERENCE.test(data.reference) ? data.reference : undefined;
+    // A rejected reference cannot be logged as-is; keep a sanitized, bounded hint so an operator can still reconcile it.
+    const rejectedReferenceHint =
+      reference === undefined && typeof data.reference === 'string' ? data.reference.slice(0, 40).replace(/[^A-Za-z0-9._=-]/g, '?') : undefined;
 
     if (event.event === 'charge.success') {
       const payment = readPaymentMetadata(data.metadata);
       if (!reference || !payment) {
         // A charge TestFlow did not create (no/invalid TestFlow metadata) can never succeed on retry.
-        logger.warn('webhook_unattributable', { event: eventType, reference, reason: reference ? 'invalid_metadata' : 'missing_or_invalid_reference' });
+        logger.warn('webhook_unattributable', {
+          event: eventType,
+          reference,
+          reason: reference ? 'invalid_metadata' : 'missing_or_invalid_reference',
+          ...(rejectedReferenceHint !== undefined ? { referenceHint: rejectedReferenceHint, referenceLength: (data.reference as string).length } : {}),
+        });
         res.status(200).json({ received: true, ignored: true });
         return;
       }
