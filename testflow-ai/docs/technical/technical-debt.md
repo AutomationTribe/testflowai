@@ -267,3 +267,16 @@ Pay were not exercised against the policy.
 **When to address:** after the headers are deployed to staging and the real Paystack test-key checkout and main journeys are exercised with zero violations: switch to the
 enforcing header (one-line change, separate approved change). Nonces / removing `'unsafe-inline'` is a later, separately decided item.
 
+---
+
+## TD-015 — Webhook answers `500` to events that can never succeed (Paystack retries them for days)
+
+**Where:** `backend/src/modules/subscription/webhook.routes.ts` (`charge.success` branch).
+
+**What:** A `charge.success` event whose metadata lacks TestFlow's fields (`organisationId`, `planType`, `seatCount`, `usdAmountCents`) makes the handler throw and return `500`, by design ("let Paystack retry"). For a charge
+that TestFlow did not create (for example a test charge made from the Paystack dashboard, or any transaction on the same Paystack account without TestFlow metadata) a retry can never succeed, so Paystack re-delivers it for its whole retry window. Observed on staging
+(Render logs, read-only check 2026-10-10): 37 deliveries on 2026-10-06/07 for five references, every one `500`, the last on 2026-10-07 19:46Z. Signatures were valid and nothing was written (the processed-marker is removed), so there is no data impact, but it is noise, may trigger Paystack
+failure alerts, and hides genuine failures. In the same logs no webhook delivery ever returned `200`, so webhook-driven activation of a real test-key payment is not confirmed on staging.
+
+**When to address:** its own small reviewed backend slice (Product Owner approval): log and acknowledge (`200`) events that are validly signed but non-attributable, keep `500` for genuine processing failures, add tests that fail on the current behaviour, then run a real test-key payment on staging.
+
