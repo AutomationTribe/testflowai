@@ -252,6 +252,23 @@ organisation) or enforce the check in the service, with a cross-tenant test.
 
 ---
 
+## TD-014 — Frontend CSP is report-only and allows `'unsafe-inline'`
+
+**Where:** `frontend/security-headers.js` (AD-031).
+
+**What:** The Content Security Policy is delivered as `Content-Security-Policy-Report-Only`, so it blocks nothing, and there is no report collector (new infrastructure
+needs a decision), so violations are only seen in browser consoles and in the E2E sweep. Scripts and styles allow `'unsafe-inline'` because Next 15 emits inline hydration
+scripts and the UI uses inline `style` props; a nonce-based policy needs middleware and dynamic rendering. The valid-card Paystack flow (test key), 3-D Secure and Apple/Google
+Pay were not exercised against the policy.
+
+**Also before enforcing (security review):** tighten the `*.paystack.*` wildcards to the exact observed hosts, decide `worker-src`/`child-src`, and add a build guard for
+`NEXT_PUBLIC_API_BASE_URL` (see `frontend-security-headers.md`, exit criteria 3-4). The E2E CSP sweep runs on `next dev` only; a production-mode check is a possible CI addition.
+
+**When to address:** after the headers are deployed to staging and the real Paystack test-key checkout and main journeys are exercised with zero violations: switch to the
+enforcing header (one-line change, separate approved change). Nonces / removing `'unsafe-inline'` is a later, separately decided item.
+
+---
+
 ## TD-015 — Webhook answers `500` to events that can never succeed (Paystack retries them for days)
 
 **Where:** `backend/src/modules/subscription/webhook.routes.ts` (`charge.success` branch).

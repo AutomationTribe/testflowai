@@ -35,8 +35,10 @@ production/test isolation, OWASP risks generally).
   `render.yaml`).
 - **API response headers**: `nosniff`, `Referrer-Policy: no-referrer`, CSP `default-src 'none'; frame-ancestors 'none'`,
   `X-Frame-Options: DENY`, HSTS (production, short max-age), and `Cache-Control: no-store` on all `/v1` responses
-  (`backend/src/middleware/securityHeaders.ts`). Frontend headers/CSP are not implemented yet (see
-  `security-remediation-plan.md`).
+  (`backend/src/middleware/securityHeaders.ts`).
+- **Frontend response headers** (AD-031, `frontend-security-headers.md`; implemented, **deploy pending approval**): `nosniff`, `X-Frame-Options: DENY`,
+  `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (camera/microphone/geolocation off), COOP `same-origin-allow-popups`, HSTS (production, short
+  max-age) and a **report-only** CSP (`Content-Security-Policy-Report-Only`) built in `frontend/security-headers.js`. The CSP is not enforced yet (TD-014).
 - **Brute-force protection** (NFR-SEC-001): login locks out after 5 failed attempts within a
   rolling window, tracked server-side (`backend/src/lib/bruteForce.ts`).
 - **Payment authority** (NFR-REL-003): a paid subscription/seat batch is created *only* by the
