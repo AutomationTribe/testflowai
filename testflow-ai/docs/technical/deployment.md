@@ -133,5 +133,5 @@ The backend logs one structured line per webhook delivery (`render logs --resour
 | `webhook_email_failed` | Payment recorded, confirmation e-mail failed (best effort) | None for billing |
 | `webhook_processing_failed` (HTTP 500) | Genuine failure, nothing committed, Paystack retries | Investigate if it repeats |
 | `webhook_signature_invalid` | Bad signature (400) | Check `PAYSTACK_SECRET_KEY` matches the Paystack account if genuine events are rejected |
-Render keeps about 7+ days of backend logs on the free tier; a Paystack dashboard comparison is the long-term reconciliation. A "verify transaction" API call is not implemented (optional).
+Render's retained backend logs went back about four days when last checked (2026-10-10); retention is not guaranteed, so a Paystack dashboard comparison is the long-term reconciliation. A "verify transaction" API call is not implemented (optional).
 
