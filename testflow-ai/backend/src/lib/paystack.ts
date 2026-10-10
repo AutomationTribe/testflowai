@@ -1,4 +1,4 @@
-import { createHmac } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { env } from '../config/env.js';
 
 /**
@@ -86,24 +86,29 @@ export async function initializeTransaction(input: InitializeTransactionInput): 
  * secret). Header: `x-paystack-signature`.
  */
 export function verifyPaystackSignature(rawBody: Buffer, signature: string): boolean {
-  const expected = createHmac('sha512', env.paystackSecretKey).update(rawBody).digest('hex');
-  return expected === signature;
+  // A SHA-512 HMAC is 128 hex characters. Anything else cannot be valid, and timingSafeEqual
+  // throws on a length mismatch, so reject malformed values first. The comparison itself is
+  // constant-time: the signature is the only thing authenticating this endpoint.
+  if (!/^[0-9a-fA-F]{128}$/.test(signature)) return false;
+  const expected = createHmac('sha512', env.paystackSecretKey).update(rawBody).digest();
+  return timingSafeEqual(expected, Buffer.from(signature, 'hex'));
 }
 
-export interface PaystackChargeEvent {
-  event: 'charge.success' | 'charge.failed' | string;
-  data: {
-    reference: string;
-    amount: number;
-    metadata: {
-      organisationId?: string;
-      planType?: string;
-      seatCount?: string;
-      usdAmountCents?: string;
-    };
-  };
+/**
+ * A Paystack webhook event as TestFlow sees it BEFORE any trust is placed in its shape. Only `event` is
+ * guaranteed; `data` and everything inside it must be checked by the handler (events of other types, such
+ * as subscription.* or transfer.*, have different or no `reference`/`metadata`).
+ */
+export interface PaystackWebhookEvent {
+  event: string;
+  data?: unknown;
 }
 
-export function parsePaystackEvent(rawBody: Buffer): PaystackChargeEvent {
-  return JSON.parse(rawBody.toString('utf8')) as PaystackChargeEvent;
+/** Parses a (signature-verified) webhook body. Throws when it is not a JSON object with a string `event`. */
+export function parsePaystackEvent(rawBody: Buffer): PaystackWebhookEvent {
+  const parsed: unknown = JSON.parse(rawBody.toString('utf8'));
+  if (typeof parsed !== 'object' || parsed === null || typeof (parsed as { event?: unknown }).event !== 'string') {
+    throw new Error('Not a Paystack event object.');
+  }
+  return parsed as PaystackWebhookEvent;
 }

@@ -38,12 +38,37 @@ describe('verifyPaystackSignature', () => {
   });
 });
 
+describe('verifyPaystackSignature (constant-time, never throws)', () => {
+  const body = Buffer.from('{"event":"charge.success"}');
+  const good = createHmac('sha512', env.paystackSecretKey).update(body).digest('hex');
+
+  it('accepts the exact signature in either hex case', () => {
+    expect(verifyPaystackSignature(body, good)).toBe(true);
+    expect(verifyPaystackSignature(body, good.toUpperCase())).toBe(true);
+  });
+
+  it.each(['', 'abc', 'z'.repeat(128), `${'0'.repeat(127)}`, `${'0'.repeat(129)}`, ` ${'0'.repeat(128)}`])('rejects the malformed signature %j without throwing', (bad) => {
+    expect(verifyPaystackSignature(body, bad)).toBe(false);
+  });
+
+  it('rejects a well-formed signature that differs in a single character', () => {
+    const flipped = `${good.slice(0, -1)}${good.endsWith('0') ? '1' : '0'}`;
+    expect(verifyPaystackSignature(body, flipped)).toBe(false);
+  });
+});
+
 describe('parsePaystackEvent', () => {
   it('parses a well-formed raw JSON body', () => {
     const body = Buffer.from(JSON.stringify({ event: 'charge.success', data: { reference: 'ref_1', amount: 100, metadata: {} } }));
     const event = parsePaystackEvent(body);
     expect(event.event).toBe('charge.success');
-    expect(event.data.reference).toBe('ref_1');
+    expect((event.data as { reference: string }).reference).toBe('ref_1');
+  });
+
+  it('refuses a JSON body that is not an object with a string event name', () => {
+    for (const raw of ['null', '42', '"x"', '[]', '{"data":{}}', '{"event":7}']) {
+      expect(() => parsePaystackEvent(Buffer.from(raw)), raw).toThrow();
+    }
   });
 
   it('throws on malformed JSON rather than silently returning a partial object', () => {
