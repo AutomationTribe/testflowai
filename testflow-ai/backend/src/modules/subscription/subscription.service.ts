@@ -133,12 +133,15 @@ export function calculateAmountCents(planType: 'monthly' | 'yearly', seatCount: 
   return seatCount * YEARLY_PRICE_CENTS_PER_SEAT_PER_MONTH * YEARLY_MONTHS;
 }
 
+/** Largest seat count one purchase may carry (also the largest the webhook accepts as a TestFlow-created charge). */
+export const MAX_SEATS_PER_PURCHASE = 1000;
+
 export function validateSeatCount(seatCount: unknown): number {
   if (typeof seatCount !== 'number' || !Number.isInteger(seatCount) || seatCount < 1) {
     throw HttpError.validation('Seat count must be a positive whole number.', { seatCount: 'Must be a positive integer.' });
   }
-  if (seatCount > 1000) {
-    throw HttpError.validation('Seat count is too large.', { seatCount: 'Must be 1000 or fewer per purchase.' });
+  if (seatCount > MAX_SEATS_PER_PURCHASE) {
+    throw HttpError.validation('Seat count is too large.', { seatCount: `Must be ${MAX_SEATS_PER_PURCHASE} or fewer per purchase.` });
   }
   return seatCount;
 }
@@ -204,7 +207,7 @@ export async function recordSuccessfulPayment(input: SuccessfulPaymentInput): Pr
     await applySuccessfulPayment(client, input);
     await client.query('COMMIT');
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(() => undefined); // never mask the original error
     throw error;
   } finally {
     client.release();

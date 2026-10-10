@@ -3,7 +3,12 @@ import type { PoolClient } from 'pg';
 import { pool } from '../../db/pool.js';
 import { logger } from '../../lib/logger.js';
 import { parsePaystackEvent, verifyPaystackSignature } from '../../lib/paystack.js';
-import { applySuccessfulPayment, sendPaymentConfirmationEmail, type SuccessfulPaymentInput } from './subscription.service.js';
+import {
+  applySuccessfulPayment,
+  MAX_SEATS_PER_PURCHASE,
+  sendPaymentConfirmationEmail,
+  type SuccessfulPaymentInput,
+} from './subscription.service.js';
 
 export const webhookRouter = Router();
 
@@ -28,6 +33,11 @@ export const webhookRouter = Router();
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const POSITIVE_INTEGER = /^[0-9]{1,12}$/; // 12 digits keeps the value far inside Number.MAX_SAFE_INTEGER
+// Paystack references are short plain tokens. A strict format keeps NUL bytes, control characters and oversized values out of
+// the database and the logs (a value Postgres cannot store would otherwise be a permanent 500 retry loop).
+const REFERENCE = /^[A-Za-z0-9._=-]{1,100}$/;
+// numeric(10,2) holds at most 99,999,999.99 USD = 9,999,999,999 cents; seat_count is a 32-bit integer but the product cap is lower.
+const MAX_AMOUNT_CENTS = 9_999_999_999;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -39,8 +49,10 @@ function readPaymentMetadata(metadata: unknown): SuccessfulPaymentInput | null {
   const { organisationId, planType, seatCount, usdAmountCents } = metadata;
   if (typeof organisationId !== 'string' || !UUID.test(organisationId)) return null;
   if (planType !== 'monthly' && planType !== 'yearly') return null;
-  if (typeof seatCount !== 'string' || !POSITIVE_INTEGER.test(seatCount) || Number(seatCount) < 1) return null;
-  if (typeof usdAmountCents !== 'string' || !POSITIVE_INTEGER.test(usdAmountCents) || Number(usdAmountCents) < 1) return null;
+  if (typeof seatCount !== 'string' || !POSITIVE_INTEGER.test(seatCount)) return null;
+  if (Number(seatCount) < 1 || Number(seatCount) > MAX_SEATS_PER_PURCHASE) return null;
+  if (typeof usdAmountCents !== 'string' || !POSITIVE_INTEGER.test(usdAmountCents)) return null;
+  if (Number(usdAmountCents) < 1 || Number(usdAmountCents) > MAX_AMOUNT_CENTS) return null;
   return { organisationId, planType, seatCount: Number(seatCount), amountCents: Number(usdAmountCents) };
 }
 
@@ -107,13 +119,13 @@ webhookRouter.post('/', async (req, res) => {
     }
     eventType = event.event;
     const data = isRecord(event.data) ? event.data : {};
-    reference = typeof data.reference === 'string' && data.reference.length > 0 ? data.reference : undefined;
+    reference = typeof data.reference === 'string' && REFERENCE.test(data.reference) ? data.reference : undefined;
 
     if (event.event === 'charge.success') {
       const payment = readPaymentMetadata(data.metadata);
       if (!reference || !payment) {
         // A charge TestFlow did not create (no/invalid TestFlow metadata) can never succeed on retry.
-        logger.warn('webhook_unattributable', { event: eventType, reference, reason: reference ? 'invalid_metadata' : 'missing_reference' });
+        logger.warn('webhook_unattributable', { event: eventType, reference, reason: reference ? 'invalid_metadata' : 'missing_or_invalid_reference' });
         res.status(200).json({ received: true, ignored: true });
         return;
       }
@@ -158,7 +170,8 @@ webhookRouter.post('/', async (req, res) => {
       // FR-SUB-004/005 error condition: payment failure prevents activation. No Payment/SeatBatch/Subscription row is
       // written — see the payments table COMMENT in migrations/0002_subscription_billing.sql. The outcome is logged only.
       const metadata = isRecord(data.metadata) ? data.metadata : {};
-      logger.error('payment_failed', { reference, organisationId: metadata.organisationId, planType: metadata.planType });
+      const text = (value: unknown): string | undefined => (typeof value === 'string' ? value.slice(0, 64) : undefined);
+      logger.error('payment_failed', { reference, organisationId: text(metadata.organisationId), planType: text(metadata.planType) });
       res.status(200).json({ received: true });
       return;
     }

@@ -110,6 +110,11 @@ describe('Paystack webhook handling (TD-015)', () => {
       ['a zero amount', { organisationId: 'ORG', planType: 'monthly', seatCount: '5', usdAmountCents: '0' }],
       ['a negative amount', { organisationId: 'ORG', planType: 'monthly', seatCount: '5', usdAmountCents: '-100' }],
       ['an absurdly large amount', { organisationId: 'ORG', planType: 'monthly', seatCount: '5', usdAmountCents: '99999999999999999999' }],
+      ['an amount one cent above what numeric(10,2) can hold', { organisationId: 'ORG', planType: 'monthly', seatCount: '5', usdAmountCents: '10000000000' }],
+      ['a 12-digit amount the column cannot store', { organisationId: 'ORG', planType: 'monthly', seatCount: '5', usdAmountCents: '999999999999' }],
+      ['one seat above the per-purchase cap', { organisationId: 'ORG', planType: 'monthly', seatCount: '1001', usdAmountCents: '5000' }],
+      ['a seat count above the 32-bit integer column', { organisationId: 'ORG', planType: 'monthly', seatCount: '2147483648', usdAmountCents: '5000' }],
+      ['a 12-digit seat count', { organisationId: 'ORG', planType: 'monthly', seatCount: '999999999999', usdAmountCents: '5000' }],
     ])('charge.success with %s -> 200 ignored, nothing written', async (_label, metadata) => {
       const organisationId = await signUp();
       const meta = { ...metadata, organisationId: metadata.organisationId === 'ORG' ? organisationId : metadata.organisationId };
@@ -117,6 +122,38 @@ describe('Paystack webhook handling (TD-015)', () => {
       expect(res.status).toBe(200);
       expect(res.body.ignored).toBe(true);
       expect(await counts()).toEqual({ payments: 0, seatBatches: 0, markers: 0 });
+    });
+
+    it.each([
+      ['a NUL byte', 'a\u0000b'],
+      ['a newline and forged JSON log text', 'x\n{"level":"error","message":"FORGED"}'],
+      ['101 characters', 'r'.repeat(101)],
+      ['spaces', 'ref with spaces'],
+      ['non-ASCII characters', 'référence'],
+      ['a lone surrogate', 'x\ud800'],
+    ])('charge.success with a reference containing %s -> 200 ignored (it could never be stored)', async (_label, reference) => {
+      const organisationId = await signUp();
+      const res = await deliver(chargeSuccess(reference, { organisationId, planType: 'monthly', seatCount: '5', usdAmountCents: '5000' }));
+      expect(res.status).toBe(200);
+      expect(res.body.ignored).toBe(true);
+      expect(await counts()).toEqual({ payments: 0, seatBatches: 0, markers: 0 });
+    });
+
+    it('the largest values the product and the database allow are still processed (the new bounds are not too tight)', async () => {
+      const organisationId = await signUp();
+      const res = await deliver(chargeSuccess('R'.repeat(100), { organisationId, planType: 'yearly', seatCount: '1000', usdAmountCents: '9999999999' }));
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ received: true });
+      expect(await counts()).toEqual({ payments: 1, seatBatches: 1, markers: 1 });
+    });
+
+    it('charge.failed logs only short string fields from untrusted metadata', async () => {
+      await deliver({ event: 'charge.failed', data: { reference: 'ref_fx', metadata: { organisationId: { huge: 'x'.repeat(5000) }, planType: 'p'.repeat(500) } } });
+      const call = vi.mocked(logger.error).mock.calls.find(([m]) => m === 'payment_failed');
+      expect(call).toBeDefined();
+      const fields = call![1] as { organisationId?: unknown; planType?: string };
+      expect(fields.organisationId).toBeUndefined();
+      expect(fields.planType).toHaveLength(64);
     });
 
     it('charge.success with no reference -> 200 ignored (it cannot be made idempotent)', async () => {
