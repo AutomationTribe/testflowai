@@ -12,6 +12,45 @@ passed.** Untested work is reported as untested, not as done.
 
 ## Latest entry
 
+### 2026-10-10 - Frontend security headers + report-only CSP implemented (branch `security/frontend-headers-csp`, PR below; NOT merged, NOT deployed)
+
+**Prior steps completed first:** PR #6 (status log) merged as merge commit `d3686ba8059650de76cca065ca7298b8cc9fe669` after confirming head `c797118` had four green checks, mergeable/clean and Render
+Auto-Deploy `off` on both services (no deployment followed; backend still `9f7a910` / `dep-db4mnqrtqb8s7397hdp0`, frontend `95da669`). Both local clones fast-forwarded to `d3686ba` (clean trees; backup
+stash `pre-sync PROJECT_STATUS local entry` intact). The backend security milestone (APID-022, TD-011) is closed in `TASKS.md` and the plan (`security-remediation-plan.md` progress section).
+
+**Requirements and compatibility analysis first (CLAUDE.md rules 4-7):** `docs/technical/frontend-security-headers.md`. No requirement mandates headers/CSP (supports NFR-SEC-007/010/012); risk MEDIUM; no database/API/backend
+impact. Findings: Next 15 inline hydration scripts and 336 inline `style` props need `'unsafe-inline'`; fonts are self-hosted by `next/font`; the only third-party resource is Paystack Inline
+(script injected at runtime from `js.paystack.co`, popup iframe; hosts taken from static analysis of the script: `checkout.paystack.com`, `standard.paystack.co`, `api.paystack.co`,
+`checkout-studio.paystack.com`, `studio-api.paystack.co`, plus Apple/Google Pay endpoints); the API is cross-origin with credentials at the build-time `NEXT_PUBLIC_API_BASE_URL`; `Permissions-Policy`
+leaves `payment` default and COEP/CORP are not set because they break the Paystack iframe. **Decision AD-031.**
+
+**Implemented:** `frontend/security-headers.js` (tested pure builder) + `frontend/next.config.js` `headers()` on every route: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy:
+strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`, `Cross-Origin-Opener-Policy: same-origin-allow-popups`, `Strict-Transport-Security: max-age=300`
+(production only), `X-Powered-By` removed, and **`Content-Security-Policy-Report-Only`** (self, the API origin, `*.paystack.co/.com`, `'unsafe-inline'`; `'unsafe-eval'` + websockets in dev only;
+`frame-ancestors 'none'`, `base-uri`/`form-action` self, `object-src 'none'`). **The enforcing CSP header is not sent.** No new dependency, no collector (would be new infrastructure).
+
+**Tests actually run:** unit tests 12 new (frontend 123/123, 3 runs by QA); backend 204/204 (3 runs by QA on its own database); typecheck and lint clean; frontend and backend production builds OK; framework
+validator 97 passed / 0 failed; new E2E journey Flow J (headers + `securitypolicyviolation` sweep over sign-up, trial, QA setup, Projects) passed on `next dev`. **Mutation checks:** dropping the API origin or switching to the
+enforcing header fails 3 unit tests; removing `'unsafe-inline'` from `style-src` fails Flow J with the violations listed. **Production mode** (`next build` + `next start`, my run and QA's run): headers on `/`, `/login`,
+`/signup`, `/projects`, a `/_next/static` asset and a 404 exactly as designed, `connect-src` contains the API origin from `NEXT_PUBLIC_API_BASE_URL`, no dev allowances, and Flow J raised zero violations;
+`/login` and `/projects` are byte-identical to a build from `main`; embedding `/login` in a foreign-origin iframe is refused by `X-Frame-Options`. **Paystack under the production policy** (script loaded, popup iframe
+rendered, lookup with an invalid access code reached `api.paystack.co`; no payment): no violation of OUR policy; the violations reported were Paystack's own page against Paystack's own policy (their Google Tag Manager,
+Pusher and PostHog scripts). The valid-card test-key flow, 3-D Secure and Apple/Google Pay were **not** exercised.
+**E2E reliability caveat:** the full local run by QA gave 26 passed, 1 failed (Flow E, `@critical`), 1 flaky (Flow H); Flow E passed 3/3 when re-run in isolation; the machine load average was 4.6-8.5 and the
+security agent also ran a broad `pkill -f next-server` that may have overlapped; cause unproven, not attributable to this change (no 403/CSP involvement was observed). GitHub Actions on the PR is the reference
+for the full E2E result (see PR).
+
+**Independent reviews:** `frontend-reviewer` PASS (2 LOW); `security` PASS WITH WARNINGS (no Critical/High; W1 `*.paystack.*` wildcards to be tightened and W2 a build guard for `NEXT_PUBLIC_API_BASE_URL` before
+enforcing; both recorded as exit criteria in the slice doc and TD-014); `qa` PASS.
+
+**Deployment/state:** nothing deployed; Render Auto-Deploy OFF (re-verified at the start of this task); no staging data deleted; scratch databases and servers created for validation and reviews were removed.
+**Remaining risks:** the headers take effect only after a frontend deploy (needs approval); CSP is report-only with `'unsafe-inline'` and no violation telemetry (TD-014); real Paystack card/3-D Secure/wallet flow
+untested; Render/Cloudflare header behaviour unverified until a deploy; Flow J runs on `next dev` only; `SameSite=None`/third-party-cookie risk and deferred upgrades (vitest 5, `@typescript-eslint` 8, Next 16) unchanged.
+**Next three tasks:** (1) Product Owner reviews the PR and decides on merge and a frontend deploy to staging (then `curl -sI` + a Paystack test-key checkout with the console open); (2) decide on the staging data
+cleanup (extend the script first); (3) enforcement change once the exit criteria are met.
+
+---
+
 ### 2026-10-09 - Backend security update DEPLOYED to staging (`9f7a910`, backend only); PR #4 and PR #5 merged
 
 **Merges (merge commits, on the Product Owner's approval; both PRs had green CI, mergeable/clean, Render Auto-Deploy `off` verified first):**

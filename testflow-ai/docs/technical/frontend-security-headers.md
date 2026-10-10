@@ -56,9 +56,14 @@ CSP (report-only): `default-src 'self'`; `script-src 'self' 'unsafe-inline' http
 console and by the automated `securitypolicyviolation` sweep.
 
 ## Rollout and exit criteria for enforcement (a later, separate change)
-1. Deploy report-only to staging (frontend deploy, needs approval). 2. A real Paystack test-key checkout and the main journeys are exercised with the console open: zero violations.
-3. Then switch the header name to `Content-Security-Policy` (one-line change) and re-run the suites. 4. Tightening `'unsafe-inline'` (nonces) is a separate P2 decision.
-**Rollback:** remove the `headers()` entry (or just the CSP value); no data or schema is involved.
+1. Deploy report-only to staging (a frontend deploy needs approval); `curl -sI` before and after to confirm Render/Cloudflare neither duplicate nor strip the headers, and that
+   `connect-src` contains the backend URL (`NEXT_PUBLIC_API_BASE_URL` is baked in at **build** time; if it were missing the policy would fall back to `http://localhost:4000`).
+2. A real Paystack **test-key** checkout (card, 3-D Secure, Apple/Google Pay where supported) and the main journeys are exercised with the console open: zero violations of our policy.
+3. Replace the `https://*.paystack.co` / `https://*.paystack.com` wildcards with the exact hosts seen in step 2 (candidates: `frame-src https://checkout.paystack.com`; `connect-src`
+   `https://api.paystack.co` and the others actually observed; `script-src` stays `https://js.paystack.co`), and decide `worker-src`/`child-src` (security review W1).
+4. Add a production **build guard** that fails the build when `NEXT_PUBLIC_API_BASE_URL` is unset or unparsable (security review W2); a wrong value is harmless in report-only but
+   would block every API call once enforcing.
+5. Then switch the header name to `Content-Security-Policy` (one-line change; rollback = revert it) and re-run the suites. Removing `'unsafe-inline'` (nonces) is a separate P2 decision.
 
 ## Verification performed (2026-10-09/10, local)
 - Unit tests (`frontend/tests/securityHeaders.test.ts`, 12): baseline headers, report-only (never the enforcing header), HSTS production-only, API origin in `connect-src`
@@ -72,3 +77,9 @@ console and by the automated `securitypolicyviolation` sweep.
   executed, the popup iframe `https://checkout.paystack.com/popup` rendered, the lookup reached `https://api.paystack.co`, and **our policy recorded no violation**. Violations that were
   reported belonged to Paystack's own checkout page against **Paystack's own** policy (their Google Tag Manager, Pusher and PostHog scripts), not to ours. The valid-card/test-key
   flow, 3-D Secure and Apple/Google Pay were **not** exercised (no key); that, and observation on staging, are the exit criteria for enforcement.
+
+## Independent reviews (2026-10-10)
+`frontend-reviewer`: PASS (no HIGH/MEDIUM; LOW: a missing build-time API URL silently falls back to localhost, and the E2E journey runs on `next dev` so it never checks HSTS or the production policy).
+`security`: PASS WITH WARNINGS (W1 wildcards, W2 build guard, both recorded above; confirmed the full header set on six URLs of a local production build, no enforcing CSP).
+`qa`: PASS (production-mode headers, Flow J 1/1 and zero violations in production mode, `/login` and `/projects` byte-identical to a `main` build, framing refused by `X-Frame-Options`).
+Known gaps: Flow J only runs against `next dev`, so production headers/HSTS are covered by unit tests and manual `curl`; the real Paystack card flow was not exercised.

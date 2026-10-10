@@ -261,6 +261,9 @@ needs a decision), so violations are only seen in browser consoles and in the E2
 scripts and the UI uses inline `style` props; a nonce-based policy needs middleware and dynamic rendering. The valid-card Paystack flow (test key), 3-D Secure and Apple/Google
 Pay were not exercised against the policy.
 
+**Also before enforcing (security review):** tighten the `*.paystack.*` wildcards to the exact observed hosts, decide `worker-src`/`child-src`, and add a build guard for
+`NEXT_PUBLIC_API_BASE_URL` (see `frontend-security-headers.md`, exit criteria 3-4). The E2E CSP sweep runs on `next dev` only; a production-mode check is a possible CI addition.
+
 **When to address:** after the headers are deployed to staging and the real Paystack test-key checkout and main journeys are exercised with zero violations: switch to the
 enforcing header (one-line change, separate approved change). Nonces / removing `'unsafe-inline'` is a later, separately decided item.
 
