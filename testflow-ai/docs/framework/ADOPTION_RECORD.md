@@ -24,6 +24,14 @@
 - `docs/technical/engineering-framework.md`, `docs/framework/VERSION.md` and `docs/framework/ADOPTING-1.1.md` are **retained unchanged except for a pointer banner** (history and the Product Owner's profile decisions live there). Where they differ from `docs/framework/POLICY.md`, the canonical policy applies, except for project decisions.
 - `CLAUDE.md`: project rules and numbering preserved; framework rules (20, 23, 24, 26, 28, 30) reworded only to point at the canonical policy; rule 31 added to record the pinned version.
 
+## Post-1.1.0 document installed (2026-10-10)
+
+The framework repository's `main` (commit `97800f8a8121ec0e1281817a8601365e581610c5`, after the `v1.1.0` tag) adds one document, `docs/SESSION-CONTINUITY-AND-WORKSPACE.md`
+(blob `98b38b652be67b0206a2d4157bd9ac1d1be225f4`). It is installed **byte-for-byte** at `docs/framework/SESSION-CONTINUITY-AND-WORKSPACE.md`, and its rules are copied into `CLAUDE.md`
+(rules 32-33, plus the rule 22 wording) as the document requires, with `docs/HANDOFF.md` created. Everything else in that commit range is identical to v1.1.0 (`POLICY.md`, `VERSIONING.md`,
+agents, templates and `scripts/validate.py` compared byte-for-byte). **No official release exists after `v1.1.0` (`VERSION` on `main` is still `1.1.0`, no newer tag or changelog entry), so the
+pinned version, tag and commit above are unchanged.** When a release that includes this document is published, upgrade per `docs/framework/VERSIONING.md` and update this record.
+
 ## Compatibility exceptions
 
 | Exception | Reason | Accepted by | Date |
@@ -38,3 +46,4 @@
 | 2026-10-07 | - | 1.0 (retroactive name) | `a7a285b` | initial, unnumbered adoption |
 | 2026-10-08 | 1.0 | 1.1 (in-repo) | `20b02d6` | project-edited agents and policy |
 | 2026-10-08 | 1.1 (in-repo) | 1.1.0 (canonical, tag `v1.1.0`) | see git log | independent framework installed from the exact tag |
+| 2026-10-10 | 1.1.0 | 1.1.0 (unchanged) + unreleased session-continuity document from framework `main` `97800f8` | see git log | document installed byte-for-byte, CLAUDE.md rules 32-33, `docs/HANDOFF.md`; no version change |

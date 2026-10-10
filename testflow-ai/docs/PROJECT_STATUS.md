@@ -8,9 +8,37 @@ updating it.
 **Never mark work "complete" here unless its tests were actually run in this session and
 passed.** Untested work is reported as untested, not as done.
 
+This file is the **historical progress log**. The **current restart guide** for a new session or Claude account is `docs/HANDOFF.md` (CLAUDE.md rule 32); keep both up to date.
+
 ---
 
 ## Latest entry
+
+### 2026-10-10 - Session handoff and non-iCloud workspace policy integrated (branch `docs/session-handoff-workspace-policy`; documentation only; PR below, not merged, nothing deployed)
+
+**Source:** the framework repository's `main` @ `97800f8a8121ec0e1281817a8601365e581610c5` (PR #1 there, 2026-10-10), which adds `docs/SESSION-CONTINUITY-AND-WORKSPACE.md` (20 lines). Compared byte-for-byte with the v1.1.0
+checkout we installed from: **every other framework file is identical** (`POLICY.md`, `VERSIONING.md`, `VALIDATION.md`, `ADOPTION.md`, `PROJECT-CONFIGURATION.md`, `README.md`, `CHANGELOG.md`, `VERSION`, `scripts/validate.py`, all ten agents, all
+templates). **No official new release exists** (`VERSION` still `1.1.0`, only tag `v1.1.0`, changelog top entry `[1.1.0]`), so the **recorded framework version is unchanged** (1.1.0).
+
+**Gap analysis (existing project instructions vs the new policy):** rule 22 called `PROJECT_STATUS.md` "the concise handoff/state record" (contradicts the policy: it is the historical log); there was no `docs/HANDOFF.md`; no rule required handoff updates
+before usage limits/account switches/day end; no iCloud workspace rule existed in the repository (only in the Product Owner's personal Claude memory); the Stop hook enforces only `PROJECT_STATUS.md`.
+
+**Changes (no project-specific rule overwritten):** canonical document installed byte-for-byte at `docs/framework/SESSION-CONTINUITY-AND-WORKSPACE.md`; `CLAUDE.md` rule 22 reworded (status = historical log, handoff = restart guide) and **rules 32
+(session continuity/handoff: update after substantial tasks, at day end, before account switches/ending a session/approaching limits; required contents; start-of-session reading list; "never claim it was saved unless written to disk"; a handoff
+update is not permission to commit/push/merge/deploy) and 33 (local non-iCloud workspace `~/dev/testflowai`) added**; **`docs/HANDOFF.md` created** with the verified state; `PROJECT_PROFILE.md` (handoff and workspace rows) and `ADOPTION_RECORD.md` (post-1.1.0 document
+section and upgrade-history row) updated; a pointer added to this file's header.
+
+**Workspace verification (read-only):** iCloud Drive syncs Documents and Desktop on this machine (`FXICloudDriveDocuments=1`, `FXICloudDriveDesktop=1`). **The project's active workspace is `~/dev/testflowai`** (real path outside iCloud; `node_modules`,
+`.next`, builds and every test/E2E/backend run in this work happened there; database data is in a Docker named volume under the Docker VM, not a bind mount). **Not clean:** the legacy clone `~/Documents/Intello/Produts/testflow ai` (iCloud-synced; at
+`d3686ba`, clean tree, backup stash intact) contains a stray `node_modules` (about 20 MB) and build output (`backend/dist`, `frontend/.next`, `e2e/test-results`) from before the policy, and **this Claude session itself was started from that path**
+(git operations only; no installs/builds/tests there). Nothing was deleted or moved (needs authorisation). Claude's per-folder memory (seven files) sits under the Documents-based project folder; the `~/dev` project memory folder is empty.
+
+**Handoff triggers:** enforced by instruction only (CLAUDE.md rule 32 and the header of `docs/HANDOFF.md`); no tool can detect usage limits, and the Stop hook was deliberately not changed (it still enforces `PROJECT_STATUS.md` only).
+**Validation actually run:** `scripts/validate.py --project .` from the v1.1.0 checkout and from the framework `main` copy (identical script): **97 passed, 0 failed** each; a clause-by-clause check of the policy against `CLAUDE.md` rules 32-33: 18/18 clauses reflected; the only existing text removed from `CLAUDE.md` is the four lines of rule 22 that were deliberately reworded. **Tests:** documentation only; no application tests run in this task. **Deployment:** none; Render Auto-Deploy OFF (verified); both services unchanged (backend `9f7a910`, frontend `95da669`).
+**Remaining/decisions:** authorise retiring the iCloud clone and copying Claude memory to the `~/dev` project folder; reopen Claude Code/VS Code at `~/dev/testflowai`; PR #7 (frontend headers/CSP) still awaits review. **Merge note:** PR #7 also edits this file's
+top; whichever PR merges second needs a trivial rebase of the `Latest entry` section.
+
+---
 
 ### 2026-10-09 - Backend security update DEPLOYED to staging (`9f7a910`, backend only); PR #4 and PR #5 merged
 
