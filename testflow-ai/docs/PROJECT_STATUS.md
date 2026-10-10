@@ -14,6 +14,31 @@ This file is the **historical progress log**. The **current restart guide** for 
 
 ## Latest entry
 
+### 2026-10-10 - PR #8 merged (`6a36f11`); `~/dev/testflowai` synchronised; handoff updated; Claude memory transferred (branch `docs/handoff-after-pr8`, committed locally, **not pushed**; nothing deployed)
+
+**Merge and sync:** PR #8 (session handoff + non-iCloud workspace policy) is on `main` as merge commit `6a36f11158a107bfe4e945c9e2135d0ee9155d3ff`; CI on that commit: backend, frontend, e2e, security-audit all success. `~/dev/testflowai` `main` fast-forwarded to it
+(0 ahead / 0 behind, clean). Verified present on `main`: `docs/HANDOFF.md`, `docs/framework/SESSION-CONTINUITY-AND-WORKSPACE.md` (still byte-identical to the framework's `main` `97800f8`), `CLAUDE.md` rules 32-33; `FRAMEWORK_VERSION` still `1.1.0`.
+All work in this task was done from `~/dev/testflowai` (absolute paths; the iCloud clone was only inspected read-only).
+
+**PR #7 status:** open, head `bae2b33`, its four checks were green, but it is now **not mergeable (`dirty`)**: cut from `d3686ba`, and PR #8 edited the same top section of `docs/PROJECT_STATUS.md`. Only that file conflicts. Not touched in this task; the fix (merge `origin/main`
+into its branch in a worktree, keep both `Latest entry` blocks) is recorded in `docs/HANDOFF.md` and awaits the Product Owner's go-ahead.
+
+**Handoff updated** to reflect the merge, `main` `6a36f11`, the PR #7 conflict, the memory transfer, the open Paystack-webhook-URL question, and a "resume check" section.
+
+**Claude memory transferred (originals preserved):** the seven files were reviewed and copied to `~/.claude/projects/-Users-dimirage-dev-testflowai/memory/` (memory is keyed to the git root; the originals under the Documents-based folder were checksummed before and after and are byte-identical).
+Transferred: the index, `e2e-dedicated-tester`, `feedback-no-fabricated-content`, `no-icloud-for-work`, `feedback-visual-conformance`, `project-session-handoff-protocol` (session-specific `originSessionId` lines dropped), and a **revised** `project_testflow_working_copy` (removed the stale clone commit `5e3f47a`, the
+"tests need the sandbox disabled" line and a local database URL with credentials). **Excluded as stale:** `project-webhook-tunnel-strategy` (said to keep using local quick tunnels until deployment happens; staging is now deployed on Render; the open question is recorded in the handoff). A scan of the transferred files found no
+credentials or tokens; all `[[links]]` resolve.
+
+**Preserved, nothing deleted or moved:** the iCloud clone `~/Documents/Intello/Produts/testflow ai` (still at `d3686ba`, clean, behind `main`, not synchronised on purpose), its backup stash `pre-sync PROJECT_STATUS local entry`, its stray `node_modules` and build artifacts.
+
+**Resume check (the commands in `HANDOFF.md` section 9, executed from `~/dev/testflowai/testflow-ai`):** git clean on `main`; Postgres container healthy; typecheck OK; lint OK; frontend **111/111**; backend **204/204**; framework validator **97 passed, 0 failed**; Render Auto-Deploy `off` on both services. E2E not re-run (CI is the reference). **Conclusion: a fresh session started from
+`~/dev/testflowai` can resume from `HANDOFF.md`, with one caveat:** the handoff update itself is on an unpushed local branch until the Product Owner approves pushing it.
+
+**Deployment/state:** none; backend `9f7a910` / frontend `95da669` unchanged. **Next three tasks:** (1) Product Owner: say whether to push `docs/handoff-after-pr8` and open a PR; (2) resolve PR #7's conflict, then decide on its merge and a frontend deploy; (3) authorise or decline retiring the iCloud clone and the Paystack webhook URL check.
+
+---
+
 ### 2026-10-10 - Session handoff and non-iCloud workspace policy integrated (branch `docs/session-handoff-workspace-policy`; documentation only; PR below, not merged, nothing deployed)
 
 **Source:** the framework repository's `main` @ `97800f8a8121ec0e1281817a8601365e581610c5` (PR #1 there, 2026-10-10), which adds `docs/SESSION-CONTINUITY-AND-WORKSPACE.md` (20 lines). Compared byte-for-byte with the v1.1.0
